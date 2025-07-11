@@ -11,7 +11,7 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
-
+st.cache_data.clear()
 st.set_page_config(layout="wide")
 
 # --- Paths ---
