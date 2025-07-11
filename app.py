@@ -176,7 +176,7 @@ def render_map():
     )
     Fullscreen().add_to(m)
 
-st.write("Merged columns:", merged.columns.tolist())
+    st.write("Merged columns:", merged.columns.tolist())  # Still inside the function
 
     for _, row in merged.iterrows():
         coords = [row.geometry.y, row.geometry.x]
