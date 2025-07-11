@@ -18,6 +18,7 @@ st.set_page_config(layout="wide")
 # --- Paths ---
 DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
+STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 CSV_FILE = sorted(
     [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")],
     reverse=True
