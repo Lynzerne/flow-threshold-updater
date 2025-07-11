@@ -31,9 +31,6 @@ def load_data():
     geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # Rename for merge
 
-    st.write("Station list columns:", list(station_list.columns))
-    st.write("Geo data columns:", list(geo_data.columns))
-
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
 
     def safe_parse(val):
@@ -55,30 +52,39 @@ from datetime import datetime  # make sure this is imported at the top
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
+
     for f in os.listdir(DIVERSION_DIR):
         if f.endswith(".xlsx"):
             wsc = f.split("_")[0]
             df = pd.read_excel(os.path.join(DIVERSION_DIR, f))
             df.columns = df.columns.str.strip()
-            df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
-            
-            df['Date'] = df['Date'].apply(
-                lambda d: d.replace(year=1900) if isinstance(d, (pd.Timestamp, datetime)) else pd.NaT
-            )
 
-            third_label = None
-            if len(df.columns) > 4:
-                third = df.columns[4]
-                if "Cutoff" in third:
-                    df = df.rename(columns={third: "Cutoff"})
-                    third_label = "Cutoff"
-                else:
-                    df = df.rename(columns={third: "Cutback3"})
-                    third_label = "Cutback3"
+            # Convert 'Date' column to datetime, coercing errors to NaT
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
+
+            # Debug: print any problematic date values
+            print(f"Checking 'Date' column values in file: {f}")
+            for d in df['Date']:
+                if not (isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d)):
+                    print(f"Problematic date value: {d} (type: {type(d)})")
+
+            # Safer date replacement with try-except to catch errors
+            def safe_replace_year(d):
+                try:
+                    if isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d):
+                        return d.replace(year=1900)
+                    else:
+                        return pd.NaT
+                except Exception as e:
+                    print(f"Error replacing year in date {d}: {e}")
+                    return pd.NaT
+
+            df['Date'] = df['Date'].apply(safe_replace_year)
 
             diversion_tables[wsc] = df
-            diversion_labels[wsc] = third_label
-    return diversion_tables, diversion_labelss
+            diversion_labels[wsc] = f"{wsc} diversion table"
+
+    return diversion_tables, diversion_labels
 
 diversion_tables, diversion_labels = load_diversion_tables()
 
