@@ -29,20 +29,11 @@ CSV_FILE = sorted(
 def load_data():
     station_list = pd.read_csv(os.path.join(DATA_DIR, CSV_FILE))
     station_list = station_list.rename(columns={'station_no': 'WSC'})  # Rename for merge
-
+    
     geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # Rename for merge
 
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
-
-    # 🔽 ADD THIS BLOCK TO INCLUDE POLICY & STREAM SIZE
-    classification_path = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
-    if os.path.exists(classification_path):
-        stream_classification = pd.read_csv(classification_path)
-        stream_classification = stream_classification.rename(columns={'station_no': 'WSC'})
-        merged = pd.merge(merged, stream_classification, on='WSC', how='left')
-    else:
-        st.warning("StreamSizeClassification.csv not found. Some features may be missing.")
 
     def safe_parse(val):
         if isinstance(val, str):
@@ -53,6 +44,14 @@ def load_data():
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
+
+    # ✅ Add this block to fix the KeyError: 'lat'
+    if 'lat_x' in merged.columns and 'lat_y' in merged.columns:
+        merged['lat'] = merged['lat_x']
+        merged['lon'] = merged['lon_x']
+    elif 'lat' not in merged.columns or 'lon' not in merged.columns:
+        st.error("Missing 'lat' and 'lon' columns after merge.")
+
     return merged
 merged = load_data()
 
