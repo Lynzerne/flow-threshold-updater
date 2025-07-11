@@ -26,10 +26,12 @@ CSV_FILE = sorted(
 @st.cache_data
 def load_data():
     station_list = pd.read_csv(os.path.join(DATA_DIR, CSV_FILE))
-    geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
-    st.write("GeoData columns:", list(geo_data.columns))
+    geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))  # load first
+    geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # then rename
 
-    geo_data = geo_data.rename(columns={'station_no': 'WSC'})
+    st.write("Station list columns:", list(station_list.columns))
+    st.write("Geo data columns:", list(geo_data.columns))
+
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
 
     def safe_parse(val):
