@@ -1,0 +1,21 @@
+name: Daily Data Update
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # Runs every day at midnight UTC
+  workflow_dispatch:      # Allows manual trigger
+
+jobs:
+  run-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: pip install -r requirements.txt || echo "No requirements file"
+      - name: Run update script
+        run: python update_data.py
