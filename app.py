@@ -28,14 +28,17 @@ CSV_FILE = sorted(
 @st.cache_data
 @st.cache_data
 def load_data():
-    station_list = pd.read_csv(os.path.join(DATA_DIR, CSV_FILE))
-    station_list = station_list.rename(columns={'station_no': 'WSC'})  # Rename for merge
+    # Load station list with required columns including WSC, PolicyType, StreamSize, LAT, LON
+    station_list = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
     
+    # Load geo data (make sure column names align for merging)
     geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
-    geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # Rename for merge
-
+    geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # rename for merge
+    
+    # Merge on 'WSC'
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
-
+    
+    # Parse 'time_series' JSON strings safely
     def safe_parse(val):
         if isinstance(val, str):
             try:
@@ -43,24 +46,9 @@ def load_data():
             except:
                 return []
         return val
-
+    
     merged['time_series'] = merged['time_series'].apply(safe_parse)
-
-    # Fix lat/lon
-    if 'lat_x' in merged.columns and 'lat_y' in merged.columns:
-        merged['lat'] = merged['lat_x']
-        merged['lon'] = merged['lon_x']
-    elif 'lat' not in merged.columns or 'lon' not in merged.columns:
-        st.error("Missing 'lat' and 'lon' columns after merge.")
-
-    # ✅ Add PolicyType + StreamSize
-    if os.path.exists(STREAM_CLASS_FILE):
-        stream_class = pd.read_csv(STREAM_CLASS_FILE)
-        stream_class = stream_class.rename(columns={'station_no': 'WSC'})
-        merged = pd.merge(merged, stream_class[['WSC', 'StreamSize', 'PolicyType']], on='WSC', how='left')
-    else:
-        st.error("StreamSizeClassification.csv not found. Please upload it to the data folder.")
-
+    
     return merged
 merged = load_data()
 
@@ -198,27 +186,30 @@ def get_most_recent_valid_date(row, dates):
     return None
 
 def render_map():
+    # Use LAT and LON from AB_WS_R_StationList.csv columns for map center
     m = folium.Map(
-        location=[merged['lat'].mean(), merged['lon'].mean()],
+        location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
         width='100%',
         height='100%'
     )
     Fullscreen().add_to(m)
-
-    st.write("Merged columns:", merged.columns.tolist())  # Still inside the function
-
+    
+    st.write("Merged columns:", merged.columns.tolist())  # for debug
+    
     for _, row in merged.iterrows():
-        coords = [row.geometry.y, row.geometry.x]
+        coords = [row['LAT'], row['LON']]
+        
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
             continue
-
+        
         color = get_color_for_date(row, date)
+        
         popup_html = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
         iframe = IFrame(html=popup_html, width=700, height=500)
         popup = folium.Popup(iframe)
-
+        
         folium.CircleMarker(
             location=coords,
             radius=7,
@@ -228,10 +219,11 @@ def render_map():
             fill_color=color,
             fill_opacity=0.7,
             popup=popup,
-            tooltip=row['station_name']
+            tooltip=row['station_name_x']  # or adjust depending on your columns
         ).add_to(m)
-
+    
     return m
+
 
 # --- Display ---
 st.title("Alberta Flow Threshold Viewer")
