@@ -169,7 +169,7 @@ def get_most_recent_valid_date(row, dates):
 
 def render_map():
     m = folium.Map(
-        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        location=[merged['lat'].mean(), merged['lon'].mean()],
         zoom_start=6,
         width='100%',
         height='100%'
