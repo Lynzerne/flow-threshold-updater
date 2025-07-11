@@ -50,6 +50,8 @@ merged = load_data()
 
 # --- Load diversion tables ---
 @st.cache_data
+from datetime import datetime  # make sure this is imported at the top
+
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
@@ -59,7 +61,11 @@ def load_diversion_tables():
             df = pd.read_excel(os.path.join(DIVERSION_DIR, f))
             df.columns = df.columns.str.strip()
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
-            df['Date'] = df['Date'].apply(lambda d: d.replace(year=1900) if pd.notna(d) else d)
+            
+            # ✅ Safer replace on datetime
+            df['Date'] = df['Date'].apply(
+                lambda d: d.replace(year=1900) if isinstance(d, (pd.Timestamp, datetime)) else d
+            )
 
             third_label = None
             if len(df.columns) > 4:
@@ -73,7 +79,7 @@ def load_diversion_tables():
 
             diversion_tables[wsc] = df
             diversion_labels[wsc] = third_label
-    return diversion_tables, diversion_labels
+    return diversion_tables, diversion_labelss
 
 diversion_tables, diversion_labels = load_diversion_tables()
 
