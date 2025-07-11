@@ -168,18 +168,15 @@ def get_most_recent_valid_date(row, dates):
     return None
 
 def render_map():
-    # Create uppercase aliases for latitude and longitude columns
-    merged['LAT'] = merged['lat']
-    merged['LON'] = merged['lon']
-
     m = folium.Map(
-        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        location=[merged['lat'].mean(), merged['lon'].mean()],
         zoom_start=6,
         width='100%',
         height='100%'
     )
-
     Fullscreen().add_to(m)
+
+st.write("Merged columns:", merged.columns.tolist())
 
     for _, row in merged.iterrows():
         coords = [row.geometry.y, row.geometry.x]
