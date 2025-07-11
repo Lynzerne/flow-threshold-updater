@@ -33,6 +33,7 @@ def load_data():
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # Rename for merge
 
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
+    merged = gpd.GeoDataFrame(merged, geometry='geometry')  # <-- Add this line
     merged['lon'] = merged.geometry.x
     merged['lat'] = merged.geometry.y
 
