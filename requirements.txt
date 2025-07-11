@@ -3,3 +3,5 @@ pandas
 geopandas
 folium
 matplotlib
+python-dateutil
+openpyxl
