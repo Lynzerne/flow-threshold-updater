@@ -1,3 +1,4 @@
+from datetime import datetime 
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -47,7 +48,7 @@ merged = load_data()
 
 # --- Load diversion tables ---
 @st.cache_data
-from datetime import datetime  # make sure this is imported at the top
+
 
 def load_diversion_tables():
     diversion_tables = {}
