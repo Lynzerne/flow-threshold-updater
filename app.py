@@ -219,7 +219,7 @@ def render_map():
             fill_color=color,
             fill_opacity=0.7,
             popup=popup,
-            tooltip=row['station_name_x']  # or adjust depending on your columns
+            tooltip=row['station_name']  # or adjust depending on your columns
         ).add_to(m)
     
     return m
