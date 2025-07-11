@@ -33,6 +33,8 @@ def load_data():
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # Rename for merge
 
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
+    merged['lon'] = merged.geometry.x
+    merged['lat'] = merged.geometry.y
 
     def safe_parse(val):
         if isinstance(val, str):
