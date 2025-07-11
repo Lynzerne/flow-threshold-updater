@@ -6,8 +6,8 @@ from collections import Counter
 from datetime import datetime, timedelta, date
 
 # --- Config ---
-station_list_csv = "/content/drive/MyDrive/WS_R data/AB_WS_R_StationList.csv"
-output_csv = "/content/drive/MyDrive/WS_R data/WS_R_master_daily.csv"
+station_list_csv = "data/AB_WS_R_StationList.csv"
+output_csv = "data/WS_R_master_daily.csv"
 base_url_template = "https://rivers.alberta.ca/apps/Basins/data/figures/river/abrivers/stationdata/WS_R_{}_table.json"
 
 # --- Date Window (last 7 days; source JSON provides last 7 days of data) ---
@@ -118,7 +118,7 @@ if all_data:
     iday = new_data_df['Date'].max()
     daily_snapshot_df = master_df[master_df['Date'] == iday]
 
-    daily_csv_path = f"/content/drive/MyDrive/WS_R data/AB_WS_R_Flows_{iday}.csv"
+    daily_csv_path = f"data/AB_WS_R_Flows_{iday}.csv"
     daily_snapshot_df.to_csv(daily_csv_path, index=False)
     print(f"Daily snapshot CSV saved to {daily_csv_path}")
 
@@ -133,10 +133,10 @@ import os
 
 # --- Paths & Date ---
 iday = date.today().strftime('%Y-%m-%d')  # Today's date
-station_list_csv = "/content/drive/MyDrive/WS_R data/AB_WS_R_StationList.csv"
-daily_csv_path = f"/content/drive/MyDrive/WS_R data/AB_WS_R_Flows_{iday}.csv"
-master_geojson_path = "/content/drive/MyDrive/WS_R data/AB_WS_R_stations.geojson"
-geojson_updated_path = f"/content/drive/MyDrive/WS_R data/AB_WS_R_stations_{iday}.geojson"
+station_list_csv = "data/AB_WS_R_StationList.csv"
+daily_csv_path = f"data/AB_WS_R_Flows_{iday}.csv"
+master_geojson_path = "data/AB_WS_R_stations.geojson"
+geojson_updated_path = f"data/AB_WS_R_stations_{iday}.geojson"
 
 # --- Load Station List ---
 stns = pd.read_csv(station_list_csv)
@@ -167,7 +167,7 @@ else:
     print(f"✅ GeoJSON skeleton created.")
 
 # --- Load Full Master Daily Data to Get All Timeseries ---
-master_csv_path = "/content/drive/MyDrive/WS_R data/WS_R_master_daily.csv"
+master_csv_path = "data/WS_R_master_daily.csv"
 master_df = pd.read_csv(master_csv_path, parse_dates=['Date'])
 master_df['station_no'] = master_df['station_no'].astype(str).str.strip()
 
