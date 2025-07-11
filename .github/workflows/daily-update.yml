@@ -25,3 +25,6 @@ jobs:
 
       - name: Run data updater script
         run: python data_updater.py
+
+      - name: Check data folder size
+        run: du -sh data
