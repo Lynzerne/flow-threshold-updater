@@ -26,14 +26,14 @@ CSV_FILE = sorted(
 @st.cache_data
 def load_data():
     station_list = pd.read_csv(os.path.join(DATA_DIR, CSV_FILE))
-    station_list = station_list.rename(columns={'station_no': 'WSC'})  # Rename here
+    station_list = station_list.rename(columns={'station_no': 'WSC'})  # Rename for merge
     
     geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
-    # geo_data already has 'WSC' column
-    
+    geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # Rename for merge
+
     st.write("Station list columns:", list(station_list.columns))
     st.write("Geo data columns:", list(geo_data.columns))
-    
+
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
 
     def safe_parse(val):
@@ -46,7 +46,6 @@ def load_data():
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
     return merged
-
 merged = load_data()
 
 # --- Load diversion tables ---
