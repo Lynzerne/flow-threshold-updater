@@ -62,9 +62,8 @@ def load_diversion_tables():
             df.columns = df.columns.str.strip()
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
             
-            # ✅ Safer replace on datetime
             df['Date'] = df['Date'].apply(
-                lambda d: d.replace(year=1900) if isinstance(d, (pd.Timestamp, datetime)) else d
+                lambda d: d.replace(year=1900) if isinstance(d, (pd.Timestamp, datetime)) else pd.NaT
             )
 
             third_label = None
