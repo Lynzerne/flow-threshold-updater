@@ -45,12 +45,20 @@ def load_data():
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
 
-    # ✅ Add this block to fix the KeyError: 'lat'
+    # Fix lat/lon
     if 'lat_x' in merged.columns and 'lat_y' in merged.columns:
         merged['lat'] = merged['lat_x']
         merged['lon'] = merged['lon_x']
     elif 'lat' not in merged.columns or 'lon' not in merged.columns:
         st.error("Missing 'lat' and 'lon' columns after merge.")
+
+    # ✅ Add PolicyType + StreamSize
+    if os.path.exists(STREAM_CLASS_FILE):
+        stream_class = pd.read_csv(STREAM_CLASS_FILE)
+        stream_class = stream_class.rename(columns={'station_no': 'WSC'})
+        merged = pd.merge(merged, stream_class[['WSC', 'StreamSize', 'PolicyType']], on='WSC', how='left')
+    else:
+        st.error("StreamSizeClassification.csv not found. Please upload it to the data folder.")
 
     return merged
 merged = load_data()
