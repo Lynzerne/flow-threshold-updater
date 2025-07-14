@@ -1,9 +1,8 @@
-from datetime import datetime 
+from datetime import datetime, timedelta
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import json
-from datetime import datetime, timedelta
 import folium
 from folium import IFrame
 from folium.plugins import Fullscreen
@@ -12,6 +11,7 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
+
 st.cache_data.clear()
 st.set_page_config(layout="wide")
 
@@ -19,25 +19,16 @@ st.set_page_config(layout="wide")
 DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
-CSV_FILE = sorted(
-    [f for f in os.listdir(DATA_DIR) if f.endswith(".csv")],
-    reverse=True
-)[0]  # Use most recent CSV by name
+CSV_FILE = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(".csv")], reverse=True)[0]
 
 # --- Load data ---
 @st.cache_data
 def load_data():
-    # Load station list with required columns including WSC, PolicyType, StreamSize, LAT, LON
     station_list = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
-    
-    # Load geo data (make sure column names align for merging)
     geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
-    geo_data = geo_data.rename(columns={'station_no': 'WSC'})  # rename for merge
-    
-    # Merge on 'WSC'
+    geo_data = geo_data.rename(columns={'station_no': 'WSC'})
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
-    
-    # Parse 'time_series' JSON strings safely
+
     def safe_parse(val):
         if isinstance(val, str):
             try:
@@ -45,16 +36,14 @@ def load_data():
             except:
                 return []
         return val
-    
+
     merged['time_series'] = merged['time_series'].apply(safe_parse)
-    
     return merged
+
 merged = load_data()
 
 # --- Load diversion tables ---
 @st.cache_data
-
-
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
@@ -64,26 +53,18 @@ def load_diversion_tables():
             wsc = f.split("_")[0]
             df = pd.read_excel(os.path.join(DIVERSION_DIR, f))
             df.columns = df.columns.str.strip()
-
-            # Convert 'Date' column to datetime, coercing errors to NaT
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
-     
-                    
-
-            # Safer date replacement with try-except to catch errors
             def safe_replace_year(d):
                 try:
                     if isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d):
                         return d.replace(year=1900)
                     else:
                         return pd.NaT
-                except Exception as e:
-                    
+                except:
                     return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
-
             diversion_tables[wsc] = df
             diversion_labels[wsc] = f"{wsc} diversion table"
 
@@ -129,7 +110,6 @@ def get_color_for_date(row, date):
     daily = extract_daily_data(row['time_series'], date)
     flow_daily = daily.get('Daily flow')
     flow_calc = daily.get('Calculated flow')
-
     flow = max(filter(pd.notna, [flow_daily, flow_calc]), default=None)
 
     policy = row['PolicyType']
@@ -170,12 +150,6 @@ show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
 
 # --- Popup HTML builder ---
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
-    from io import BytesIO
-    import base64
-    import matplotlib.pyplot as plt
-    import pandas as pd
-    import numpy as np
-
     font_size = '13px'
     padding = '6px'
     border = '2px solid black'
@@ -187,7 +161,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     show_daily_flow = False
     show_calc_flow = False
 
-    # Ensure selected_dates are sorted chronologically
+    # Ensure selected_dates sorted chronologically
     selected_dates = sorted(selected_dates, key=pd.to_datetime)
 
     for d in selected_dates:
@@ -254,7 +228,6 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             color = 'gray'
         calc_colors.append(color)
 
-    # Wrapper div for popup
     html = "<div style='max-width: 100%;'>"
     html += f"<h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
     html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
@@ -262,66 +235,53 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates]) + "</tr>"
 
     if show_daily_flow:
-        html += f"<tr><td style='padding:{padding}; border:{border};'>Daily Flow</td>"
-        for i, flow in enumerate(flows):
-            code = {'green': '#90ee90', 'yellow': '#fffacd', 'red': '#ffcccb', 'gray': '#d3d3d3'}[daily_colors[i]]
-            flow_str = f"{flow:.2f}" if not pd.isna(flow) else "N/A"
-            html += f"<td style='padding:{padding}; background:{code}; border:{border}; text-align:center;'>{flow_str}</td>"
+        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
+        for val, color in zip(flows, daily_colors):
+            val_str = f"{val:.2f}" if pd.notna(val) else "NA"
+            html += f"<td style='padding:{padding}; border:{border}; background-color:{color};'>{val_str}</td>"
         html += "</tr>"
 
     if show_calc_flow:
-        html += f"<tr><td style='padding:{padding}; border:{border};'>Calculated Flow</td>"
-        for i, flow in enumerate(calc_flows):
-            code = {'green': '#90ee90', 'yellow': '#fffacd', 'red': '#ffcccb', 'gray': '#d3d3d3'}[calc_colors[i]]
-            flow_str = f"{flow:.2f}" if not pd.isna(flow) else "N/A"
-            html += f"<td style='padding:{padding}; background:{code}; border:{border}; text-align:center;'>{flow_str}</td>"
+        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
+        for val, color in zip(calc_flows, calc_colors):
+            val_str = f"{val:.2f}" if pd.notna(val) else "NA"
+            html += f"<td style='padding:{padding}; border:{border}; background-color:{color};'>{val_str}</td>"
         html += "</tr>"
 
     for label in threshold_labels:
-        html += f"<tr><td style='padding:{padding}; border:{border};'>{label}</td>"
-        for thresholds in threshold_sets:
-            val = thresholds.get(label, float('nan'))
-            cell = f"{val:.2f}" if not pd.isna(val) else "N/A"
-            html += f"<td style='padding:{padding}; border:{border}; text-align:center;'>{cell}</td>"
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>{label}</td>"
+        for t_set in threshold_sets:
+            val = t_set.get(label, float('nan'))
+            val_str = f"{val:.2f}" if pd.notna(val) else "NA"
+            html += f"<td style='padding:{padding}; border:{border};'>{val_str}</td>"
         html += "</tr>"
 
-    html += "</table>"
+    html += "</table><br>"
 
-    # Plot section
-    figsize = (7.5, 3.5)
-    fig, ax = plt.subplots(figsize=figsize)
+    # Plot flow series with thresholds
+    fig, ax = plt.subplots(figsize=(8, 3))
+    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue')
+    ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green')
 
-    if show_daily_flow:
-        ax.plot(plot_dates, flows, marker='d', color='blue', label='Daily Flow')
-    if show_calc_flow:
-        ax.plot(plot_dates, calc_flows, marker='d', linestyle='-', color='black', label='Calculated Flow')
-
-    color_map = {
-        'Q80': 'green', 'Q90': 'gold', 'Q95': 'red',
-        'WCO': 'red', 'IO': 'orange', 'IFN': 'pink',
-        'Minimum flow': 'purple', 'Industrial IO': 'brown', 'Non-industrial IO': 'blue',
-        'Cutback1': 'yellow', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red'
-    }
-
+    # Plot thresholds
     for label in threshold_labels:
-        y = [ts.get(label, float('nan')) for ts in threshold_sets]
-        if any(not pd.isna(val) for val in y):
-            ax.plot(plot_dates, y, marker='o', linestyle='--', color=color_map.get(label, 'gray'), label=label)
+        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
+        if all(pd.isna(threshold_vals)):
+            continue
+        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label)
 
-    ax.set_title('Flow vs Threshold', fontsize=14)
-    ax.set_ylabel('Flow', fontsize=12)
-    fig.autofmt_xdate()
-    if threshold_labels or show_daily_flow or show_calc_flow:
-        ax.legend(fontsize=9)
-    ax.grid(True)
-    plt.tight_layout()
+    ax.set_ylabel('Flow')
+    ax.legend(fontsize=8)
+    ax.set_title('Flow and Thresholds Over Time')
+    ax.tick_params(axis='x', rotation=45)
+    fig.tight_layout()
 
     buf = BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
+    fig.savefig(buf, format="png")
     plt.close(fig)
-    img_data = base64.b64encode(buf.getvalue()).decode()
-
-    html += f"<br><img src='data:image/png;base64,{img_data}' style='width:100%; max-height:300px; display:block; margin: 0 auto;'/>"
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
     html += "</div>"
 
     return html
@@ -335,8 +295,6 @@ def get_most_recent_valid_date(row, dates):
     return None
 
 def render_map():
-    # Use LAT and LON from AB_WS_R_StationList.csv columns for map center
-  def render_map():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
@@ -348,7 +306,6 @@ def render_map():
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
 
-        # Skip stations if diversion mode is on and this isn't a diversion station
         if show_diversion and row['WSC'] not in diversion_tables:
             continue
 
@@ -357,18 +314,16 @@ def render_map():
             continue
 
         color = get_color_for_date(row, date)
-
         popup_html = make_popup_html_with_plot(row, selected_dates, show_diversion=show_diversion)
         iframe = IFrame(html=popup_html, width=700, height=500)
         popup = folium.Popup(iframe)
 
-        # Determine border color
         border_color = 'blue' if show_diversion and row['WSC'] in diversion_tables else 'black'
 
         folium.CircleMarker(
             location=coords,
             radius=7,
-            color=border_color,  # outline
+            color=border_color,
             weight=3,
             fill=True,
             fill_color=color,
@@ -377,5 +332,15 @@ def render_map():
             tooltip=row['station_name']
         ).add_to(m)
 
-    print("DEBUG: render_map returning type:", type(m))
     return m
+
+# --- Display ---
+st.title("Alberta Flow Threshold Viewer")
+
+
+if not selected_dates:
+    st.warning("No data available for the selected date range.")
+else:
+    m = render_map()
+    map_html = m._repr_html_()
+    st.components.v1.html(map_html, height=800, scrolling=True)
