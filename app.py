@@ -161,8 +161,8 @@ def generate_popup_cache(merged_df, selected_dates):
             try:
                 popup_cache[wsc][mode] = make_popup_html_with_plot(row, selected_dates, show_diversion=mode)
             except Exception as e:
+                print(f"Error generating popup for WSC {wsc} (mode: {mode}): {e}")
                 popup_cache[wsc][mode] = "<p>Error generating popup</p>"
-                # Optionally log e here
     return popup_cache
 
 # --- Sidebar ---
