@@ -415,30 +415,21 @@ def render_map_two_layers():
 # --- Display ---
 st.title("Alberta Flow Threshold Viewer")
 
-# --- Generate both popup caches once ---
+# --- Generate both popup caches once and cache by selected_dates hash ---
+
 def get_date_hash(dates):
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
 
 if ('popup_cache_no_diversion' not in st.session_state or
     'popup_cache_diversion' not in st.session_state or
-    st.session_state.get('cached_dates_hash', '') != get_date_hash(selected_dates)):
+    cached_dates_hash != current_dates_hash):
     
     with st.spinner("Generating popup caches..."):
         no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
         st.session_state.popup_cache_no_diversion = no_diversion_cache
         st.session_state.popup_cache_diversion = diversion_cache
-        st.session_state.cached_dates_hash = get_date_hash(selected_dates)
-else:
-    # If date range changed, regenerate caches
-    cached_dates_hash = st.session_state.get('cached_dates_hash', '')
-    current_dates_hash = get_date_hash(selected_dates)
-    if cached_dates_hash != current_dates_hash:
-        with st.spinner("Updating popup caches for new date range..."):
-            no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
-            st.session_state.popup_cache_no_diversion = no_diversion_cache
-            st.session_state.popup_cache_diversion = diversion_cache
-            st.session_state.cached_dates_hash = current_dates_hash
+        st.session_state.cached_dates_hash = current_dates_hash
 
 
 # Render and display the two-layer map (with both popup caches)
