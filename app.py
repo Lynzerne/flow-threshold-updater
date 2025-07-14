@@ -72,7 +72,7 @@ def load_diversion_tables():
             print(f"Checking 'Date' column values in file: {f}")
             for d in df['Date']:
                 if not (isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d)):
-                    print(f"Problematic date value: {d} (type: {type(d)})")
+                    
 
             # Safer date replacement with try-except to catch errors
             def safe_replace_year(d):
@@ -82,7 +82,7 @@ def load_diversion_tables():
                     else:
                         return pd.NaT
                 except Exception as e:
-                    print(f"Error replacing year in date {d}: {e}")
+                    
                     return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
