@@ -11,10 +11,8 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
-import hashlib
 
-# Removed: st.cache_data.clear()  # Clearing cache every run causes reloads
-
+st.cache_data.clear()
 st.set_page_config(layout="wide")
 
 # --- Paths ---
@@ -55,18 +53,23 @@ def load_diversion_tables():
             wsc = f.split("_")[0]
             file_path = os.path.join(DIVERSION_DIR, f)
 
+            # Read columns B to E: [Date, Cutback1, Cutback2, Cutback3 or Cutoff]
             df = pd.read_excel(file_path, usecols="B:E")
             df.columns = df.columns.str.strip()
 
+            # Rename the first three columns
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
             if len(df.columns) == 4:
+                # Preserve whatever the third cutback label is
                 third_label = df.columns[3]
                 df.columns = standard_columns + [third_label]
                 diversion_labels[wsc] = third_label
             else:
+                # Fallback if format isn't as expected
                 diversion_labels[wsc] = "Cutback3"
                 df.columns = standard_columns + ['Cutback3']
 
+            # Normalize and fix date format
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
             def safe_replace_year(d):
@@ -148,6 +151,7 @@ def get_valid_dates(merged):
     return sorted(dates)
 
 valid_dates = get_valid_dates(merged)
+
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
@@ -252,6 +256,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html += "</table><br>"
 
+    # Plot with fixed image encoding
     fig, ax = plt.subplots(figsize=(6, 2.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     if any(pd.notna(val) for val in calc_flows):
@@ -287,9 +292,49 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     return html
 
+import hashlib
+
 def get_date_hash(dates):
+    """Create a short unique hash string for a list of dates."""
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
+
+@st.cache_data(show_spinner=True)
+def generate_all_popups(merged_df, selected_dates):
+    """Pre-generate both popup caches (with and without diversion) for the selected dates."""
+    popup_cache_no_diversion = {}
+    popup_cache_diversion = {}
+
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        try:
+            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
+            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
+        except Exception as e:
+            st.exception(e)
+            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
+            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
+
+    return popup_cache_no_diversion, popup_cache_diversion
+
+
+# --- Sidebar ---
+st.sidebar.header("Date Range")
+min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
+max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
+end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
+
+if start_date > end_date:
+    st.sidebar.error("Start date must be before end date.")
+    st.stop()
+
+selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
+
+# Mutually exclusive mode selector using radio buttons
+mode = st.sidebar.radio("Display Mode", ["Show All Stations", "Show Diversion Tables"])
+show_all_stations = (mode == "Show All Stations")
+show_diversion = (mode == "Show Diversion Tables")
 
 @st.cache_data(show_spinner=True)
 def generate_popup_cache(merged_df, selected_dates, show_diversion):
@@ -301,6 +346,8 @@ def generate_popup_cache(merged_df, selected_dates, show_diversion):
         except Exception as e:
             popup_cache[wsc] = "<p>Error generating popup</p>"
     return popup_cache
+
+# Pre-generate both popup caches upfront
 
 def get_most_recent_valid_date(row, dates):
     for d in sorted(dates, reverse=True):
@@ -321,72 +368,43 @@ def render_map():
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
 
-        if 'selected_dates' not in st.session_state:
-            selected_dates = valid_dates[-3:]  # default last 3 days
-        else:
-            selected_dates = st.session_state.selected_dates
+        if show_diversion and row['WSC'] not in diversion_tables:
+            continue
 
-        most_recent_date = get_most_recent_valid_date(row, selected_dates)
-        color = get_color_for_date(row, most_recent_date) if most_recent_date else 'gray'
+        date = get_most_recent_valid_date(row, selected_dates)
+        if not date:
+            continue
 
-        wsc = row['WSC']
-        html = st.session_state.popup_cache.get(wsc, "<p>No data</p>")
+        color = get_color_for_date(row, date)
+        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")  # uses new popup_cache here
+        iframe = IFrame(html=popup_html, width=700, height=700)
+        popup = folium.Popup(iframe)
 
-        iframe = IFrame(html, width=400, height=400)
-        popup = folium.Popup(iframe, max_width=500)
+        border_color = 'blue' if show_diversion and row['WSC'] in diversion_tables else 'black'
+
         folium.CircleMarker(
             location=coords,
-            radius=10,
-            color=color,
+            radius=7,
+            color=border_color,
+            weight=3,
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
-            popup=popup
+            popup=popup,
+            tooltip=row['station_name']
         ).add_to(m)
 
     return m
 
-# --- Sidebar ---
-st.sidebar.header("Date Range")
-
-min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
-max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
-
-default_start = max_date - timedelta(days=7)
-default_end = max_date
-
-default_dates = [d.strftime('%Y-%m-%d') for d in pd.date_range(default_start, default_end)]
-default_dates = [d for d in default_dates if d in valid_dates]
-
-if len(default_dates) > 3:
-    default_dates = default_dates[:3]
-
-if not default_dates:
-    default_dates = valid_dates[-3:] if len(valid_dates) >= 3 else valid_dates
-
-selected_dates = st.sidebar.multiselect(
-    "Select Dates (max 3)", valid_dates,
-    default=default_dates,
-    max_selections=3
-)
+# --- Display ---
+st.title("Alberta Flow Threshold Viewer")
 
 if not selected_dates:
-    st.sidebar.error("Please select at least one date.")
-    st.stop()
-
-# Assume show_diversion was set earlier from sidebar radio
-st.session_state.selected_dates = selected_dates
-st.session_state.show_diversion = show_diversion
-
-# Generate popup cache only if needed
-popup_cache_key = (tuple(selected_dates), show_diversion)
-if 'popup_cache_key' not in st.session_state or st.session_state.popup_cache_key != popup_cache_key:
-    with st.spinner("Generating popups..."):
-        st.session_state.popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
-        st.session_state.popup_cache_key = popup_cache_key
-
-# Render map
-folium_map = render_map()
-
-st.markdown("<h2>Stations Map</h2>", unsafe_allow_html=True)
-st_data = st_folium(folium_map, width=1000, height=600)
+    st.warning("No data available for the selected date range.")
+else:
+    # Generate popup cache on demand depending on diversion mode
+    popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
+    
+    m = render_map()
+    map_html = m.get_root().render()
+    st.components.v1.html(map_html, height=800, scrolling=True)
