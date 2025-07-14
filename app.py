@@ -346,30 +346,30 @@ def render_map():
     Fullscreen().add_to(m)
 
     for _, row in merged.iterrows():
-        wsc = row['WSC']
-        is_diversion = wsc in diversion_tables
-
-        # Filtering logic
-        if show_diversion and not is_diversion:
-            continue
-        if not show_diversion and is_diversion:
-            continue
-
         coords = [row['LAT'], row['LON']]
+
+        # Skip stations if diversion mode is on and this isn't a diversion station
+        if show_diversion and row['WSC'] not in diversion_tables:
+            continue
+
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
             continue
 
         color = get_color_for_date(row, date)
+
         popup_html = make_popup_html_with_plot(row, selected_dates, show_diversion=show_diversion)
         iframe = IFrame(html=popup_html, width=700, height=500)
         popup = folium.Popup(iframe)
 
+        # Determine border color
+        border_color = 'blue' if show_diversion and row['WSC'] in diversion_tables else 'black'
+
         folium.CircleMarker(
             location=coords,
             radius=7,
-            color='blue' if is_diversion else 'black',  # Blue outline for diversion stations
-            weight=3 if is_diversion else 2,
+            color=border_color,  # outline
+            weight=3,
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
@@ -377,33 +377,5 @@ def render_map():
             tooltip=row['station_name']
         ).add_to(m)
 
-    return m
-
-
-# --- Display ---
-import streamlit.components.v1 as components
-
-# --- Display ---
-st.title("Alberta Flow Threshold Viewer")
-st.caption(f"Using data from: `{CSV_FILE}`")
-
-if not selected_dates:
-    st.warning("No data available for the selected date range.")
-else:
-    m = render_map()
-    
-    # Ensure map is valid before saving
-    if m and isinstance(m, folium.Map):
-        m.save("map.html")
-        with open("map.html", "r", encoding="utf-8") as f:
-            map_html = f.read()
-        components.html(map_html, height=1000, scrolling=True)
-    else:
-        st.error("Failed to render the map.")
-        def render_map():
-    # ... existing code ...
     print("DEBUG: render_map returning type:", type(m))
     return m
-
-m = render_map()
-print("DEBUG: Returned m is:", m)
