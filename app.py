@@ -11,7 +11,6 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
-import hashlib
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -54,18 +53,23 @@ def load_diversion_tables():
             wsc = f.split("_")[0]
             file_path = os.path.join(DIVERSION_DIR, f)
 
+            # Read columns B to E: [Date, Cutback1, Cutback2, Cutback3 or Cutoff]
             df = pd.read_excel(file_path, usecols="B:E")
             df.columns = df.columns.str.strip()
 
+            # Rename the first three columns
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
             if len(df.columns) == 4:
+                # Preserve whatever the third cutback label is
                 third_label = df.columns[3]
                 df.columns = standard_columns + [third_label]
                 diversion_labels[wsc] = third_label
             else:
+                # Fallback if format isn't as expected
                 diversion_labels[wsc] = "Cutback3"
                 df.columns = standard_columns + ['Cutback3']
 
+            # Normalize and fix date format
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
             def safe_replace_year(d):
@@ -147,6 +151,7 @@ def get_valid_dates(merged):
     return sorted(dates)
 
 valid_dates = get_valid_dates(merged)
+
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
@@ -259,114 +264,147 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     threshold_colors = {
         'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
-        'IO': 'brown', 'WCO': 'black', 'Minimum flow': 'gray', 'Industrial IO': 'cyan',
-        'Non-industrial IO': 'pink', 'IFN': 'darkgreen', 'Q80': 'green', 'Q90': 'darkblue', 'Q95': 'darkred'
+        'IO': 'orange', 'WCO': 'crimson', 'Q80': 'green', 'Q90': 'yellow',
+        'Q95': 'orange', 'Minimum flow': 'red', 'IFN': 'red'
     }
 
     for label in threshold_labels:
-        for thresholds in threshold_sets:
-            val = thresholds.get(label)
-            if pd.notna(val):
-                ax.axhline(y=val, color=threshold_colors.get(label, 'black'), linestyle='--', alpha=0.7)
-                break
+        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
+        if all(pd.isna(threshold_vals)):
+            continue
+        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label,
+                color=threshold_colors.get(label, 'gray'), linewidth=2)
 
-    ax.set_xlabel('Date')
     ax.set_ylabel('Flow')
-    ax.legend(loc='upper right', fontsize=8)
-    ax.grid(True)
-    fig.autofmt_xdate()
+    ax.legend(fontsize=8)
+    ax.set_title('Flow and Thresholds Over Time')
+    ax.tick_params(axis='x', rotation=45)
+    fig.tight_layout()
 
     buf = BytesIO()
-    fig.savefig(buf, format='png', bbox_inches='tight')
+    fig.savefig(buf, format="png", bbox_inches='tight')
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
     plt.close(fig)
-    encoded = base64.b64encode(buf.getvalue()).decode()
-    html += f"<img src='data:image/png;base64,{encoded}' style='max-width: 100%; height: auto;'><br></div>"
+
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
+    html += "</div>"
 
     return html
 
-# --- Generate popup caches for both diversion modes ---
-def generate_all_popups(merged, selected_dates):
-    cache_no_diversion = {}
-    cache_diversion = {}
+import hashlib
 
-    for idx, row in merged.iterrows():
-        # No diversion
-        cache_no_diversion[row['WSC']] = make_popup_html_with_plot(row, selected_dates, False)
-        # With diversion
-        cache_diversion[row['WSC']] = make_popup_html_with_plot(row, selected_dates, True)
+def get_date_hash(dates):
+    """Create a short unique hash string for a list of dates."""
+    date_str = ",".join(sorted(dates))
+    return hashlib.md5(date_str.encode()).hexdigest()
 
-    return cache_no_diversion, cache_diversion
+@st.cache_data(show_spinner=True)
+def generate_all_popups(merged_df, selected_dates):
+    """Pre-generate both popup caches (with and without diversion) for the selected dates."""
+    popup_cache_no_diversion = {}
+    popup_cache_diversion = {}
 
-# --- Map rendering ---
-def render_map(popup_cache, show_diversion):
-    m = folium.Map(location=[55.000, -114.000], zoom_start=7)
-    Fullscreen(position='topright').add_to(m)
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        try:
+            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
+            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
+        except Exception as e:
+            st.exception(e)
+            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
+            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
 
-    for idx, row in merged.iterrows():
-        coord = (row['latitude'], row['longitude'])
-        color = get_color_for_date(row, selected_dates[0])  # Color for first selected date
+    return popup_cache_no_diversion, popup_cache_diversion
 
-        popup_html = popup_cache.get(row['WSC'], "<b>No data</b>")
-        iframe = IFrame(html=popup_html, width=350, height=350)
-        popup = folium.Popup(iframe, max_width=350)
+
+# --- Sidebar ---
+st.sidebar.header("Date Range")
+min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
+max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
+end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
+
+if start_date > end_date:
+    st.sidebar.error("Start date must be before end date.")
+    st.stop()
+
+selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
+
+# Mutually exclusive mode selector using radio buttons
+mode = st.sidebar.radio("Display Mode", ["Show All Stations", "Show Diversion Tables"])
+show_all_stations = (mode == "Show All Stations")
+show_diversion = (mode == "Show Diversion Tables")
+
+@st.cache_data(show_spinner=True)
+def generate_popup_cache(merged_df, selected_dates, show_diversion):
+    popup_cache = {}
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        try:
+            popup_cache[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion)
+        except Exception as e:
+            popup_cache[wsc] = "<p>Error generating popup</p>"
+    return popup_cache
+
+# Pre-generate both popup caches upfront
+
+def get_most_recent_valid_date(row, dates):
+    for d in sorted(dates, reverse=True):
+        daily = extract_daily_data(row['time_series'], d)
+        if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
+            return d
+    return None
+
+def render_map():
+    m = folium.Map(
+        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        zoom_start=6,
+        width='100%',
+        height='1200px'
+    )
+    Fullscreen().add_to(m)
+
+    for _, row in merged.iterrows():
+        coords = [row['LAT'], row['LON']]
+
+        if show_diversion and row['WSC'] not in diversion_tables:
+            continue
+
+        date = get_most_recent_valid_date(row, selected_dates)
+        if not date:
+            continue
+
+        color = get_color_for_date(row, date)
+        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")  # uses new popup_cache here
+        iframe = IFrame(html=popup_html, width=700, height=700)
+        popup = folium.Popup(iframe)
+
+        border_color = 'blue' if show_diversion and row['WSC'] in diversion_tables else 'black'
 
         folium.CircleMarker(
-            location=coord,
+            location=coords,
             radius=7,
-            popup=popup,
-            color=color,
+            color=border_color,
+            weight=3,
             fill=True,
             fill_color=color,
-            fill_opacity=0.8,
-            weight=1,
+            fill_opacity=0.7,
+            popup=popup,
+            tooltip=row['station_name']
         ).add_to(m)
 
     return m
 
-# --- Streamlit UI ---
-st.title("Flow Compliance Map")
+# --- Display ---
+st.title("Alberta Flow Threshold Viewer")
 
-# Date range picker
-min_date = datetime.strptime(valid_dates[0], '%Y-%m-%d')
-max_date = datetime.strptime(valid_dates[-1], '%Y-%m-%d')
-selected_dates = st.slider(
-    "Select date range",
-    min_value=min_date,
-    max_value=max_date,
-    value=(min_date, max_date),
-    format="YYYY-MM-DD"
-)
-
-date_range = pd.date_range(selected_dates[0], selected_dates[1])
-selected_dates = [d.strftime('%Y-%m-%d') for d in date_range]
-
-# Diversion toggle
-show_diversion = st.checkbox("Show Diversion")
-
-# Cache popup htmls on first run or date change
-def get_date_range_hash(dates):
-    m = hashlib.md5()
-    for d in dates:
-        m.update(d.encode())
-    return m.hexdigest()
-
-date_hash = get_date_range_hash(selected_dates)
-
-if 'popup_cache_no_diversion' not in st.session_state or \
-   'popup_cache_diversion' not in st.session_state or \
-   st.session_state.get('date_hash', '') != date_hash:
-
-    with st.spinner("Generating popup caches (takes a moment)..."):
-        no_div_cache, div_cache = generate_all_popups(merged, selected_dates)
-        st.session_state.popup_cache_no_diversion = no_div_cache
-        st.session_state.popup_cache_diversion = div_cache
-        st.session_state.date_hash = date_hash
-
-# Select correct popup cache
-popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.session_state.popup_cache_no_diversion
-
-# Render map
-m = render_map(popup_cache, show_diversion)
-map_html = m.get_root().render()
-
-st.components.v1.html(map_html, height=800, scrolling=True)
+if not selected_dates:
+    st.warning("No data available for the selected date range.")
+else:
+    # Generate popup cache on demand depending on diversion mode
+    popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
+    
+    m = render_map()
+    map_html = m.get_root().render()
+    st.components.v1.html(map_html, height=800, scrolling=True)
