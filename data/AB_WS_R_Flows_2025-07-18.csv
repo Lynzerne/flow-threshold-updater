@@ -1,0 +1,8 @@
+Date,Daily flow,IO,WCO,station_no,station_name,lon,lat,Natural flow,Minimum flow,Calculated flow,Q80,Q90,Q95,Industrial IO,Non-industrial IO,Q90_1,IFN
+2025-07-18,,2.74673411953978,,05AE006,St. Mary River near Lethbridge - WSC,-112.8467,49.57346,,,,,,,,,,
+2025-07-18,,42.4752698897904,,05AJ001,South Saskatchewan River at Medicine Hat - WSC,-110.6775,50.04209,,,,,,,,,,
+2025-07-18,,11.4,,05BM004,Bow River below Bassano Dam - WSC,-112.5423,50.75018,,,,,,,,,,
+2025-07-18,,11.4,,05BN012,Bow River near the Mouth - WSC,-111.5909,50.04728,,,,,,,,,,
+2025-07-18,,,,05CD004,Red Deer River near Nevis - EPA,-113.0667,52.3,,,,,,,4.25,8.5,,
+2025-07-18,,,,05CE001,Red Deer River at Drumheller - WSC,-112.7115,51.46727,,,,,,,4.25,8.5,,
+2025-07-18,,,,05CK004,Red Deer River near Bindloss - WSC,-110.2995,50.90269,,,,,,,4.25,8.5,,
