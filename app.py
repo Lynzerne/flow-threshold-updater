@@ -285,7 +285,7 @@ popup_cache = generate_popup_cache(merged, selected_dates)
 
 
     # --- Plot flow series with thresholds ---
-    fig, ax = plt.subplots(figsize=(8, 3))  # Correct placement
+    fig, ax = plt.subplots(figsize=(8, 3))
 
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
 
