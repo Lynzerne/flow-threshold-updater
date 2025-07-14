@@ -169,7 +169,7 @@ if start_date > end_date:
     st.stop()
 
 selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
-show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=True)
+show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
 
 # --- Popup HTML builder ---
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
@@ -339,6 +339,7 @@ def get_most_recent_valid_date(row, dates):
 
 def render_map():
     # Use LAT and LON from AB_WS_R_StationList.csv columns for map center
+  def render_map():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
@@ -346,33 +347,39 @@ def render_map():
         height='100%'
     )
     Fullscreen().add_to(m)
-    
-    
+
     for _, row in merged.iterrows():
+        wsc = row['WSC']
+        is_diversion = wsc in diversion_tables
+
+        # Filtering logic
+        if show_diversion and not is_diversion:
+            continue
+        if not show_diversion and is_diversion:
+            continue
+
         coords = [row['LAT'], row['LON']]
-        
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
             continue
-        
+
         color = get_color_for_date(row, date)
-        
-        popup_html = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
+        popup_html = make_popup_html_with_plot(row, selected_dates, show_diversion=show_diversion)
         iframe = IFrame(html=popup_html, width=700, height=500)
         popup = folium.Popup(iframe)
-        
+
         folium.CircleMarker(
             location=coords,
             radius=7,
-            color='black',
-            weight=2,
+            color='blue' if is_diversion else 'black',  # Blue outline for diversion stations
+            weight=3 if is_diversion else 2,
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
             popup=popup,
-            tooltip=row['station_name']  # or adjust depending on your columns
+            tooltip=row['station_name']
         ).add_to(m)
-    
+
     return m
 
 
