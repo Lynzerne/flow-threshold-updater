@@ -275,13 +275,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         html += "</tr>"
 
     html += "</table><br>"
-    # Define colors for diversion thresholds
-    threshold_colors = {
-        'Cutback1': 'yellow',
-        'Cutback2': 'orange',
-        'Cutback3': 'purple',
-        'Cutoff': 'red',  # in case "Cutoff" is used instead of "Cutback3"
-    }
+
+
     # --- Plot flow series with thresholds ---
     fig, ax = plt.subplots(figsize=(8, 3))  # Correct placement
 
@@ -293,11 +288,14 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     threshold_colors = {
         'Cutback1': 'gold',
         'Cutback2': 'orange',
-        'Cutback3': 'red',
+        'Cutback3': 'purple',
         'Cutoff': 'red',
-        'Q80': 'purple',
-        'Q90': 'brown',
-        'Q95': 'black',
+        'IO': 'orange', 
+        'WCO': 'crimson' 
+        'Q80': 'green',
+        'Q90': 'yellow',
+        'Q95': 'orange',
+        'Minimum flow': 'red',
     }
 
     for label in threshold_labels:
