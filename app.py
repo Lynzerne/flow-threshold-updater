@@ -31,7 +31,7 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
         if df_copy[col].apply(lambda x: isinstance(x, list)).any():
             df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
     return df_copy
-@st.cache_data
+
 @st.cache_data
 def load_data():
     station_list = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
@@ -48,8 +48,11 @@ def load_data():
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
-    merged = make_df_hashable(merged)  # <-- Add this line here
+    merged = make_df_hashable(merged)  # <-- call here
     return merged
+
+# Call load_data and assign merged here
+merged = load_data()
 
 
 
