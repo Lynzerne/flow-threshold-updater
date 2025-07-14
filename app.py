@@ -22,6 +22,18 @@ STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 CSV_FILE = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(".csv")], reverse=True)[0]
 
 # --- Load data ---
+def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert columns containing lists into tuples to make DataFrame hashable.
+    This is useful for caching with Streamlit when the DataFrame contains lists.
+    """
+    df_copy = df.copy()
+    for col in df_copy.columns:
+        # Check if any cell in the column is a list
+        if df_copy[col].apply(lambda x: isinstance(x, list)).any():
+            # Convert lists to tuples (immutable)
+            df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
+    return df_copy
 @st.cache_data
 def load_data():
     station_list = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
@@ -38,9 +50,10 @@ def load_data():
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
+    merged = make_df_hashable(merged)
     return merged
 
-merged = load_data()
+
 
 # --- Load diversion tables ---
 @st.cache_data
