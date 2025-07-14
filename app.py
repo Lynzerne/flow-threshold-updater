@@ -291,7 +291,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         'Cutback3': 'purple',
         'Cutoff': 'red',
         'IO': 'orange', 
-        'WCO': 'crimson' 
+        'WCO': 'crimson', 
         'Q80': 'green',
         'Q90': 'yellow',
         'Q95': 'orange',
