@@ -399,12 +399,30 @@ def render_map():
 # --- Display ---
 st.title("Alberta Flow Threshold Viewer")
 
-if not selected_dates:
-    st.warning("No data available for the selected date range.")
+# --- Generate both popup caches once ---
+if 'popup_cache_no_diversion' not in st.session_state or 'popup_cache_diversion' not in st.session_state:
+    with st.spinner("Generating popup caches..."):
+        no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+        st.session_state.popup_cache_no_diversion = no_diversion_cache
+        st.session_state.popup_cache_diversion = diversion_cache
+        st.session_state.cached_dates_hash = get_date_hash(selected_dates)
 else:
-    # Generate popup cache on demand depending on diversion mode
-    popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
-    
-    m = render_map()
-    map_html = m.get_root().render()
-    st.components.v1.html(map_html, height=800, scrolling=True)
+    # If date range changed, regenerate caches
+    cached_dates_hash = st.session_state.get('cached_dates_hash', '')
+    current_dates_hash = get_date_hash(selected_dates)
+    if cached_dates_hash != current_dates_hash:
+        with st.spinner("Updating popup caches for new date range..."):
+            no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+            st.session_state.popup_cache_no_diversion = no_diversion_cache
+            st.session_state.popup_cache_diversion = diversion_cache
+            st.session_state.cached_dates_hash = current_dates_hash
+
+# Choose which popup cache to use based on diversion toggle
+popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.session_state.popup_cache_no_diversion
+# Choose which popup cache to use based on diversion toggle
+popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.session_state.popup_cache_no_diversion
+
+# Render and display the map
+m = render_map()
+map_html = m.get_root().render()
+st.components.v1.html(map_html, height=800, scrolling=True)
