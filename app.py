@@ -443,4 +443,4 @@ else:
 # Render and display the two-layer map (with both popup caches)
 m = render_map_two_layers()
 map_html = m.get_root().render()
-st.components.v1.html(map_html, height=800, scrolling=True)
+st.components.v1.html(map_html, height=1000, scrolling=True)
