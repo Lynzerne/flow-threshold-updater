@@ -150,6 +150,16 @@ def get_valid_dates(merged):
     return sorted(dates)
 
 valid_dates = get_valid_dates(merged)
+@st.cache_data
+def generate_popup_cache(merged_df, selected_dates):
+    popup_cache = {}
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        popup_cache[wsc] = {
+            True: make_popup_html_with_plot(row, selected_dates, show_diversion=True),
+            False: make_popup_html_with_plot(row, selected_dates, show_diversion=False)
+        }
+    return popup_cache
 
 # --- Sidebar ---
 st.sidebar.header("Date Range")
@@ -164,6 +174,8 @@ if start_date > end_date:
 
 selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
 show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
+
+popup_cache = generate_popup_cache(merged, selected_dates)
 
 # --- Popup HTML builder ---
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
@@ -350,7 +362,7 @@ def render_map():
             continue
 
         color = get_color_for_date(row, date)
-        popup_html = make_popup_html_with_plot(row, selected_dates, show_diversion=show_diversion)
+        popup_html = popup_cache.get(row['WSC'], {}).get(show_diversion, "<p>No data</p>")
         iframe = IFrame(html=popup_html, width=700, height=500)
         popup = folium.Popup(iframe)
 
