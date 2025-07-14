@@ -381,19 +381,23 @@ def render_map():
 
 
 # --- Display ---
+import streamlit.components.v1 as components
+
+# --- Display ---
 st.title("Alberta Flow Threshold Viewer")
 st.caption(f"Using data from: `{CSV_FILE}`")
 
 if not selected_dates:
     st.warning("No data available for the selected date range.")
 else:
-    from streamlit.components.v1 import html
-
     m = render_map()
-    m.save("map.html")  # Save to a temporary file
     
-    with open("map.html", "r", encoding="utf-8") as f:
-        map_html = f.read()
-    
-    html(map_html, height=800, scrolling=True)
+    # Ensure map is valid before saving
+    if m and isinstance(m, folium.Map):
+        m.save("map.html")
+        with open("map.html", "r", encoding="utf-8") as f:
+            map_html = f.read()
+        components.html(map_html, height=1000, scrolling=True)
+    else:
+        st.error("Failed to render the map.")
 
