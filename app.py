@@ -155,10 +155,13 @@ def generate_popup_cache(merged_df, selected_dates):
     popup_cache = {}
     for _, row in merged_df.iterrows():
         wsc = row['WSC']
-        popup_cache[wsc] = {
-            True: make_popup_html_with_plot(row, selected_dates, show_diversion=True),
-            False: make_popup_html_with_plot(row, selected_dates, show_diversion=False)
-        }
+        popup_cache[wsc] = {}
+        for mode in [True, False]:
+            try:
+                popup_cache[wsc][mode] = make_popup_html_with_plot(row, selected_dates, show_diversion=mode)
+            except Exception as e:
+                popup_cache[wsc][mode] = "<p>Error generating popup</p>"
+                # Optionally log e here
     return popup_cache
 
 # --- Sidebar ---
@@ -346,8 +349,8 @@ def render_map():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
-        width='100%',
-        height='90vh'
+        width='120%',
+        height='1200'
     )
     Fullscreen().add_to(m)
 
