@@ -400,4 +400,10 @@ else:
         components.html(map_html, height=1000, scrolling=True)
     else:
         st.error("Failed to render the map.")
+        def render_map():
+    # ... existing code ...
+    print("DEBUG: render_map returning type:", type(m))
+    return m
 
+m = render_map()
+print("DEBUG: Returned m is:", m)
