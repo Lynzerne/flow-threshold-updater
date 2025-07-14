@@ -346,29 +346,40 @@ def render_map():
 
     return m
 
-# --- Sidebar inputs ---
-st.sidebar.title("Water Data Dashboard")
+# --- Sidebar ---
+st.sidebar.header("Date Range")
 
-default_end = datetime.today()
-default_start = default_end - timedelta(days=3)
+min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
+max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+
+default_start = max_date - timedelta(days=7)
+default_end = max_date
+
+default_dates = [d.strftime('%Y-%m-%d') for d in pd.date_range(default_start, default_end)]
+default_dates = [d for d in default_dates if d in valid_dates]
+if not default_dates:
+    default_dates = valid_dates[-3:] if len(valid_dates) >= 3 else valid_dates
 
 selected_dates = st.sidebar.multiselect(
-    "Select Dates (max 3)", valid_dates, default=[d.strftime('%Y-%m-%d') for d in pd.date_range(default_start, default_end)],
+    "Select Dates (max 3)", valid_dates,
+    default=default_dates,
     max_selections=3
 )
 
-show_diversion = st.sidebar.checkbox("Show Diversion Thresholds", value=False)
+if not selected_dates:
+    st.sidebar.error("Please select at least one date.")
+    st.stop()
 
-# Save to session state for use in rendering
+# Assume show_diversion was set earlier from sidebar radio
 st.session_state.selected_dates = selected_dates
 st.session_state.show_diversion = show_diversion
 
 # Generate popup cache only if needed
-if ('popup_cache_key' not in st.session_state
-    or st.session_state.popup_cache_key != (tuple(selected_dates), show_diversion)):
+popup_cache_key = (tuple(selected_dates), show_diversion)
+if 'popup_cache_key' not in st.session_state or st.session_state.popup_cache_key != popup_cache_key:
     with st.spinner("Generating popups..."):
         st.session_state.popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
-        st.session_state.popup_cache_key = (tuple(selected_dates), show_diversion)
+        st.session_state.popup_cache_key = popup_cache_key
 
 # Render map
 folium_map = render_map()
