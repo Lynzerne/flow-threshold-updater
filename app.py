@@ -152,36 +152,7 @@ def get_valid_dates(merged):
 
 valid_dates = get_valid_dates(merged)
 @st.cache_data
-def generate_popup_cache(merged_df, selected_dates):
-    popup_cache = {}
-    for _, row in merged_df.iterrows():
-        wsc = row['WSC']
-        popup_cache[wsc] = {}
-        for mode in [True, False]:
-            try:
-                popup_cache[wsc][mode] = make_popup_html_with_plot(row, selected_dates, show_diversion=mode)
-            except Exception as e:
-                st.exception(e)
-                popup_cache[wsc][mode] = "<p>Error generating popup</p>"
-    return popup_cache
 
-# --- Sidebar ---
-st.sidebar.header("Date Range")
-min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
-max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
-start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
-end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
-
-if start_date > end_date:
-    st.sidebar.error("Start date must be before end date.")
-    st.stop()
-
-selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
-show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
-
-popup_cache = generate_popup_cache(merged, selected_dates)
-
-# --- Popup HTML builder ---
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
     padding = '6px'
@@ -293,6 +264,26 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</table><br>"
 
 
+# --- Sidebar ---
+st.sidebar.header("Date Range")
+min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
+max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
+end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
+
+if start_date > end_date:
+    st.sidebar.error("Start date must be before end date.")
+    st.stop()
+
+selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
+show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
+
+popup_cache = generate_popup_cache(merged, selected_dates)
+
+# --- Popup HTML builder ---
+
+
+
     # --- Plot flow series with thresholds ---
     fig, ax = plt.subplots(figsize=(8, 3))  # Correct placement
 
@@ -336,6 +327,19 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
 
     return html
+@st.cache_data
+def generate_popup_cache(merged_df, selected_dates):
+    popup_cache = {}
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        popup_cache[wsc] = {}
+        for mode in [True, False]:
+            try:
+                popup_cache[wsc][mode] = make_popup_html_with_plot(row, selected_dates, show_diversion=mode)
+            except Exception as e:
+                st.exception(e)
+                popup_cache[wsc][mode] = "<p>Error generating popup</p>"
+    return popup_cache
 
 # --- Map rendering ---
 
