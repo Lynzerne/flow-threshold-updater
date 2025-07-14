@@ -287,6 +287,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     return html
 
 # --- Map rendering ---
+st.write(merged[['LAT', 'LON']].head())
+st.write(f"Number of stations: {len(merged)}")
 def get_most_recent_valid_date(row, dates):
     for d in sorted(dates, reverse=True):
         daily = extract_daily_data(row['time_series'], d)
@@ -298,8 +300,8 @@ def render_map():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
-        width='100%',
-        height='100%'
+        width=800,
+        height=900
     )
     Fullscreen().add_to(m)
 
@@ -342,5 +344,5 @@ if not selected_dates:
     st.warning("No data available for the selected date range.")
 else:
     m = render_map()
-    map_html = m._repr_html_()
+    map_html = m.get_root().render()
     st.components.v1.html(map_html, height=800, scrolling=True)
