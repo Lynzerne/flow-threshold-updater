@@ -356,16 +356,17 @@ def get_most_recent_valid_date(row, dates):
             return d
     return None
 
-def render_map():
+@st.cache_data(show_spinner=True)
+def render_map_cached(merged_df, selected_dates, show_diversion, diversion_tables, popup_cache):
     m = folium.Map(
-        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        location=[merged_df['LAT'].mean(), merged_df['LON'].mean()],
         zoom_start=6,
         width='100%',
         height='1200px'
     )
     Fullscreen().add_to(m)
 
-    for _, row in merged.iterrows():
+    for _, row in merged_df.iterrows():
         coords = [row['LAT'], row['LON']]
 
         if show_diversion and row['WSC'] not in diversion_tables:
@@ -376,7 +377,7 @@ def render_map():
             continue
 
         color = get_color_for_date(row, date)
-        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")  # uses new popup_cache here
+        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")
         iframe = IFrame(html=popup_html, width=700, height=700)
         popup = folium.Popup(iframe)
 
@@ -423,6 +424,6 @@ popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.s
 popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.session_state.popup_cache_no_diversion
 
 # Render and display the map
-m = render_map()
+m = render_map_cached(merged, selected_dates, show_diversion, diversion_tables, popup_cache)
 map_html = m.get_root().render()
 st.components.v1.html(map_html, height=800, scrolling=True)
