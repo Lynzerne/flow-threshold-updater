@@ -87,7 +87,8 @@ def load_diversion_tables():
 
     return diversion_tables, diversion_labels
 
-diversion_tables, diversion_labels = load_diversion_tables()
+with st.spinner("Loading... this may take a few minutes"):
+    diversion_tables, diversion_labels = load_diversion_tables()
 
 # --- Helper functions ---
 def extract_daily_data(time_series, date_str):
@@ -349,8 +350,8 @@ def render_map():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
-        width='120%',
-        height='1200'
+        width='100%',
+        height='1200px'
     )
     Fullscreen().add_to(m)
 
