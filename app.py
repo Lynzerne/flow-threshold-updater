@@ -153,6 +153,7 @@ def get_valid_dates(merged):
 valid_dates = get_valid_dates(merged)
 @st.cache_data
 
+@st.cache_data
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
     padding = '6px'
@@ -165,8 +166,6 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     show_daily_flow = False
     show_calc_flow = False
 
-    
-    # Ensure selected_dates sorted chronologically
     selected_dates = sorted(selected_dates, key=pd.to_datetime)
 
     for d in selected_dates:
@@ -262,6 +261,50 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         html += "</tr>"
 
     html += "</table><br>"
+
+    # --- Plot flow series with thresholds ---
+    fig, ax = plt.subplots(figsize=(8, 3))
+
+    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
+
+    if any(pd.notna(val) for val in calc_flows):
+        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
+
+    threshold_colors = {
+        'Cutback1': 'gold',
+        'Cutback2': 'orange',
+        'Cutback3': 'purple',
+        'Cutoff': 'red',
+        'IO': 'orange', 
+        'WCO': 'crimson', 
+        'Q80': 'green',
+        'Q90': 'yellow',
+        'Q95': 'orange',
+        'Minimum flow': 'red',
+        'IFN': 'red',
+    }
+
+    for label in threshold_labels:
+        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
+        if all(pd.isna(threshold_vals)):
+            continue
+        color = threshold_colors.get(label, 'gray')
+        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label, color=color, linewidth=2)
+
+    ax.set_ylabel('Flow')
+    ax.legend(fontsize=8)
+    ax.set_title('Flow and Thresholds Over Time')
+    ax.tick_params(axis='x', rotation=45)
+    fig.tight_layout()
+
+    buf = BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
+
+    return html
 
 
 # --- Sidebar ---
