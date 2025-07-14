@@ -151,7 +151,7 @@ def get_valid_dates(merged):
     return sorted(dates)
 
 valid_dates = get_valid_dates(merged)
-@st.cache_data
+
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
@@ -398,10 +398,10 @@ def render_map():
 # --- Display ---
 st.title("Alberta Flow Threshold Viewer")
 
-
 if not selected_dates:
     st.warning("No data available for the selected date range.")
 else:
+    popup_cache = popup_cache_no_diversion if show_all_stations else popup_cache_diversion
     m = render_map()
     map_html = m.get_root().render()
     st.components.v1.html(map_html, height=800, scrolling=True)
