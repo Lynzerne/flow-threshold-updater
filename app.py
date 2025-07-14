@@ -331,21 +331,6 @@ if start_date > end_date:
 
 selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
 
-# Mutually exclusive mode selector using radio buttons
-mode = st.sidebar.radio("Display Mode", ["Show All Stations", "Show Diversion Tables"])
-show_all_stations = (mode == "Show All Stations")
-show_diversion = (mode == "Show Diversion Tables")
-
-@st.cache_data(show_spinner=True)
-def generate_popup_cache(merged_df, selected_dates, show_diversion):
-    popup_cache = {}
-    for _, row in merged_df.iterrows():
-        wsc = row['WSC']
-        try:
-            popup_cache[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion)
-        except Exception as e:
-            popup_cache[wsc] = "<p>Error generating popup</p>"
-    return popup_cache
 
 # Pre-generate both popup caches upfront
 
@@ -431,7 +416,14 @@ def render_map_two_layers():
 st.title("Alberta Flow Threshold Viewer")
 
 # --- Generate both popup caches once ---
-if 'popup_cache_no_diversion' not in st.session_state or 'popup_cache_diversion' not in st.session_state:
+def get_date_hash(dates):
+    date_str = ",".join(sorted(dates))
+    return hashlib.md5(date_str.encode()).hexdigest()
+
+if ('popup_cache_no_diversion' not in st.session_state or
+    'popup_cache_diversion' not in st.session_state or
+    st.session_state.get('cached_dates_hash', '') != get_date_hash(selected_dates)):
+    
     with st.spinner("Generating popup caches..."):
         no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
         st.session_state.popup_cache_no_diversion = no_diversion_cache
@@ -448,12 +440,8 @@ else:
             st.session_state.popup_cache_diversion = diversion_cache
             st.session_state.cached_dates_hash = current_dates_hash
 
-# Choose which popup cache to use based on diversion toggle
-popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.session_state.popup_cache_no_diversion
-# Choose which popup cache to use based on diversion toggle
-popup_cache = st.session_state.popup_cache_diversion if show_diversion else st.session_state.popup_cache_no_diversion
 
-# Render and display the map
-m = render_map_cached(merged, selected_dates, show_diversion, diversion_tables, popup_cache)
+# Render and display the two-layer map (with both popup caches)
+m = render_map_two_layers()
 map_html = m.get_root().render()
 st.components.v1.html(map_html, height=800, scrolling=True)
