@@ -5,3 +5,4 @@ folium
 matplotlib
 python-dateutil
 openpyxl
+streamlit-folium
