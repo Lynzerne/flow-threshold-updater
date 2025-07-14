@@ -12,6 +12,7 @@ from io import BytesIO
 from dateutil.parser import parse
 import os
 import hashlib
+from streamlit_folium import st_folium 
 
 st.set_page_config(layout="wide")
 
@@ -358,23 +359,29 @@ max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
 default_start = max_date - timedelta(days=7)
 default_end = max_date
 
-default_dates = [d.strftime('%Y-%m-%d') for d in pd.date_range(default_start, default_end)]
-default_dates = [d for d in default_dates if d in valid_dates]
-
-if len(default_dates) > 3:
-    default_dates = default_dates[:3]
-
-if not default_dates:
-    default_dates = valid_dates[-3:] if len(valid_dates) >= 3 else valid_dates
-
-selected_dates = st.sidebar.multiselect(
-    "Select Dates (max 3)", valid_dates,
-    default=default_dates,
-    max_selections=3
+# --- Date range selection ---
+date_range = st.sidebar.date_input(
+    "Select Date Range",
+    value=(default_start, default_end),
+    min_value=min_date,
+    max_value=max_date,
 )
 
+# Ensure a valid range
+if not isinstance(date_range, tuple) or len(date_range) != 2:
+    st.sidebar.error("Please select a valid start and end date.")
+    st.stop()
+
+start_date, end_date = date_range
+if start_date > end_date:
+    st.sidebar.error("Start date must be before end date.")
+    st.stop()
+
+# Filter valid dates within selected range
+selected_dates = [d for d in valid_dates if start_date <= datetime.strptime(d, "%Y-%m-%d").date() <= end_date]
+
 if not selected_dates:
-    st.sidebar.error("Please select at least one date.")
+    st.sidebar.error("No available data in this range.")
     st.stop()
 
 # Sidebar switch for diversion thresholds
