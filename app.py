@@ -282,51 +282,45 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         'Cutback3': 'purple',
         'Cutoff': 'red',  # in case "Cutoff" is used instead of "Cutback3"
     }
-# --- Plot flow series with thresholds ---
-fig, ax = plt.subplots(figsize=(8, 3))  # Must be before ax.plot()
+    # --- Plot flow series with thresholds ---
+    fig, ax = plt.subplots(figsize=(8, 3))  # Correct placement
 
-# Plot daily flow
-ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
+    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
 
-# Plot calculated flow if available
-if any(pd.notna(val) for val in calc_flows):
-    ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
+    if any(pd.notna(val) for val in calc_flows):
+        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
 
-# Define custom colors for threshold lines
-threshold_colors = {
-    'Cutback1': 'gold',
-    'Cutback2': 'orange',
-    'Cutback3': 'red',
-    'Cutoff': 'red',
-    'Q80': 'purple',
-    'Q90': 'brown',
-    'Q95': 'black',
-}
+    threshold_colors = {
+        'Cutback1': 'gold',
+        'Cutback2': 'orange',
+        'Cutback3': 'red',
+        'Cutoff': 'red',
+        'Q80': 'purple',
+        'Q90': 'brown',
+        'Q95': 'black',
+    }
 
-# Plot thresholds
-for label in threshold_labels:
-    threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
-    if all(pd.isna(threshold_vals)):
-        continue
-    color = threshold_colors.get(label, 'gray')  # fallback color
-    ax.plot(plot_dates, threshold_vals, linestyle='--', label=label, color=color, linewidth=2)
+    for label in threshold_labels:
+        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
+        if all(pd.isna(threshold_vals)):
+            continue
+        color = threshold_colors.get(label, 'gray')
+        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label, color=color, linewidth=2)
 
-# Final plot formatting
-ax.set_ylabel('Flow')
-ax.legend(fontsize=8)
-ax.set_title('Flow and Thresholds Over Time')
-ax.tick_params(axis='x', rotation=45)
-fig.tight_layout()
+    ax.set_ylabel('Flow')
+    ax.legend(fontsize=8)
+    ax.set_title('Flow and Thresholds Over Time')
+    ax.tick_params(axis='x', rotation=45)
+    fig.tight_layout()
 
-# Convert plot to base64 image for HTML embedding
-buf = BytesIO()
-fig.savefig(buf, format="png")
-plt.close(fig)
-buf.seek(0)
-img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
+    buf = BytesIO()
+    fig.savefig(buf, format="png")
+    plt.close(fig)
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
 
-return html
+    return html
 
 # --- Map rendering ---
 
