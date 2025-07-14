@@ -51,8 +51,25 @@ def load_diversion_tables():
     for f in os.listdir(DIVERSION_DIR):
         if f.endswith(".xlsx"):
             wsc = f.split("_")[0]
-            df = pd.read_excel(os.path.join(DIVERSION_DIR, f))
+            file_path = os.path.join(DIVERSION_DIR, f)
+
+            # Read columns B to E: [Date, Cutback1, Cutback2, Cutback3 or Cutoff]
+            df = pd.read_excel(file_path, usecols="B:E")
             df.columns = df.columns.str.strip()
+
+            # Rename the first three columns
+            standard_columns = ['Date', 'Cutback1', 'Cutback2']
+            if len(df.columns) == 4:
+                # Preserve whatever the third cutback label is
+                third_label = df.columns[3]
+                df.columns = standard_columns + [third_label]
+                diversion_labels[wsc] = third_label
+            else:
+                # Fallback if format isn't as expected
+                diversion_labels[wsc] = "Cutback3"
+                df.columns = standard_columns + ['Cutback3']
+
+            # Normalize and fix date format
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
             def safe_replace_year(d):
@@ -65,8 +82,8 @@ def load_diversion_tables():
                     return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
+
             diversion_tables[wsc] = df
-            diversion_labels[wsc] = f"{wsc} diversion table"
 
     return diversion_tables, diversion_labels
 
