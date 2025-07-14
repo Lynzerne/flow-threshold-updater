@@ -304,8 +304,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     return html
 
 # --- Map rendering ---
-st.write(merged[['LAT', 'LON']].head())
-st.write(f"Number of stations: {len(merged)}")
+
 def get_most_recent_valid_date(row, dates):
     for d in sorted(dates, reverse=True):
         daily = extract_daily_data(row['time_series'], d)
