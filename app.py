@@ -336,7 +336,7 @@ mode = st.sidebar.radio("Display Mode", ["Show All Stations", "Show Diversion Ta
 show_all_stations = (mode == "Show All Stations")
 show_diversion = (mode == "Show Diversion Tables")
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=True)
 def generate_popup_cache(merged_df, selected_dates, show_diversion):
     popup_cache = {}
     for _, row in merged_df.iterrows():
@@ -344,12 +344,10 @@ def generate_popup_cache(merged_df, selected_dates, show_diversion):
         try:
             popup_cache[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion)
         except Exception as e:
-            st.exception(e)
             popup_cache[wsc] = "<p>Error generating popup</p>"
     return popup_cache
 
 # Pre-generate both popup caches upfront
-popup_cache_no_diversion, popup_cache_diversion = generate_all_popups(merged, selected_dates)
 
 def get_most_recent_valid_date(row, dates):
     for d in sorted(dates, reverse=True):
@@ -378,7 +376,7 @@ def render_map():
             continue
 
         color = get_color_for_date(row, date)
-        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")
+        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")  # uses new popup_cache here
         iframe = IFrame(html=popup_html, width=700, height=700)
         popup = folium.Popup(iframe)
 
@@ -404,7 +402,9 @@ st.title("Alberta Flow Threshold Viewer")
 if not selected_dates:
     st.warning("No data available for the selected date range.")
 else:
-    popup_cache = popup_cache_no_diversion if show_all_stations else popup_cache_diversion
+    # Generate popup cache on demand depending on diversion mode
+    popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
+    
     m = render_map()
     map_html = m.get_root().render()
     st.components.v1.html(map_html, height=800, scrolling=True)
