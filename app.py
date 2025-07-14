@@ -319,24 +319,49 @@ if start_date > end_date:
     st.stop()
 
 selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
-show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
+
+# Initialize session state defaults if not set
+if 'show_all_stations' not in st.session_state:
+    st.session_state.show_all_stations = True
+if 'show_diversion' not in st.session_state:
+    st.session_state.show_diversion = False
+
+def on_show_all_stations_change():
+    if st.session_state.show_all_stations:
+        st.session_state.show_diversion = False
+
+def on_show_diversion_change():
+    if st.session_state.show_diversion:
+        st.session_state.show_all_stations = False
+
+show_all_stations = st.sidebar.checkbox(
+    "Show All Stations",
+    value=st.session_state.show_all_stations,
+    key='show_all_stations',
+    on_change=on_show_all_stations_change
+)
+
+show_diversion = st.sidebar.checkbox(
+    "Show Diversion Tables",
+    value=st.session_state.show_diversion,
+    key='show_diversion',
+    on_change=on_show_diversion_change
+)
 
 @st.cache_data
-def generate_popup_cache(merged_df, selected_dates):
+def generate_popup_cache(merged_df, selected_dates, show_diversion):
     popup_cache = {}
     for _, row in merged_df.iterrows():
         wsc = row['WSC']
-        popup_cache[wsc] = {}
-        for mode in [True, False]:
-            try:
-                popup_cache[wsc][mode] = make_popup_html_with_plot(row, selected_dates, show_diversion=mode)
-            except Exception as e:
-                st.exception(e)
-                popup_cache[wsc][mode] = "<p>Error generating popup</p>"
+        try:
+            popup_cache[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion)
+        except Exception as e:
+            st.exception(e)
+            popup_cache[wsc] = "<p>Error generating popup</p>"
     return popup_cache
 
-
-popup_cache = generate_popup_cache(merged, selected_dates)
+# Then call it like:
+popup_cache = generate_popup_cache(merged, selected_dates, show_diversion)
 
 # --- Map rendering ---
 
@@ -367,7 +392,7 @@ def render_map():
             continue
 
         color = get_color_for_date(row, date)
-        popup_html = popup_cache.get(row['WSC'], {}).get(show_diversion, "<p>No data</p>")
+        popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")
         iframe = IFrame(html=popup_html, width=700, height=500)
         popup = folium.Popup(iframe)
 
