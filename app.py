@@ -68,10 +68,7 @@ def load_diversion_tables():
             # Convert 'Date' column to datetime, coercing errors to NaT
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
-            # Debug: print any problematic date values
-            print(f"Checking 'Date' column values in file: {f}")
-            for d in df['Date']:
-                if not (isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d)):
+     
                     
 
             # Safer date replacement with try-except to catch errors
