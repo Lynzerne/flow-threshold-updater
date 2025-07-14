@@ -167,7 +167,7 @@ show_diversion = st.sidebar.checkbox("Show Diversion Tables", value=False)
 
 # --- Popup HTML builder ---
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
-    font_size = '13px'
+    font_size = '15px'
     padding = '6px'
     border = '2px solid black'
 
@@ -178,6 +178,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     show_daily_flow = False
     show_calc_flow = False
 
+    
     # Ensure selected_dates sorted chronologically
     selected_dates = sorted(selected_dates, key=pd.to_datetime)
 
@@ -274,20 +275,26 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         html += "</tr>"
 
     html += "</table><br>"
-
+    # Define colors for diversion thresholds
+    threshold_colors = {
+        'Cutback1': 'yellow',
+        'Cutback2': 'orange',
+        'Cutback3': 'purple',
+        'Cutoff': 'red',  # in case "Cutoff" is used instead of "Cutback3"
+    }
     # Plot flow series with thresholds
-    fig, ax = plt.subplots(figsize=(8, 3))
-    
-    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue')
-    
+     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
+
+    # Only plot "Calculated Flow" if at least one value is not NaN
     if any(pd.notna(val) for val in calc_flows):
-        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green')
+        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
     
     for label in threshold_labels:
         threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
         if all(pd.isna(threshold_vals)):
             continue
-        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label)
+        color = threshold_colors.get(label, 'black')  # fallback color
+        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label, color=color, linewidth=2)
     
     ax.set_ylabel('Flow')
     ax.legend(fontsize=8)
@@ -317,8 +324,8 @@ def render_map():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
-        width=800,
-        height=900
+        width='100%',
+        height='90vh'
     )
     Fullscreen().add_to(m)
 
