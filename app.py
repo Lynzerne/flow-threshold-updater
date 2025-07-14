@@ -154,7 +154,7 @@ valid_dates = get_valid_dates(merged)
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
-    font_size = '15px'
+    font_size = '16px'
     padding = '6px'
     border = '2px solid black'
 
@@ -257,8 +257,10 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</table><br>"
 
     # Plot with fixed image encoding
-    fig, ax = plt.subplots(figsize=(6, 2.5))
+    fig, ax = plt.subplots(figsize=(7.6, 3.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
+    ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
+    ax.set_axisbelow(True)
     if any(pd.notna(val) for val in calc_flows):
         ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
 
