@@ -296,6 +296,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         'Q90': 'yellow',
         'Q95': 'orange',
         'Minimum flow': 'red',
+        'IFN': 'red',
     }
 
     for label in threshold_labels:
