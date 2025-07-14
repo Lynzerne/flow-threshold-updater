@@ -256,8 +256,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html += "</table><br>"
 
-    # Plot
-    fig, ax = plt.subplots(figsize=(8, 3))
+    # Plot with fixed image encoding
+    fig, ax = plt.subplots(figsize=(6, 2.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     if any(pd.notna(val) for val in calc_flows):
         ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
@@ -282,10 +282,13 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     fig.tight_layout()
 
     buf = BytesIO()
-    fig.savefig(buf, format="png")
-    plt.close(fig)
+    fig.savefig(buf, format="png", bbox_inches='tight')
+    buf.seek(0)
     img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+
     html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
+    html += "</div>"
 
     return html
 
@@ -376,7 +379,7 @@ def render_map():
 
         color = get_color_for_date(row, date)
         popup_html = popup_cache.get(row['WSC'], "<p>No data</p>")
-        iframe = IFrame(html=popup_html, width=700, height=500)
+        iframe = IFrame(html=popup_html, width=700, height=700)
         popup = folium.Popup(iframe)
 
         border_color = 'blue' if show_diversion and row['WSC'] in diversion_tables else 'black'
