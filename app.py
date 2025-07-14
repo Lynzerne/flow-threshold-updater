@@ -387,7 +387,13 @@ st.caption(f"Using data from: `{CSV_FILE}`")
 if not selected_dates:
     st.warning("No data available for the selected date range.")
 else:
+    from streamlit.components.v1 import html
+
     m = render_map()
-    map_html = m._repr_html_()
-    st.components.v1.html(map_html, height=800, scrolling=True)
+    m.save("map.html")  # Save to a temporary file
+    
+    with open("map.html", "r", encoding="utf-8") as f:
+        map_html = f.read()
+    
+    html(map_html, height=800, scrolling=True)
 
