@@ -357,6 +357,10 @@ default_end = max_date
 
 default_dates = [d.strftime('%Y-%m-%d') for d in pd.date_range(default_start, default_end)]
 default_dates = [d for d in default_dates if d in valid_dates]
+
+if len(default_dates) > 3:
+    default_dates = default_dates[:3]
+
 if not default_dates:
     default_dates = valid_dates[-3:] if len(valid_dates) >= 3 else valid_dates
 
