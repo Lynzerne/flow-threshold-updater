@@ -13,8 +13,6 @@ from dateutil.parser import parse
 import os
 import hashlib
 
-# Removed: st.cache_data.clear()  # Clearing cache every run causes reloads
-
 st.set_page_config(layout="wide")
 
 # --- Paths ---
@@ -44,7 +42,7 @@ def load_data():
 
 merged = load_data()
 
-# --- Load diversion tables ---
+# === START OF CHUNK 2: DIVERSION TABLES + HELPERS ===
 @st.cache_data
 def load_diversion_tables():
     diversion_tables = {}
@@ -79,7 +77,6 @@ def load_diversion_tables():
                     return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
-
             diversion_tables[wsc] = df
 
     return diversion_tables, diversion_labels
@@ -87,7 +84,6 @@ def load_diversion_tables():
 with st.spinner("Loading... this may take a few minutes"):
     diversion_tables, diversion_labels = load_diversion_tables()
 
-# --- Helper functions ---
 def extract_daily_data(time_series, date_str):
     for item in time_series:
         if item.get("date") == date_str:
@@ -97,7 +93,9 @@ def extract_daily_data(time_series, date_str):
 def extract_thresholds(entry):
     keys = {'WCO', 'IO', 'Minimum flow', 'Industrial IO', 'Non-industrial IO', 'IFN'}
     return {k: v for k, v in entry.items() if k in keys and v is not None}
+# === END OF CHUNK 2 ===
 
+# === START OF CHUNK 3: COMPLIANCE + DATES ===
 def compliance_color_WMP(flow, thresholds):
     if flow is None or pd.isna(flow) or not thresholds:
         return 'gray'
@@ -149,6 +147,7 @@ def get_valid_dates(merged):
 
 valid_dates = get_valid_dates(merged)
 
+# === START OF CHUNK 4: POPUP GENERATION WITH PLOTS ===
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
     padding = '6px'
@@ -252,6 +251,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html += "</table><br>"
 
+    # --- Plot ---
     fig, ax = plt.subplots(figsize=(6, 2.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     if any(pd.notna(val) for val in calc_flows):
@@ -286,6 +286,9 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</div>"
 
     return html
+# === END OF CHUNK 4 ===
+
+# === START OF CHUNK 5: CACHING, MAP RENDERING, SIDEBAR UI ===
 
 def get_date_hash(dates):
     date_str = ",".join(sorted(dates))
@@ -298,7 +301,7 @@ def generate_popup_cache(merged_df, selected_dates, show_diversion):
         wsc = row['WSC']
         try:
             popup_cache[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion)
-        except Exception as e:
+        except Exception:
             popup_cache[wsc] = "<p>Error generating popup</p>"
     return popup_cache
 
@@ -322,7 +325,7 @@ def render_map():
         coords = [row['LAT'], row['LON']]
 
         if 'selected_dates' not in st.session_state:
-            selected_dates = valid_dates[-3:]  # default last 3 days
+            selected_dates = valid_dates[-3:]  # default to last 3 days
         else:
             selected_dates = st.session_state.selected_dates
 
@@ -374,11 +377,13 @@ if not selected_dates:
     st.sidebar.error("Please select at least one date.")
     st.stop()
 
-# Assume show_diversion was set earlier from sidebar radio
+# Sidebar switch for diversion thresholds
+show_diversion = st.sidebar.radio("Show Diversion Thresholds?", ("Yes", "No")) == "Yes"
+
+# Save to session state
 st.session_state.selected_dates = selected_dates
 st.session_state.show_diversion = show_diversion
 
-# Generate popup cache only if needed
 popup_cache_key = (tuple(selected_dates), show_diversion)
 if 'popup_cache_key' not in st.session_state or st.session_state.popup_cache_key != popup_cache_key:
     with st.spinner("Generating popups..."):
@@ -390,5 +395,4 @@ folium_map = render_map()
 
 st.markdown("<h2>Stations Map</h2>", unsafe_allow_html=True)
 st_data = st_folium(folium_map, width=1000, height=600)
-
-
+# === END OF CHUNK 5 ===
