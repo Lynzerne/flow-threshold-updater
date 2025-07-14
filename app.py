@@ -153,7 +153,6 @@ def get_valid_dates(merged):
 valid_dates = get_valid_dates(merged)
 @st.cache_data
 
-@st.cache_data
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '15px'
     padding = '6px'
@@ -250,7 +249,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     for label in threshold_labels:
         html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>{label}</td>"
         html += ''.join([
-            f"<td style='padding:{padding}; border:{border};'>{t_set.get(label, 'NA'):.2f if pd.notna(t_set.get(label)) else 'NA'}</td>"
+            f"<td style='padding:{padding}; border:{border}; background-color:{color};'>" + (f"{val:.2f}" if pd.notna(val) else "NA") + "</td>"
             for t_set in threshold_sets
         ])
         html += "</tr>"
@@ -347,11 +346,7 @@ def generate_popup_cache(merged_df, selected_dates, show_diversion):
     return popup_cache
 
 # Pre-generate both popup caches upfront
-popup_cache_no_diversion = generate_popup_cache(merged, selected_dates, show_diversion=False)
-popup_cache_diversion = generate_popup_cache(merged, selected_dates, show_diversion=True)
-
-# Select appropriate cache based on current mode
-popup_cache = popup_cache_no_diversion if show_all_stations else popup_cache_diversion
+popup_cache_no_diversion, popup_cache_diversion = generate_all_popups(merged, selected_dates)
 
 def get_most_recent_valid_date(row, dates):
     for d in sorted(dates, reverse=True):
