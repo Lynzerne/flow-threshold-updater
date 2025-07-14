@@ -258,7 +258,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             html += f"<td style='padding:{padding}; border:{border}; background-color:{color};'>{val_str}</td>"
         html += "</tr>"
 
-    if show_calc_flow:
+    if show_calc_flow and any(pd.notna(val) for val in calc_flows):
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
         for val, color in zip(calc_flows, calc_colors):
             val_str = f"{val:.2f}" if pd.notna(val) else "NA"
@@ -276,9 +276,11 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</table><br>"
 
     # Plot flow series with thresholds
-    fig, ax = plt.subplots(figsize=(8, 3))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue')
-    ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green')
+    
+    # Only plot "Calculated Flow" if at least one value is not NaN
+    if any(pd.notna(val) for val in calc_flows):
+        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green')
 
     # Plot thresholds
     for label in threshold_labels:
