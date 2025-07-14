@@ -233,24 +233,24 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     if show_daily_flow:
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
         html += ''.join([
-            f"<td style='padding:{padding}; border:{border}; background-color:{color};'>{f'{val:.2f}' if pd.notna(val) else 'NA'}</td>"
-            for val, color in zip(flows, daily_colors)
+            f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
+            for v, c in zip(flows, daily_colors)
         ])
         html += "</tr>"
 
     if show_calc_flow and any(pd.notna(val) for val in calc_flows):
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
         html += ''.join([
-            f"<td style='padding:{padding}; border:{border}; background-color:{color};'>{f'{val:.2f}' if pd.notna(val) else 'NA'}</td>"
-            for val, color in zip(calc_flows, calc_colors)
+            f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
+            for v, c in zip(calc_flows, calc_colors)
         ])
         html += "</tr>"
 
     for label in threshold_labels:
         html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>{label}</td>"
         html += ''.join([
-            f"<td style='padding:{padding}; border:{border}; background-color:{color};'>{f'{val:.2f}' if pd.notna(val) else 'NA'}</td>"
-            for t_set in threshold_sets
+            f"<td style='padding:{padding}; border:{border};'>" + (f"{t.get(label):.2f}" if pd.notna(t.get(label)) else "NA") + "</td>"
+            for t in threshold_sets
         ])
         html += "</tr>"
 
