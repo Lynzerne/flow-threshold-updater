@@ -19,7 +19,6 @@ st.set_page_config(layout="wide")
 DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
-CSV_FILE = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(".csv")], reverse=True)[0]
 
 geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
 
@@ -36,10 +35,9 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data
 def load_data():
-    station_list = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
-    geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
+    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
-    merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
+    merged = geo_data.copy()
 
     def safe_parse(val):
         if isinstance(val, str):
