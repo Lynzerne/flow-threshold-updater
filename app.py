@@ -347,18 +347,36 @@ def get_date_hash(dates):
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
 
-@st.cache_data(show_spinner=True)
+
+import hashlib
+import folium
+from folium import IFrame
+
 @st.cache_data(show_spinner=True)
 def generate_all_popups(merged_df, selected_dates_tuple):
     selected_dates = list(selected_dates_tuple)
-
-    popup_div = st.session_state.popup_cache_diversion.get(wsc)
-    popup_nodiv = st.session_state.popup_cache_no_diversion.get(wsc)
     
-    if popup_div is None:
-        popup_div = folium.Popup("<b>No diversion popup data</b>", max_width=300)
-    if popup_nodiv is None:
-        popup_nodiv = folium.Popup("<b>No standard popup data</b>", max_width=300)
+    # Filter your dataframe for selected dates (example)
+    df_filtered = merged_df[merged_df['Date'].isin(selected_dates)]
+
+    popup_cache_no_diversion = {}
+    popup_cache_diversion = {}
+
+    for wsc in df_filtered['WSC'].unique():
+        df_wsc = df_filtered[df_filtered['WSC'] == wsc]
+
+        # Create HTML for standard popup (no diversion)
+        html_no_diversion = df_wsc.to_html(classes='table table-striped', index=False)
+        iframe_no_diversion = IFrame(html=html_no_diversion, width=700, height=700, scrolling='yes')
+        popup_no_diversion = folium.Popup(iframe_no_diversion)
+
+        # Create HTML for diversion popup (customize as needed)
+        html_diversion = df_wsc.to_html(classes='table table-bordered', index=False)
+        iframe_diversion = IFrame(html=html_diversion, width=700, height=700, scrolling='yes')
+        popup_diversion = folium.Popup(iframe_diversion)
+
+        popup_cache_no_diversion[wsc] = popup_no_diversion
+        popup_cache_diversion[wsc] = popup_diversion
 
     return popup_cache_no_diversion, popup_cache_diversion
 
@@ -435,22 +453,17 @@ def render_map_two_layers():
         color = get_color_for_date(row, date)
         wsc = row['WSC']
 
-        try:
-            popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
-            popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
-
-            # Try rendering the popups safely
-            try:
-                iframe_div = IFrame(html=popup_html_diversion, width=700, height=700, scrolling='yes')
-                popup_div = folium.Popup(iframe_div)
-            except Exception as e:
-                popup_div = folium.Popup("<b>Error rendering diversion popup</b>")
-
-            try:
-                iframe_nodiv = IFrame(html=popup_html_no_diversion, width=700, height=700, scrolling='yes')
-                popup_nodiv = folium.Popup(iframe_nodiv)
-            except Exception as e:
-                popup_nodiv = folium.Popup("<b>Error rendering standard popup</b>")
+        popup_div = st.session_state.popup_cache_diversion.get(wsc)
+        popup_nodiv = st.session_state.popup_cache_no_diversion.get(wsc)
+        
+        if popup_div is None:
+            popup_div = folium.Popup("<b>No diversion popup data</b>", max_width=300)
+        if popup_nodiv is None:
+            popup_nodiv = folium.Popup("<b>No standard popup data</b>", max_width=300)
+        
+        # Then add your markers:
+        folium.Marker(location=[lat, lon], popup=popup_div, icon=...).add_to(diversion_layer)
+        folium.Marker(location=[lat, lon], popup=popup_nodiv, icon=...).add_to(no_diversion_layer)
 
             # Marker for ALL stations
             folium.CircleMarker(
