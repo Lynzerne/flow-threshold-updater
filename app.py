@@ -184,6 +184,7 @@ valid_dates = get_valid_dates(merged)
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
+def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
     border = '2px solid black'
@@ -253,12 +254,13 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
         )
 
-    # 🎯 START unified scrollable container
+    # ✅ Begin scrollable responsive container
     html = f"""
     <div style="
         max-width: 100%;
-        max-height: 400px;
+        max-height: 65vh;
         overflow-y: auto;
+        overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         touch-action: auto;
         padding-right: 4px;
@@ -331,10 +333,10 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     img_base64 = base64.b64encode(buf.read()).decode('utf-8')
     plt.close(fig)
 
-    # Embed image inside scrollable popup
+    # ✅ Responsive, scrollable chart
     html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
 
-    # END scrollable container
+    # ✅ End scrollable container
     html += "</div>"
 
     return html
