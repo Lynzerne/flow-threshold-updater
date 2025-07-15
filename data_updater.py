@@ -106,15 +106,38 @@ if all_data:
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        master_df = master_df[~master_df.set_index(merge_keys).index.isin(new_data_df.set_index(merge_keys).index)]
-        print(f"Updating {len(new_data_df)} rows in the master dataset.")
-        master_df = pd.concat([master_df, new_data_df], ignore_index=True)
+        # Merge existing and new data on station_no and Date
+        merged = pd.merge(
+            master_df,
+            new_data_df,
+            on=merge_keys,
+            how='outer',
+            suffixes=('_old', '_new'),
+            sort=False
+        )
+
+        for col in ts_cols:
+            col_old = f"{col}_old"
+            col_new = f"{col}_new"
+
+            # Keep old if it's not null, else take new if available
+            merged[col] = merged[col_old].combine_first(merged[col_new])
+
+        # Combine metadata columns (prefer new if available, else old)
+        for col in ['station_name', 'lat', 'lon']:
+            merged[col] = merged[f"{col}_new"].combine_first(merged[f"{col}_old"])
+
+        # Keep only the final columns
+        final_cols = merge_keys + ['station_name', 'lat', 'lon'] + ts_cols
+        master_df = merged[final_cols]
+
+        print(f"Updated master dataset now contains {len(master_df)} rows (merged with preservation logic).")
+
     else:
         master_df = new_data_df
         print(f"Starting master dataset with {len(master_df)} rows.")
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
-
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
 
