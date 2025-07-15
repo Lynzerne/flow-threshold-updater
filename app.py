@@ -357,12 +357,12 @@ def generate_all_popups(merged_df, selected_dates_tuple):
     for _, row in merged_df.iterrows():
         wsc = row['WSC']
         try:
-            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
-            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
+            # Simple fallback: inline HTML directly into Popup without IFrame
+            popup_div = folium.Popup(popup_html_diversion, max_width=700)
+            popup_nodiv = folium.Popup(popup_html_no_diversion, max_width=700)
         except Exception as e:
-            st.exception(e)
-            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
-            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
+            popup_div = folium.Popup("<b>Error rendering diversion popup</b>", max_width=300)
+            popup_nodiv = folium.Popup("<b>Error rendering standard popup</b>", max_width=300)
 
     return popup_cache_no_diversion, popup_cache_diversion
 
