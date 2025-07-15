@@ -226,7 +226,7 @@ for stn_id, group_df in master_df.groupby('station_no'):
     feat['properties']['lat'] = float(latest_record.get('lat', feat['properties'].get('lat', 0)))
     feat['properties']['lon'] = float(latest_record.get('lon', feat['properties'].get('lon', 0)))
 
-    # Build timeseries list with date and parameter values
+    # --- Build timeseries list with date, parameter values, and is_revised ---
     timeseries = []
     for _, row in group_df.iterrows():
         ts_entry = {'date': row['Date'].strftime('%Y-%m-%d')}
@@ -234,6 +234,9 @@ for stn_id, group_df in master_df.groupby('station_no'):
             val = row[col]
             if pd.notnull(val):
                 ts_entry[col] = val
+        # Add is_revised flag if it exists, else default to False
+        ts_entry['is_revised'] = bool(row.get('is_revised', False))
+        
         timeseries.append(ts_entry)
 
     # Defensive cleanup: remove NaN keys inside timeseries dicts (optional)
