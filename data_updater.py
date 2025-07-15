@@ -30,7 +30,7 @@ for c in required_cols:
 
 # --- Load Existing Master Data ---
 if os.path.exists(output_parquet):
-    master_df = pd.read_parquet(output_parquet, engine="pyarrow"))
+    master_df = pd.read_parquet(output_parquet, engine="pyarrow")
     master_df['Date'] = pd.to_datetime(master_df['Date']).dt.date
     print(f"Loaded existing master dataset with {len(master_df)} rows.")
 else:
@@ -114,8 +114,8 @@ if all_data:
         print(f"Starting master dataset with {len(master_df)} rows.")
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
-    
-master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
+
+    master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
 
     # --- Save Daily Snapshot for Most Recent Date Available ---
