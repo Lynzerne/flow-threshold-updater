@@ -32,9 +32,7 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
         if df_copy[col].apply(lambda x: isinstance(x, list)).any():
             df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
     return df_copy
-
-st.cache_data.clear()
-merged = load_data()
+@st.cache_data
 def load_data():
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
@@ -44,6 +42,9 @@ def load_data():
     geo_data = geo_data.drop(columns=['geometry'])  # Drop original geometry column
     
     merged = geo_data.copy()
+    print("Starting load_data")
+    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+    print("Read parquet file")
 
     def safe_parse(val):
         if isinstance(val, str):
