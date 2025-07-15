@@ -118,8 +118,7 @@ def load_diversion_tables():
 
     return diversion_tables, diversion_labels
 
-with st.spinner("Loading... this may take a few minutes"):
-    diversion_tables, diversion_labels = load_diversion_tables()
+
 
 # --- Helper functions ---
 def extract_daily_data(time_series, date_str):
@@ -449,30 +448,33 @@ def render_map_two_layers():
 # --- Display ---
 st.title("Alberta Flow Threshold Viewer")
 
-# Always compute the current hash
-current_dates_hash = get_date_hash(selected_dates)
+with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
+    # Load all data and set up popups
+    merged = load_data()
+    diversion_tables, diversion_labels = load_diversion_tables()
 
-if ('popup_cache_no_diversion' not in st.session_state or
-    'popup_cache_diversion' not in st.session_state or
-    st.session_state.get('cached_dates_hash', '') != current_dates_hash):
+    # Always compute the current hash
+    current_dates_hash = get_date_hash(selected_dates)
 
-    with st.spinner("Generating popup caches..."):
+    if ('popup_cache_no_diversion' not in st.session_state or
+        'popup_cache_diversion' not in st.session_state or
+        st.session_state.get('cached_dates_hash', '') != current_dates_hash):
+
         no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
         st.session_state.popup_cache_no_diversion = no_diversion_cache
         st.session_state.popup_cache_diversion = diversion_cache
         st.session_state.cached_dates_hash = current_dates_hash
 
-else:
-    cached_dates_hash = st.session_state.get('cached_dates_hash', '')
-    if cached_dates_hash != current_dates_hash:
-        with st.spinner("Updating popup caches for new date range..."):
+    else:
+        cached_dates_hash = st.session_state.get('cached_dates_hash', '')
+        if cached_dates_hash != current_dates_hash:
             no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
             st.session_state.popup_cache_no_diversion = no_diversion_cache
             st.session_state.popup_cache_diversion = diversion_cache
             st.session_state.cached_dates_hash = current_dates_hash
 
+    # Render and display the map
+    m = render_map_two_layers()
+    map_html = m.get_root().render()
 
-# Render and display the two-layer map (with both popup caches)
-m = render_map_two_layers()
-map_html = m.get_root().render()
 st.components.v1.html(map_html, height=1200, scrolling=True)
