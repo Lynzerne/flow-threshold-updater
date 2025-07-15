@@ -53,10 +53,11 @@ def load_data():
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
-    merged = make_df_hashable(merged)  # <-- keep this here to convert lists to tuples
+    merged = make_df_hashable(merged)
+    print("Columns in merged DataFrame:", merged.columns.tolist())# <-- keep this here to convert lists to tuples
     return merged
 
-print("Columns in merged DataFrame:", merged.columns.tolist())
+
 
 # Call load_data and assign merged here
 merged = load_data()
