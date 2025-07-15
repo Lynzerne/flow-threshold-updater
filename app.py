@@ -370,20 +370,18 @@ with st.sidebar.expander("ℹ️ About this App"):
     This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
 
     **📊 Data Sources:**  
-    - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer
-    - **Diversion Tables** from current provincial policy and regulations
+    - **Hydrometric data** and **Diversion thresholds** from Alberta River Basins Water Conservation layer  
+    - **Diversion Tables** from current provincial policy and regulations  
     - **Stream size and policy type** from Alberta Environment and Protected Areas  
 
     **📏 Threshold Definitions:**  
-    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), 
-    - which is a theoretical value depicting what the flow of a system would be if there were no diversions
-    - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
-    - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
-    - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow". 
-    - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
-    - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time. 
-    - This is often considered a critical threshold for ecological health.
-    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion or daily limits
+    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection — often expressed as a percentage of the "Natural Flow" (e.g., 45%), which represents the theoretical flow without diversions.  
+    - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted.  
+    - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems.  
+    - **Q80:** Flow exceeded 80% of the time; typical low flow benchmark.  
+    - **Q90:** Flow exceeded 90% of the time; more extreme low flow.  
+    - **Q95:** Flow exceeded 95% of the time; critical threshold for ecosystem health.  
+    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions — can represent cutbacks in rate of diversion or daily limits.
 
     **🟢 Color Codes in Map:**  
     - 🟢 Flow meets all thresholds  
@@ -393,7 +391,6 @@ with st.sidebar.expander("ℹ️ About this App"):
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕_
     """)
-
 # Pre-generate both popup caches upfront
 
 def get_most_recent_valid_date(row, dates):
