@@ -352,22 +352,13 @@ def get_date_hash(dates):
 def generate_all_popups(merged_df, selected_dates_tuple):
     selected_dates = list(selected_dates_tuple)
 
-    popup_cache_no_diversion = {}
-    popup_cache_diversion = {}
-
-    for _, row in merged_df.iterrows():
-        wsc = row['WSC']
-        try:
-            popup_html_no_diversion = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
-            popup_html_diversion = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
-
-            popup_cache_no_diversion[wsc] = popup_html_no_diversion
-            popup_cache_diversion[wsc] = popup_html_diversion
-
-        except Exception as e:
-            print(f"[Popup Error for WSC {wsc}] {e}")
-            popup_cache_no_diversion[wsc] = "<b>Error rendering standard popup</b>"
-            popup_cache_diversion[wsc] = "<b>Error rendering diversion popup</b>"
+    popup_div = st.session_state.popup_cache_diversion.get(wsc)
+    popup_nodiv = st.session_state.popup_cache_no_diversion.get(wsc)
+    
+    if popup_div is None:
+        popup_div = folium.Popup("<b>No diversion popup data</b>", max_width=300)
+    if popup_nodiv is None:
+        popup_nodiv = folium.Popup("<b>No standard popup data</b>", max_width=300)
 
     return popup_cache_no_diversion, popup_cache_diversion
 
