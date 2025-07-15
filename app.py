@@ -56,6 +56,8 @@ def load_data():
     merged = make_df_hashable(merged)  # <-- keep this here to convert lists to tuples
     return merged
 
+print("Columns in merged DataFrame:", merged.columns.tolist())
+
 # Call load_data and assign merged here
 merged = load_data()
 
