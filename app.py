@@ -453,15 +453,17 @@ def render_map_two_layers():
         color = get_color_for_date(row, date)
         wsc = row['WSC']
 
-        popup_div = st.session_state.popup_cache_diversion.get(wsc)
-        popup_nodiv = st.session_state.popup_cache_no_diversion.get(wsc)
-        
+        # Safely get popups from session state caches
+        popup_div = st.session_state.popup_cache_diversion.get(wsc) if 'popup_cache_diversion' in st.session_state else None
+        popup_nodiv = st.session_state.popup_cache_no_diversion.get(wsc) if 'popup_cache_no_diversion' in st.session_state else None
+
         if popup_div is None:
             popup_div = folium.Popup("<b>No diversion popup data</b>", max_width=300)
         if popup_nodiv is None:
             popup_nodiv = folium.Popup("<b>No standard popup data</b>", max_width=300)
 
         try:
+            # Add marker to ALL stations layer
             folium.CircleMarker(
                 location=coords,
                 radius=7,
@@ -474,6 +476,7 @@ def render_map_two_layers():
                 tooltip=row['station_name']
             ).add_to(fg_all)
 
+            # Add marker to Diversion stations layer if applicable
             if wsc in diversion_tables:
                 folium.CircleMarker(
                     location=coords,
