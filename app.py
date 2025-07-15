@@ -34,7 +34,11 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     return df_copy
 @st.cache_data
 def load_data():
+    print("Starting load_data")
+    
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+    print("Read parquet file")
+    
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
     
     # Convert geometry to WKT string (to make it hashable)
@@ -42,9 +46,6 @@ def load_data():
     geo_data = geo_data.drop(columns=['geometry'])  # Drop original geometry column
     
     merged = geo_data.copy()
-    print("Starting load_data")
-    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
-    print("Read parquet file")
 
     def safe_parse(val):
         if isinstance(val, str):
@@ -56,7 +57,8 @@ def load_data():
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
     merged = make_df_hashable(merged)
-    print("Columns in merged DataFrame:", merged.columns.tolist())# <-- keep this here to convert lists to tuples
+
+    print("Columns in merged DataFrame:", merged.columns.tolist())
     return merged
 
 
