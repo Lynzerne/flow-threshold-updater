@@ -183,7 +183,6 @@ def get_valid_dates(merged):
 valid_dates = get_valid_dates(merged)
 
 
-
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
@@ -254,26 +253,15 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
         )
 
-    # ✅ Begin scrollable responsive container
-    html = f"""<div style="
-        max-width: 100%;
-        max-height: 65vh;
-        overflow-y: auto;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        touch-action: auto;
-        padding-right: 4px;
-    ">
-        <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
-        <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
-            <tr>
-                <th style='padding:{padding}; border:{border};'>Metric</th>
-                {''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])}
-            </tr>
-"""
+    html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
+    html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
+    html += "<tr><th style='padding:{0}; border:{1};'>Metric</th>{2}</tr>".format(
+        padding, border,
+        ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
+    )
 
     if show_daily_flow:
-        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Daily Flow</td>"
+        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
         html += ''.join([
             f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
             for v, c in zip(flows, daily_colors)
@@ -281,7 +269,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         html += "</tr>"
 
     if show_calc_flow and any(pd.notna(val) for val in calc_flows):
-        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Calculated Flow</td>"
+        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
         html += ''.join([
             f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
             for v, c in zip(calc_flows, calc_colors)
@@ -298,12 +286,11 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html += "</table><br>"
 
-    # Plot generation
+    # Plot with fixed image encoding
     fig, ax = plt.subplots(figsize=(7.6, 3.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
     ax.set_axisbelow(True)
-
     if any(pd.notna(val) for val in calc_flows):
         ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
 
@@ -332,10 +319,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     img_base64 = base64.b64encode(buf.read()).decode('utf-8')
     plt.close(fig)
 
-    # ✅ Responsive, scrollable chart
     html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
-
-    # ✅ End scrollable container
     html += "</div>"
 
     return html
@@ -347,36 +331,22 @@ def get_date_hash(dates):
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
 
-
-import hashlib
-import folium
-from folium import IFrame
-
 @st.cache_data(show_spinner=True)
 def generate_all_popups(merged_df, selected_dates_tuple):
-    selected_dates = list(selected_dates_tuple)
+    selected_dates = list(selected_dates_tuple)  # Convert tuple back to list for processing
     
-    # Filter your dataframe for selected dates (example)
-    df_filtered = merged_df[merged_df['Date'].isin(selected_dates)]
-
     popup_cache_no_diversion = {}
     popup_cache_diversion = {}
 
-    for wsc in df_filtered['WSC'].unique():
-        df_wsc = df_filtered[df_filtered['WSC'] == wsc]
-
-        # Create HTML for standard popup (no diversion)
-        html_no_diversion = df_wsc.to_html(classes='table table-striped', index=False)
-        iframe_no_diversion = IFrame(html=html_no_diversion, width=700, height=700, scrolling='yes')
-        popup_no_diversion = folium.Popup(iframe_no_diversion)
-
-        # Create HTML for diversion popup (customize as needed)
-        html_diversion = df_wsc.to_html(classes='table table-bordered', index=False)
-        iframe_diversion = IFrame(html=html_diversion, width=700, height=700, scrolling='yes')
-        popup_diversion = folium.Popup(iframe_diversion)
-
-        popup_cache_no_diversion[wsc] = popup_no_diversion
-        popup_cache_diversion[wsc] = popup_diversion
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        try:
+            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
+            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
+        except Exception as e:
+            st.exception(e)
+            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
+            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
 
     return popup_cache_no_diversion, popup_cache_diversion
 
@@ -394,34 +364,7 @@ if start_date > end_date:
 
 selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
 
-with st.sidebar.expander("ℹ️ About this App"):
-    st.markdown("""
-    **🔍 What is this?**  
-    This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
 
-    **📊 Data Sources:**  
-    - **Hydrometric data** and **Diversion thresholds** from Alberta River Basins Water Conservation layer  
-    - **Diversion Tables** from current provincial policy and regulations  
-    - **Stream size and policy type** from Alberta Environment and Protected Areas  
-
-    **📏 Threshold Definitions:**  
-    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection — often expressed as a percentage of the "Natural Flow" (e.g., 45%), which represents the theoretical flow without diversions.  
-    - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted.  
-    - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems.  
-    - **Q80:** Flow exceeded 80% of the time; typical low flow benchmark.  
-    - **Q90:** Flow exceeded 90% of the time; more extreme low flow.  
-    - **Q95:** Flow exceeded 95% of the time; critical threshold for ecosystem health.  
-    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions — can represent cutbacks in rate of diversion or daily limits.
-
-    **🟢 Color Codes in Map:**  
-    - 🟢 Flow meets all thresholds  
-    - 🔴 Flow below one or more thresholds  
-    - 🟡 Intermediate (depends on stream size & Q-values)  
-    - ⚪ Missing or insufficient data
-    - 🔵 **Blue border**: Station has a Diversion Table (click layer on right for additional thresholds)
-
-    _🚧 This app is under development. Thanks for your patience — and coffee! ☕_
-    """)
 # Pre-generate both popup caches upfront
 
 def get_most_recent_valid_date(row, dates):
@@ -441,62 +384,65 @@ def render_map_two_layers():
     )
     Fullscreen().add_to(m)
 
+    # FeatureGroups for two modes
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
+
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
             continue
 
         color = get_color_for_date(row, date)
+
+        # Use diversion popup cache if available
         wsc = row['WSC']
+        # fallback to no diversion popup if diversion cache missing
+        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
+        popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        # Safely get popups from session state caches
-        popup_div = st.session_state.popup_cache_diversion.get(wsc) if 'popup_cache_diversion' in st.session_state else None
-        popup_nodiv = st.session_state.popup_cache_no_diversion.get(wsc) if 'popup_cache_no_diversion' in st.session_state else None
+        iframe_diversion = IFrame(html=popup_html_diversion, width=700, height=700)
+        popup_diversion = folium.Popup(iframe_diversion)
 
-        if popup_div is None:
-            popup_div = folium.Popup("<b>No diversion popup data</b>", max_width=300)
-        if popup_nodiv is None:
-            popup_nodiv = folium.Popup("<b>No standard popup data</b>", max_width=300)
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=700, height=700)
+        popup_no_diversion = folium.Popup(iframe_no_diversion)
 
-        try:
-            # Add marker to ALL stations layer
+        # Marker for ALL stations (show no diversion popup)
+        folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color='black',
+            weight=3,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7,
+            popup=popup_no_diversion,
+            tooltip=row['station_name']
+        ).add_to(fg_all)
+
+        # Marker for diversion stations only (show diversion popup)
+        if wsc in diversion_tables:
             folium.CircleMarker(
                 location=coords,
                 radius=7,
-                color='black',
+                color='blue',
                 weight=3,
                 fill=True,
                 fill_color=color,
                 fill_opacity=0.7,
-                popup=popup_nodiv,
+                popup=popup_diversion,
                 tooltip=row['station_name']
-            ).add_to(fg_all)
+            ).add_to(fg_diversion)
 
-            # Add marker to Diversion stations layer if applicable
-            if wsc in diversion_tables:
-                folium.CircleMarker(
-                    location=coords,
-                    radius=7,
-                    color='blue',
-                    weight=3,
-                    fill=True,
-                    fill_color=color,
-                    fill_opacity=0.7,
-                    popup=popup_div,
-                    tooltip=row['station_name']
-                ).add_to(fg_diversion)
-
-        except Exception as e:
-            st.warning(f"Skipping marker for {wsc} due to error: {e}")
-            continue
-
+    # Add both layers to map
     fg_all.add_to(m)
     fg_diversion.add_to(m)
+
+    # Add layer control to toggle between groups
     folium.LayerControl(collapsed=False).add_to(m)
+
     return m
 
 # --- Display ---
