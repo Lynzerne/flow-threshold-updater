@@ -460,12 +460,8 @@ def render_map_two_layers():
             popup_div = folium.Popup("<b>No diversion popup data</b>", max_width=300)
         if popup_nodiv is None:
             popup_nodiv = folium.Popup("<b>No standard popup data</b>", max_width=300)
-        
-        # Then add your markers:
-        folium.Marker(location=[lat, lon], popup=popup_div, icon=...).add_to(diversion_layer)
-        folium.Marker(location=[lat, lon], popup=popup_nodiv, icon=...).add_to(no_diversion_layer)
 
-            # Marker for ALL stations
+        try:
             folium.CircleMarker(
                 location=coords,
                 radius=7,
@@ -478,7 +474,6 @@ def render_map_two_layers():
                 tooltip=row['station_name']
             ).add_to(fg_all)
 
-            # Marker for diversion stations
             if wsc in diversion_tables:
                 folium.CircleMarker(
                     location=coords,
@@ -493,7 +488,6 @@ def render_map_two_layers():
                 ).add_to(fg_diversion)
 
         except Exception as e:
-            # Catch-all for debugging
             st.warning(f"Skipping marker for {wsc} due to error: {e}")
             continue
 
