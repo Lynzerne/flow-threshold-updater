@@ -9,6 +9,7 @@ try:
     import pyarrow
 except ImportError:
     raise ImportError("pyarrow is required to read/write Parquet files. Please install it via pip.")
+pd.options.io.parquet.engine = "pyarrow"
 
 # --- Config ---
 station_list_csv = "data/AB_WS_R_StationList.csv"
@@ -29,7 +30,7 @@ for c in required_cols:
 
 # --- Load Existing Master Data ---
 if os.path.exists(output_parquet):
-    master_df = pd.read_parquet(output_parquet)
+    master_df = pd.read_parquet(output_parquet, engine="pyarrow"))
     master_df['Date'] = pd.to_datetime(master_df['Date']).dt.date
     print(f"Loaded existing master dataset with {len(master_df)} rows.")
 else:
@@ -114,7 +115,7 @@ if all_data:
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
     
-    master_df.to_parquet(output_parquet, index=False)
+master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
 
     # --- Save Daily Snapshot for Most Recent Date Available ---
@@ -122,7 +123,7 @@ if all_data:
     daily_snapshot_df = master_df[master_df['Date'] == iday]
 
     daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
-    daily_snapshot_df.to_parquet(daily_parquet_path, index=False)
+    daily_snapshot_df.to_parquet(daily_parquet_path, index=False, engine="pyarrow")
     print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
 
 else:
