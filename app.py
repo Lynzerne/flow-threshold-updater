@@ -34,17 +34,24 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     return df_copy
 @st.cache_data
 def load_data():
-    st.write("Starting load_data")
-
+    # Load spatial GeoData
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
-    st.write("Read parquet file")
-
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
+
+    # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
+    station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
+
+    # Merge in additional attributes
+    geo_data = geo_data.merge(
+        station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
+        on='WSC', how='left'
+    )
+
+    # Convert geometry to WKT (safe for caching)
     geo_data['geometry_wkt'] = geo_data.geometry.apply(lambda g: g.wkt if g else None)
     geo_data = geo_data.drop(columns=['geometry'])
 
-    merged = geo_data.copy()
-
+    # Parse time_series safely
     def safe_parse(val):
         if isinstance(val, str):
             try:
@@ -53,16 +60,13 @@ def load_data():
                 return []
         return val
 
-    if 'time_series' in merged.columns:
-        merged['time_series'] = merged['time_series'].apply(safe_parse)
-    else:
-        st.warning("'time_series' column not found in the data.")
-        merged['time_series'] = [[] for _ in range(len(merged))]  # Add empty default list if missing
+    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse)
 
-    merged = make_df_hashable(merged)
+    # Make compatible with streamlit cache
+    geo_data = make_df_hashable(geo_data)
+    print("Columns in merged DataFrame:", geo_data.columns.tolist())
 
-    st.write("Columns in merged DataFrame:", merged.columns.tolist())
-    return merged
+    return geo_data
 
 
 # Call load_data and assign merged here
