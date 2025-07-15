@@ -253,11 +253,11 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
         )
 
-    # BEGIN HTML popup with scrollable container
+    # 🎯 START unified scrollable container
     html = f"""
     <div style="
         max-width: 100%;
-        max-height: 350px;
+        max-height: 400px;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         touch-action: auto;
@@ -297,11 +297,12 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html += "</table><br>"
 
-    # Plot with fixed image encoding
+    # Plot generation
     fig, ax = plt.subplots(figsize=(7.6, 3.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
     ax.set_axisbelow(True)
+
     if any(pd.notna(val) for val in calc_flows):
         ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
 
@@ -330,7 +331,10 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     img_base64 = base64.b64encode(buf.read()).decode('utf-8')
     plt.close(fig)
 
+    # Embed image inside scrollable popup
     html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
+
+    # END scrollable container
     html += "</div>"
 
     return html
