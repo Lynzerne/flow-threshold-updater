@@ -427,65 +427,70 @@ def render_map_two_layers():
     )
     Fullscreen().add_to(m)
 
-    # FeatureGroups for two modes
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
-
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
             continue
 
         color = get_color_for_date(row, date)
-
-        # Use diversion popup cache if available
         wsc = row['WSC']
-        # fallback to no diversion popup if diversion cache missing
-        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
-        popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=700, height=700, scrolling='yes')
-        popup_diversion = folium.Popup(iframe_diversion)
-        
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=700, height=700, scrolling='yes')
-        popup_no_diversion = folium.Popup(iframe_no_diversion)
+        try:
+            popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
+            popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        # Marker for ALL stations (show no diversion popup)
-        folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color='black',
-            weight=3,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.7,
-            popup=popup_no_diversion,
-            tooltip=row['station_name']
-        ).add_to(fg_all)
+            # Try rendering the popups safely
+            try:
+                iframe_div = IFrame(html=popup_html_diversion, width=700, height=700, scrolling='yes')
+                popup_div = folium.Popup(iframe_div)
+            except Exception as e:
+                popup_div = folium.Popup("<b>Error rendering diversion popup</b>")
 
-        # Marker for diversion stations only (show diversion popup)
-        if wsc in diversion_tables:
+            try:
+                iframe_nodiv = IFrame(html=popup_html_no_diversion, width=700, height=700, scrolling='yes')
+                popup_nodiv = folium.Popup(iframe_nodiv)
+            except Exception as e:
+                popup_nodiv = folium.Popup("<b>Error rendering standard popup</b>")
+
+            # Marker for ALL stations
             folium.CircleMarker(
                 location=coords,
                 radius=7,
-                color='blue',
+                color='black',
                 weight=3,
                 fill=True,
                 fill_color=color,
                 fill_opacity=0.7,
-                popup=popup_diversion,
+                popup=popup_nodiv,
                 tooltip=row['station_name']
-            ).add_to(fg_diversion)
+            ).add_to(fg_all)
 
-    # Add both layers to map
+            # Marker for diversion stations
+            if wsc in diversion_tables:
+                folium.CircleMarker(
+                    location=coords,
+                    radius=7,
+                    color='blue',
+                    weight=3,
+                    fill=True,
+                    fill_color=color,
+                    fill_opacity=0.7,
+                    popup=popup_div,
+                    tooltip=row['station_name']
+                ).add_to(fg_diversion)
+
+        except Exception as e:
+            # Catch-all for debugging
+            st.warning(f"Skipping marker for {wsc} due to error: {e}")
+            continue
+
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-
-    # Add layer control to toggle between groups
     folium.LayerControl(collapsed=False).add_to(m)
-
     return m
 
 # --- Display ---
