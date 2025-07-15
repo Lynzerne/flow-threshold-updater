@@ -35,9 +35,11 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data
 def load_data():
     print("Starting load_data")
+    st.write("Columns in merged DataFrame:", merged.columns.tolist())
     
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
     print("Read parquet file")
+    st.text("Columns: " + ", ".join(merged.columns))
     
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
     
