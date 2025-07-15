@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, date
 
 # --- Config ---
 station_list_csv = "data/AB_WS_R_StationList.csv"
-output_csv = "data/WS_R_master_daily.csv"
+output_parquet = "data/WS_R_master_daily.parquet"
 base_url_template = "https://rivers.alberta.ca/apps/Basins/data/figures/river/abrivers/stationdata/WS_R_{}_table.json"
 
 # --- Date Window (last 7 days; source JSON provides last 7 days of data) ---
@@ -23,9 +23,9 @@ for c in required_cols:
         raise ValueError(f"Missing column '{c}' in station list CSV")
 
 # --- Load Existing Master Data ---
-if os.path.exists(output_csv):
-    master_df = pd.read_csv(output_csv, parse_dates=['Date'])
-    master_df['Date'] = master_df['Date'].dt.date
+if os.path.exists(output_parquet):
+    master_df = pd.read_parquet(output_parquet)
+    master_df['Date'] = pd.to_datetime(master_df['Date']).dt.date
     print(f"Loaded existing master dataset with {len(master_df)} rows.")
 else:
     master_df = pd.DataFrame()
@@ -111,16 +111,16 @@ if all_data:
         print(f"Starting master dataset with {len(master_df)} rows.")
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
-    master_df.to_csv(output_csv, index=False)
-    print(f"Master dataset saved to {output_csv}")
+master_df.to_parquet(output_parquet, index=False)
+print(f"Master dataset saved to {output_parquet}")
 
     # --- Save Daily Snapshot for Most Recent Date Available ---
     iday = new_data_df['Date'].max()
     daily_snapshot_df = master_df[master_df['Date'] == iday]
 
-    daily_csv_path = f"data/AB_WS_R_Flows_{iday}.csv"
-    daily_snapshot_df.to_csv(daily_csv_path, index=False)
-    print(f"Daily snapshot CSV saved to {daily_csv_path}")
+daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
+daily_snapshot_df.to_parquet(daily_parquet_path, index=False)
+print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
 
 else:
     print("No new data collected from any stations.")
@@ -134,7 +134,8 @@ import os
 # --- Paths & Date ---
 iday = date.today().strftime('%Y-%m-%d')  # Today's date
 station_list_csv = "data/AB_WS_R_StationList.csv"
-daily_csv_path = f"data/AB_WS_R_Flows_{iday}.csv"
+daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
+master_parquet_path = "data/WS_R_master_daily.parquet"
 master_geojson_path = "data/AB_WS_R_stations.geojson"
 geojson_updated_path = f"data/AB_WS_R_stations_{iday}.geojson"
 
@@ -167,8 +168,7 @@ else:
     print(f"✅ GeoJSON skeleton created.")
 
 # --- Load Full Master Daily Data to Get All Timeseries ---
-master_csv_path = "data/WS_R_master_daily.csv"
-master_df = pd.read_csv(master_csv_path, parse_dates=['Date'])
+master_df = pd.read_parquet(master_parquet_path)
 master_df['station_no'] = master_df['station_no'].astype(str).str.strip()
 
 # Columns to exclude from timeseries (metadata)
