@@ -63,37 +63,36 @@ def load_diversion_tables():
     diversion_labels = {}
 
     for f in os.listdir(DIVERSION_DIR):
-        if f.endswith(".xlsx"):
-            wsc = f.split("_")[0]
+        if f.endswith(".parquet"):
+            wsc = f.split("_")[0]  # same logic to extract WSC from filename
             file_path = os.path.join(DIVERSION_DIR, f)
 
-            # Read columns B to E: [Date, Cutback1, Cutback2, Cutback3 or Cutoff]
-            df = pd.read_excel(file_path, usecols="B:E")
+            df = pd.read_parquet(file_path)
+
+            # Parquet should preserve column names, but normalize whitespace & fix columns:
             df.columns = df.columns.str.strip()
 
-            # Rename the first three columns
+            # Expected columns: ['Date', 'Cutback1', 'Cutback2', 'Cutback3 or Cutoff']
+            # Handle missing or renamed last column:
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
             if len(df.columns) == 4:
-                # Preserve whatever the third cutback label is
                 third_label = df.columns[3]
                 df.columns = standard_columns + [third_label]
                 diversion_labels[wsc] = third_label
             else:
-                # Fallback if format isn't as expected
                 diversion_labels[wsc] = "Cutback3"
                 df.columns = standard_columns + ['Cutback3']
 
-            # Normalize and fix date format
+            # Normalize and fix date format (year replaced by 1900)
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
             def safe_replace_year(d):
                 try:
                     if isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d):
                         return d.replace(year=1900)
-                    else:
-                        return pd.NaT
                 except:
                     return pd.NaT
+                return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
 
