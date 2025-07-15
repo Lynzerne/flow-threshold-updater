@@ -6,3 +6,5 @@ matplotlib
 python-dateutil
 openpyxl
 streamlit-folium
+pyarrow
+fastparquet
