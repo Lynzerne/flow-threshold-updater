@@ -37,6 +37,11 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 def load_data():
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
+    
+    # Convert geometry to WKT string (to make it hashable)
+    geo_data['geometry_wkt'] = geo_data.geometry.apply(lambda g: g.wkt if g else None)
+    geo_data = geo_data.drop(columns=['geometry'])  # Drop original geometry column
+    
     merged = geo_data.copy()
 
     def safe_parse(val):
@@ -48,7 +53,7 @@ def load_data():
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
-    merged = make_df_hashable(merged)  # <-- call here
+    merged = make_df_hashable(merged)  # <-- keep this here to convert lists to tuples
     return merged
 
 # Call load_data and assign merged here
@@ -315,8 +320,9 @@ def get_date_hash(dates):
     return hashlib.md5(date_str.encode()).hexdigest()
 
 @st.cache_data(show_spinner=True)
-def generate_all_popups(merged_df, selected_dates):
-    """Pre-generate both popup caches (with and without diversion) for the selected dates."""
+def generate_all_popups(merged_df, selected_dates_tuple):
+    selected_dates = list(selected_dates_tuple)  # Convert tuple back to list for processing
+    
     popup_cache_no_diversion = {}
     popup_cache_diversion = {}
 
@@ -438,7 +444,7 @@ if ('popup_cache_no_diversion' not in st.session_state or
     st.session_state.get('cached_dates_hash', '') != current_dates_hash):
 
     with st.spinner("Generating popup caches..."):
-        no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+        no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
         st.session_state.popup_cache_no_diversion = no_diversion_cache
         st.session_state.popup_cache_diversion = diversion_cache
         st.session_state.cached_dates_hash = current_dates_hash
@@ -447,7 +453,7 @@ else:
     cached_dates_hash = st.session_state.get('cached_dates_hash', '')
     if cached_dates_hash != current_dates_hash:
         with st.spinner("Updating popup caches for new date range..."):
-            no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+            no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
             st.session_state.popup_cache_no_diversion = no_diversion_cache
             st.session_state.popup_cache_diversion = diversion_cache
             st.session_state.cached_dates_hash = current_dates_hash
