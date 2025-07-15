@@ -106,46 +106,41 @@ if all_data:
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        # Merge existing and new data on station_no and Date
-# Merge existing and new data on station_no and Date
-        merged = pd.merge(
-            master_df,
-            new_data_df,
-            on=merge_keys,
-            how='outer',
-            suffixes=('_old', '_new'),
-            sort=False
-        )
-        
-        # Initialize revised flag
-        merged['revised'] = False
-        
-        for col in ts_cols:
-            col_old = f"{col}_old"
-            col_new = f"{col}_new"
-        
-            # Only revise if old is NaN and new is valid
-            fill_mask = merged[col_old].isna() & merged[col_new].notna()
-            merged[col] = merged[col_old].combine_first(merged[col_new])
-        
-            # Flag these as revised
-            merged.loc[fill_mask, 'revised'] = True
-        
-        # Combine metadata (prefer new if available)
-        for col in ['station_name', 'lat', 'lon']:
-            merged[col] = merged[f"{col}_new"].combine_first(merged[f"{col}_old"])
-        
-        # Keep only final columns
-        final_cols = merge_keys + ['station_name', 'lat', 'lon', 'revised'] + ts_cols
-        master_df = merged[final_cols]
+        updated_rows = []
 
-        print(f"Updated master dataset now contains {len(master_df)} rows (merged with preservation logic).")
+        for _, new_row in new_data_df.iterrows():
+            match = (master_df['station_no'] == new_row['station_no']) & (master_df['Date'] == new_row['Date'])
+            if match.any():
+                old_row = master_df[match].iloc[0]
+
+                # Determine if revision is needed (only if old value is NaN and new value is not)
+                revised = False
+                for col in ts_cols:
+                    old_val = old_row.get(col)
+                    new_val = new_row.get(col)
+                    if pd.isna(old_val) and pd.notna(new_val):
+                        revised = True
+                        break
+
+                new_row['is_revised'] = revised
+                updated_rows.append(new_row)
+            else:
+                # New record (not in master)
+                new_row['is_revised'] = False
+                updated_rows.append(new_row)
+
+        updated_df = pd.DataFrame(updated_rows)
+
+        # Remove old rows with matching keys, then append updated rows
+        master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_df.set_index(merge_keys).index)]
+        master_df = pd.concat([master_df, updated_df], ignore_index=True)
 
     else:
+        new_data_df['is_revised'] = False
         master_df = new_data_df
-        print(f"Starting master dataset with {len(master_df)} rows.")
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
+
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
 
