@@ -388,6 +388,7 @@ with st.sidebar.expander("ℹ️ About this App"):
     - 🔴 Flow below one or more thresholds  
     - 🟡 Intermediate (depends on stream size & Q-values)  
     - ⚪ Missing or insufficient data
+    - 🔵 **Blue border**: Station has a Diversion Table (click layer on right for additional thresholds)
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕_
     """)
