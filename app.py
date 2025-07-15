@@ -253,15 +253,26 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
         )
 
-    html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
-    html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
-    html += "<tr><th style='padding:{0}; border:{1};'>Metric</th>{2}</tr>".format(
-        padding, border,
-        ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
-    )
+    # BEGIN HTML popup with scrollable container
+    html = f"""
+    <div style="
+        max-width: 100%;
+        max-height: 350px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: auto;
+        padding-right: 4px;
+    ">
+        <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
+        <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
+            <tr>
+                <th style='padding:{padding}; border:{border};'>Metric</th>
+                {''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])}
+            </tr>
+    """
 
     if show_daily_flow:
-        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Daily Flow</td>"
         html += ''.join([
             f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
             for v, c in zip(flows, daily_colors)
@@ -269,7 +280,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         html += "</tr>"
 
     if show_calc_flow and any(pd.notna(val) for val in calc_flows):
-        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Calculated Flow</td>"
         html += ''.join([
             f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
             for v, c in zip(calc_flows, calc_colors)
