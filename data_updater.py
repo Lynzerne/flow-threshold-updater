@@ -95,15 +95,12 @@ for _, row in stns.iterrows():
 if all_data:
     new_data_df = pd.concat(all_data, ignore_index=True)
 
-    # Identify unique columns to merge
     merge_keys = ['station_no', 'Date']
     metadata_cols = ['station_no', 'station_name', 'Date', 'lon', 'lat']
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        # Drop matching rows from master where new data overlaps (we'll replace them)
         master_df = master_df[~master_df.set_index(merge_keys).index.isin(new_data_df.set_index(merge_keys).index)]
-
         print(f"Updating {len(new_data_df)} rows in the master dataset.")
         master_df = pd.concat([master_df, new_data_df], ignore_index=True)
     else:
@@ -111,16 +108,17 @@ if all_data:
         print(f"Starting master dataset with {len(master_df)} rows.")
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
-master_df.to_parquet(output_parquet, index=False)
-print(f"Master dataset saved to {output_parquet}")
+    
+    master_df.to_parquet(output_parquet, index=False)
+    print(f"Master dataset saved to {output_parquet}")
 
     # --- Save Daily Snapshot for Most Recent Date Available ---
     iday = new_data_df['Date'].max()
     daily_snapshot_df = master_df[master_df['Date'] == iday]
 
-daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
-daily_snapshot_df.to_parquet(daily_parquet_path, index=False)
-print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
+    daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
+    daily_snapshot_df.to_parquet(daily_parquet_path, index=False)
+    print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
 
 else:
     print("No new data collected from any stations.")
