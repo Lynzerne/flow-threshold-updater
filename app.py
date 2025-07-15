@@ -349,20 +349,35 @@ def get_date_hash(dates):
 
 @st.cache_data(show_spinner=True)
 def generate_all_popups(merged_df, selected_dates_tuple):
-    selected_dates = list(selected_dates_tuple)  # Convert tuple back to list for processing
-    
+    selected_dates = list(selected_dates_tuple)
+
     popup_cache_no_diversion = {}
     popup_cache_diversion = {}
+
+    def safe_popup(html_content, label='popup'):
+        try:
+            iframe = IFrame(html=html_content, width=700, height=700)
+            return folium.Popup(iframe, max_width=750)
+        except Exception as e:
+            print(f"[Popup Error: {label}] {e}")
+            return folium.Popup(f"<b>Error rendering {label}</b>", max_width=300)
 
     for _, row in merged_df.iterrows():
         wsc = row['WSC']
         try:
-            # Simple fallback: inline HTML directly into Popup without IFrame
-            popup_div = folium.Popup(popup_html_diversion, max_width=700)
-            popup_nodiv = folium.Popup(popup_html_no_diversion, max_width=700)
+            popup_html_no_diversion = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
+            popup_no_div = safe_popup(popup_html_no_diversion, label=f'{wsc}-no-div')
+
+            popup_html_diversion = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
+            popup_div = safe_popup(popup_html_diversion, label=f'{wsc}-div')
+
+            popup_cache_no_diversion[wsc] = popup_no_div
+            popup_cache_diversion[wsc] = popup_div
+
         except Exception as e:
-            popup_div = folium.Popup("<b>Error rendering diversion popup</b>", max_width=300)
-            popup_nodiv = folium.Popup("<b>Error rendering standard popup</b>", max_width=300)
+            print(f"[Popup Error for WSC {wsc}] {e}")
+            popup_cache_no_diversion[wsc] = folium.Popup("<b>Error rendering standard popup</b>", max_width=300)
+            popup_cache_diversion[wsc] = folium.Popup("<b>Error rendering diversion popup</b>", max_width=300)
 
     return popup_cache_no_diversion, popup_cache_diversion
 
