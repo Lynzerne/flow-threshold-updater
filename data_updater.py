@@ -107,6 +107,7 @@ if all_data:
 
     if not master_df.empty:
         # Merge existing and new data on station_no and Date
+# Merge existing and new data on station_no and Date
         merged = pd.merge(
             master_df,
             new_data_df,
@@ -115,20 +116,27 @@ if all_data:
             suffixes=('_old', '_new'),
             sort=False
         )
-
+        
+        # Initialize revised flag
+        merged['revised'] = False
+        
         for col in ts_cols:
             col_old = f"{col}_old"
             col_new = f"{col}_new"
-
-            # Keep old if it's not null, else take new if available
+        
+            # Only revise if old is NaN and new is valid
+            fill_mask = merged[col_old].isna() & merged[col_new].notna()
             merged[col] = merged[col_old].combine_first(merged[col_new])
-
-        # Combine metadata columns (prefer new if available, else old)
+        
+            # Flag these as revised
+            merged.loc[fill_mask, 'revised'] = True
+        
+        # Combine metadata (prefer new if available)
         for col in ['station_name', 'lat', 'lon']:
             merged[col] = merged[f"{col}_new"].combine_first(merged[f"{col}_old"])
-
-        # Keep only the final columns
-        final_cols = merge_keys + ['station_name', 'lat', 'lon'] + ts_cols
+        
+        # Keep only final columns
+        final_cols = merge_keys + ['station_name', 'lat', 'lon', 'revised'] + ts_cols
         master_df = merged[final_cols]
 
         print(f"Updated master dataset now contains {len(master_df)} rows (merged with preservation logic).")
