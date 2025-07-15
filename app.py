@@ -183,7 +183,7 @@ def get_valid_dates(merged):
 valid_dates = get_valid_dates(merged)
 
 
-def make_popup_html_with_plot(row, selected_dates, show_diversion):
+
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
@@ -255,8 +255,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         )
 
     # ✅ Begin scrollable responsive container
-    html = f"""
-    <div style="
+    html = f"""<div style="
         max-width: 100%;
         max-height: 65vh;
         overflow-y: auto;
@@ -264,14 +263,14 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         -webkit-overflow-scrolling: touch;
         touch-action: auto;
         padding-right: 4px;
-        ">
+    ">
         <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
         <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
             <tr>
                 <th style='padding:{padding}; border:{border};'>Metric</th>
                 {''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])}
             </tr>
-        """
+"""
 
     if show_daily_flow:
         html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Daily Flow</td>"
