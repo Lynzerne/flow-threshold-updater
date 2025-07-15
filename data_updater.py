@@ -5,6 +5,11 @@ import pandas as pd
 from collections import Counter
 from datetime import datetime, timedelta, date
 
+try:
+    import pyarrow
+except ImportError:
+    raise ImportError("pyarrow is required to read/write Parquet files. Please install it via pip.")
+
 # --- Config ---
 station_list_csv = "data/AB_WS_R_StationList.csv"
 output_parquet = "data/WS_R_master_daily.parquet"
@@ -166,7 +171,7 @@ else:
     print(f"✅ GeoJSON skeleton created.")
 
 # --- Load Full Master Daily Data to Get All Timeseries ---
-master_df = pd.read_parquet(master_parquet_path)
+master_df = pd.read_parquet(master_parquet_path, engine="pyarrow")
 master_df['station_no'] = master_df['station_no'].astype(str).str.strip()
 
 # Columns to exclude from timeseries (metadata)
