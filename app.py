@@ -394,7 +394,7 @@ with st.sidebar.expander("ℹ️ About this App"):
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕ - Lyndsay Greenwood_
     """)
-    with st.sidebar.expander("ℹ️ Who Cares?"):
+with st.sidebar.expander("ℹ️ Who Cares?"):
     st.markdown("""
     **❓ Why does this matter?**  
 
