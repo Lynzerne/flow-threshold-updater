@@ -255,24 +255,24 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     # Mobile-friendly scrollable popup wrapper
     html = f"""
     <style>
-      @media (max-width: 500px) {
-        .leaflet-popup-content {
+      @media (max-width: 500px) {{
+        .leaflet-popup-content {{
           width: auto !important;
           max-width: 95vw !important;
           min-width: 10px !important;
           padding: 0 !important;
           margin: 0 !important;
-        }
+        }}
     
-        .leaflet-popup-content-wrapper {
+        .leaflet-popup-content-wrapper {{
           padding: 4px !important;
-        }
+        }}
     
-        .leaflet-popup-content > div {
+        .leaflet-popup-content > div {{
           width: 100% !important;
-        }
+        }}
     
-        .popup-wrapper {
+        .popup-wrapper {{
           width: 95vw !important;
           max-width: 100vw !important;
           min-width: 10px !important;
@@ -282,25 +282,25 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           box-sizing: border-box;
-        }
+        }}
     
-        .popup-wrapper table, .popup-wrapper h4 {
+        .popup-wrapper table, .popup-wrapper h4 {{
           font-size: 12px !important;
-        }
+        }}
     
-        .popup-wrapper table {
+        .popup-wrapper table {{
           width: 100% !important;
           table-layout: fixed !important;
           word-wrap: break-word;
-        }
+        }}
     
-        .popup-wrapper img {
+        .popup-wrapper img {{
           max-width: 100% !important;
           height: auto !important;
           display: block !important;
           margin: 0 auto !important;
-        }
-      }
+        }}
+      }}
     </style>
     
     <!-- Responsive popup container -->
