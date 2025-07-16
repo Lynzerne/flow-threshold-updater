@@ -365,7 +365,7 @@ def generate_all_popups(merged_df, selected_dates_tuple):
 # --- Sidebar ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
-    <div style='color: red; font-weight: bold;'>
+    <div style='color: red'>
         This app pre-computes charts and tables for all stations before displaying the map.  
         That means loading can take **2-3 minutes**, depending on your date range and device.
     </div>
