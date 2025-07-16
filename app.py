@@ -257,8 +257,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         <div style='
             width: 90vw;
             max-width: 640px;
-            min-width: 280px;
-            max-height: 540px;
+            min-width: 60px;
+            max-height: 200px;
             overflow-y: auto;
             overflow-x: auto;
             padding-right: 10px;
