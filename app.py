@@ -363,6 +363,17 @@ def generate_all_popups(merged_df, selected_dates_tuple):
 
 
 # --- Sidebar ---
+with st.sidebar.expander("🚨 Note from Developer", expanded=False):
+    st.markdown("""
+    <div style='color: red; font-weight: bold;'>
+        This app pre-computes charts and tables for all stations before displaying the map.  
+        That means loading can take **2-3 minutes** to load, depending on your date range and device.
+    </div>
+    <div style='margin-top: 8px;'>
+        We're working on making this faster and more responsive. Thanks for your patience!
+    </div>
+    """, unsafe_allow_html=True)
+
 st.sidebar.header("Date Range")
 min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
 max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
