@@ -82,12 +82,11 @@ def load_diversion_tables():
 
     for f in os.listdir(DIVERSION_DIR):
         if f.endswith(".parquet"):
-            wsc = f.split("_")[0]  # same logic to extract WSC from filename
+            wsc = f.split("_")[0]  
             file_path = os.path.join(DIVERSION_DIR, f)
 
             df = pd.read_parquet(file_path)
 
-            # Parquet should preserve column names, but normalize whitespace & fix columns:
             df.columns = df.columns.str.strip()
 
             # Expected columns: ['Date', 'Cutback1', 'Cutback2', 'Cutback3 or Cutoff']
@@ -253,7 +252,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
         )
 
-    # 🌐 Mobile-friendly scrollable popup wrapper
+    # Mobile-friendly scrollable popup wrapper
     html = f"""
     <div style='
         max-width: 100%;
@@ -444,7 +443,25 @@ def render_map_two_layers():
         width='100%',
         height='1200px'
     )
-    Fullscreen().add_to(m)
+
+from branca.element import MacroElement, Template
+popup_js = """
+<script>
+     // Adjust popup size based on screen width
+     const popups = document.querySelectorAll('.leaflet-popup-content');
+     popups.forEach(p => {
+         if (window.innerWidth < 500) {
+             p.style.width = '320px';
+         } else {
+             p.style.width = '650px';
+         }
+     });
+ </script>
+ """
+    
+m.get_root().html.add_child(MacroElement().add_child(Template(popup_js)))
+
+Fullscreen().add_to(m)
 
     # FeatureGroups for two modes
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -465,11 +482,11 @@ def render_map_two_layers():
         popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=700, height=700)
-        popup_diversion = folium.Popup(iframe_diversion)
-
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=700, height=700)
-        popup_no_diversion = folium.Popup(iframe_no_diversion)
+        iframe_diversion = IFrame(html=popup_html_diversion, width=10, height=10)
+        popup_diversion = folium.Popup(iframe_diversion, max_width=700)
+        
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=10, height=10)
+        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=700)
 
         # Marker for ALL stations (show no diversion popup)
         folium.CircleMarker(
