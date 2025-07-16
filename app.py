@@ -371,11 +371,9 @@ with st.sidebar.expander("ℹ️ About this App"):
 
     **📊 Data Sources:**  
     - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
-    - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provide
-    -near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
+    - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
     - **Diversion Tables** from current provincial policy and regulations
-    - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions
-    - (Water Management Plans)
+    - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions (Water Management Plans)
 
     **📏 Threshold Definitions:**  
     - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), 
@@ -384,8 +382,7 @@ with st.sidebar.expander("ℹ️ About this App"):
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
     - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow". 
     - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
-    - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time. 
-    - This is often considered a critical threshold for ecological health.
+    - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
     - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion or daily limits
 
     **🟢 Color Codes in Map:**  
@@ -396,6 +393,18 @@ with st.sidebar.expander("ℹ️ About this App"):
     - 🔵 **Blue border**: Station has a Diversion Table (click layer on right for additional thresholds)
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕ - Lyndsay Greenwood_
+    """)
+    with st.sidebar.expander("ℹ️ Who Cares?"):
+    st.markdown("""
+    **❓ Why does this matter?**  
+
+    Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.  
+    However, water supply is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
+    
+    In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
+    
+    While water conservation is a personal responsibility we all share, ensuring that diversion limits exist—and are respected—is a vital tool in protecting Alberta’s water systems and ecosystems for generations to come.
+
     """)
 # Pre-generate both popup caches upfront
 
