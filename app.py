@@ -444,24 +444,28 @@ def render_map_two_layers():
         height='1200px'
     )
 
-from branca.element import MacroElement, Template
-popup_js = """
-<script>
-     // Adjust popup size based on screen width
-     const popups = document.querySelectorAll('.leaflet-popup-content');
-     popups.forEach(p => {
-         if (window.innerWidth < 500) {
-             p.style.width = '320px';
-         } else {
-             p.style.width = '650px';
-         }
-     });
- </script>
- """
-    
-m.get_root().html.add_child(MacroElement().add_child(Template(popup_js)))
+    # Add responsive popup size script
+    from branca.element import MacroElement, Template
+    popup_js = """
+    <script>
+        const observer = new MutationObserver(() => {
+            const popups = document.querySelectorAll('.leaflet-popup-content');
+            popups.forEach(p => {
+                if (window.innerWidth < 500) {
+                    p.style.width = '320px';
+                } else {
+                    p.style.width = '650px';
+                }
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    </script>
+    """
+    macro = MacroElement()
+    macro._template = Template(popup_js)
+    m.get_root().html.add_child(macro)
 
-Fullscreen().add_to(m)
+    Fullscreen().add_to(m)
 
     # FeatureGroups for two modes
     fg_all = folium.FeatureGroup(name='All Stations')
