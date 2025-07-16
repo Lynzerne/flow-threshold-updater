@@ -253,15 +253,26 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
             if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
         )
 
-    html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
-    html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
-    html += "<tr><th style='padding:{0}; border:{1};'>Metric</th>{2}</tr>".format(
-        padding, border,
-        ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
-    )
+    # 🌐 Mobile-friendly scrollable popup wrapper
+    html = f"""
+    <div style='
+        max-width: 100%;
+        max-height: 600px;
+        overflow-x: auto;
+        overflow-y: auto;
+        padding-right: 10px;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x pan-y;
+    '>
+        <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
+        <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
+            <tr><th style='padding:{padding}; border:{border};'>Metric</th>
+    """
+    html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
+    html += "</tr>"
 
     if show_daily_flow:
-        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Daily Flow</td>"
         html += ''.join([
             f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
             for v, c in zip(flows, daily_colors)
@@ -269,7 +280,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         html += "</tr>"
 
     if show_calc_flow and any(pd.notna(val) for val in calc_flows):
-        html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Calculated Flow</td>"
         html += ''.join([
             f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
             for v, c in zip(calc_flows, calc_colors)
@@ -286,7 +297,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html += "</table><br>"
 
-    # Plot with fixed image encoding
+    # --- Plot rendering ---
     fig, ax = plt.subplots(figsize=(7.6, 3.5))
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
@@ -372,12 +383,11 @@ with st.sidebar.expander("ℹ️ About this App"):
     **📊 Data Sources:**  
     - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
     - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
-    - **Diversion Tables** from current provincial policy and regulations
+    - **Diversion Tables** from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations.
     - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions (Water Management Plans)
 
     **📏 Threshold Definitions:**  
-    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), 
-    - which is a theoretical value depicting what the flow of a system would be if there were no diversions
+    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
     - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow". 
