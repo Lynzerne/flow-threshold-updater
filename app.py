@@ -445,32 +445,30 @@ def render_map_two_layers():
     )
 
     # Add responsive popup size script
-    from branca.element import Template, MacroElement
+    from branca.element import Element
     
-    # JavaScript to resize popups dynamically
-    popup_resize_script = """
-    {% macro script(this, kwargs) %}
-        <script>
-            const resizePopups = () => {
-                const popups = document.querySelectorAll('.leaflet-popup-content');
-                popups.forEach(p => {
-                    if (window.innerWidth < 500) {
-                        p.style.width = '320px';
-                    } else {
-                        p.style.width = '650px';
-                    }
-                });
-            };
-            const observer = new MutationObserver(resizePopups);
-            observer.observe(document.body, { childList: true, subtree: true });
-            resizePopups();
-        </script>
-    {% endmacro %}
-    """
+    # Responsive popup width JS
+    popup_resize_script = Element("""
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const resizePopups = () => {
+            const popups = document.querySelectorAll('.leaflet-popup-content');
+            popups.forEach(p => {
+                if (window.innerWidth < 500) {
+                    p.style.width = '320px';
+                } else {
+                    p.style.width = '650px';
+                }
+            });
+        };
+        const observer = new MutationObserver(resizePopups);
+        observer.observe(document.body, { childList: true, subtree: true });
+        resizePopups();
+    });
+    </script>
+    """)
     
-    popup_macro = MacroElement()
-    popup_macro._template = Template(popup_resize_script)
-    m.get_root().add_child(popup_macro)
+    m.get_root().html.add_child(popup_resize_script)
 
     Fullscreen().add_to(m)
 
