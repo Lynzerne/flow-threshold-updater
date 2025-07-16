@@ -253,22 +253,42 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         )
 
     # Mobile-friendly scrollable popup wrapper
-        html = f"""
-        <div style='
-            width: 100%;
-            max-width: 640px;
-            min-width: 60px;
-            max-height: none;
-            overflow-y: auto;
-            overflow-x: auto;
-            padding-right: 10px;
-            -webkit-overflow-scrolling: touch;
-            touch-action: pan-x pan-y;
-            box-sizing: border-box;
-        '>
-        <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
-        <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
-            <tr><th style='padding:{padding}; border:{border};'>Metric</th>
+    html = f"""
+    <style>
+    @media (max-width: 500px) {{
+      .popup-wrapper {{
+        width: 95vw !important;
+        max-width: 95vw !important;
+        min-width: 50px !important;
+        max-height: 80vh !important;
+        overflow-y: auto !important;
+        overflow-x: auto !important;
+        padding-right: 10px;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x pan-y;
+      }}
+    
+      .popup-wrapper table,
+      .popup-wrapper h4 {{
+        font-size: 13px !important;
+      }}
+    }}
+    
+    @media (min-width: 501px) {{
+      .popup-wrapper {{
+        width: 640px;
+        max-width: 640px;
+        min-width: 280px;
+        max-height: 600px;
+        overflow: visible;
+      }}
+    }}
+    </style>
+    
+    <div class="popup-wrapper">
+    <h4>{row['station_name']}</h4>
+    <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
+    <tr><th style='padding:{padding}; border:{border};'>Metric</th>
     """
     html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
     html += "</tr>"
