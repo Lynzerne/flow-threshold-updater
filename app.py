@@ -330,8 +330,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     img_base64 = base64.b64encode(buf.read()).decode('utf-8')
     plt.close(fig)
 
-    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width: 100%; height: auto; display: block; margin: 0 auto;'>
-
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width: 100%; height: auto; display: block; margin: 0 auto;'>"
     html += "</div>"
 
     return html
