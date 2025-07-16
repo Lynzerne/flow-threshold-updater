@@ -259,7 +259,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
       .popup-wrapper {{
         width: 95vw !important;
         max-width: 95vw !important;
-        min-width: 50px !important;
+        min-width: 10px !important;
         max-height: 80vh !important;
         overflow-y: auto !important;
         overflow-x: auto !important;
