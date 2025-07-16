@@ -255,40 +255,44 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     # Mobile-friendly scrollable popup wrapper
     html = f"""
     <style>
-    @media (max-width: 500px) {{
-      .popup-wrapper {{
-        width: 95vw !important;
-        max-width: 95vw !important;
-        min-width: 10px !important;
-        max-height: 80vh !important;
-        overflow-y: auto !important;
-        overflow-x: auto !important;
-        padding-right: 10px;
-        -webkit-overflow-scrolling: touch;
-        touch-action: pan-x pan-y;
-      }}
+      @media (max-width: 500px) {{
+        .popup-wrapper {{
+          width: 95vw !important;
+          max-width: 100vw !important;
+          min-width: 0 !important;
+          max-height: 85vh !important;
+          overflow-x: auto !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch;
+          touch-action: pan-x pan-y;
+          box-sizing: border-box;
+        }}
     
-      .popup-wrapper table,
-      .popup-wrapper h4 {{
-        font-size: 13px !important;
-      }}
-    }}
+        .popup-wrapper table, .popup-wrapper h4 {{
+          font-size: 12px !important;
+        }}
     
-    @media (min-width: 501px) {{
-      .popup-wrapper {{
-        width: 640px;
-        max-width: 640px;
-        min-width: 280px;
-        max-height: 600px;
-        overflow: visible;
+        .popup-wrapper table {{
+          width: 100% !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+          word-wrap: break-word;
+        }}
+    
+        .popup-wrapper img {{
+          max-width: 100% !important;
+          height: auto !important;
+          display: block !important;
+          margin: 0 auto !important;
+        }}
       }}
-    }}
     </style>
     
-    <div class="popup-wrapper">
-    <h4>{row['station_name']}</h4>
-    <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
-    <tr><th style='padding:{padding}; border:{border};'>Metric</th>
+    <!-- Responsive popup container -->
+    <div class='popup-wrapper'>
+      <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
+      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%; table-layout: fixed;'>
+        <tr><th style='padding:{padding}; border:{border};'>Metric</th>
     """
     html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
     html += "</tr>"
@@ -590,5 +594,12 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Render and display the map
     m = render_map_two_layers()
     map_html = m.get_root().render()
-
-st.components.v1.html(map_html, height=1200, scrolling=True)
+    
+    # Inject mobile-friendly viewport settings into <head>
+    map_html = map_html.replace(
+        "<head>",
+        "<head><meta name='viewport' content='width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=5, user-scalable=yes'>"
+    )
+    
+    # Display map
+    st.components.v1.html(map_html, height=1200, scrolling=True)
