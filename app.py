@@ -491,10 +491,10 @@ def render_map_two_layers():
         popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=300, height=300)
+        iframe_diversion = IFrame(html=popup_html_diversion, width=300, height=700)
         popup_diversion = folium.Popup(iframe_diversion, max_width=700)
         
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=300, height=300)
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=300, height=700)
         popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=700)
 
         # Marker for ALL stations (show no diversion popup)
