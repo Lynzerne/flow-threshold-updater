@@ -253,17 +253,17 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         )
 
     # Mobile-friendly scrollable popup wrapper
-        html = f"""
         <div style='
-            width: 90vw;
+            width: 100%;
             max-width: 640px;
             min-width: 60px;
-            max-height: 200px;
+            max-height: none;
             overflow-y: auto;
             overflow-x: auto;
             padding-right: 10px;
             -webkit-overflow-scrolling: touch;
             touch-action: pan-x pan-y;
+            box-sizing: border-box;
         '>
         <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
         <table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>
@@ -458,8 +458,12 @@ def render_map_two_layers():
             popups.forEach(p => {
                 if (window.innerWidth < 500) {
                     p.style.width = '320px';
+                    p.style.maxHeight = '90vh';
+                    p.style.overflow = 'auto';
                 } else {
                     p.style.width = '650px';
+                    p.style.maxHeight = '600px';
+                    p.style.overflow = 'auto';
                 }
             });
         };
@@ -469,7 +473,6 @@ def render_map_two_layers():
     });
     </script>
     """)
-    
     m.get_root().html.add_child(popup_resize_script)
 
     Fullscreen().add_to(m)
@@ -493,10 +496,10 @@ def render_map_two_layers():
         popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=650, height=550)
+        iframe_diversion = IFrame(html=popup_html_no_diversion, width=650, height=400)
         popup_diversion = folium.Popup(iframe_diversion, max_width=700)
         
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=650, height=550)
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=650, height=400)
         popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=700)
 
         # Marker for ALL stations (show no diversion popup)
