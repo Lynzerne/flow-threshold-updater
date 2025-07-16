@@ -255,37 +255,52 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     # Mobile-friendly scrollable popup wrapper
     html = f"""
     <style>
-      @media (max-width: 500px) {{
-        .popup-wrapper {{
+      @media (max-width: 500px) {
+        .leaflet-popup-content {
+          width: auto !important;
+          max-width: 95vw !important;
+          min-width: 10px !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+    
+        .leaflet-popup-content-wrapper {
+          padding: 4px !important;
+        }
+    
+        .leaflet-popup-content > div {
+          width: 100% !important;
+        }
+    
+        .popup-wrapper {
           width: 95vw !important;
           max-width: 100vw !important;
-          min-width: 0 !important;
+          min-width: 10px !important;
           max-height: 85vh !important;
           overflow-x: auto !important;
           overflow-y: auto !important;
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           box-sizing: border-box;
-        }}
+        }
     
-        .popup-wrapper table, .popup-wrapper h4 {{
+        .popup-wrapper table, .popup-wrapper h4 {
           font-size: 12px !important;
-        }}
+        }
     
-        .popup-wrapper table {{
+        .popup-wrapper table {
           width: 100% !important;
-          max-width: 100% !important;
           table-layout: fixed !important;
           word-wrap: break-word;
-        }}
+        }
     
-        .popup-wrapper img {{
+        .popup-wrapper img {
           max-width: 100% !important;
           height: auto !important;
           display: block !important;
           margin: 0 auto !important;
-        }}
-      }}
+        }
+      }
     </style>
     
     <!-- Responsive popup container -->
@@ -521,11 +536,11 @@ def render_map_two_layers():
         popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_diversion = IFrame(html=popup_html_no_diversion, width=650, height=400)
-        popup_diversion = folium.Popup(iframe_diversion, max_width=700)
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=300, height=400)
+        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width='auto')
         
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=650, height=400)
-        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=700)
+        iframe_diversion = IFrame(html=popup_html_diversion, width=300, height=400)
+        popup_diversion = folium.Popup(iframe_diversion, max_width='auto')
 
         # Marker for ALL stations (show no diversion popup)
         folium.CircleMarker(
