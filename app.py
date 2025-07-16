@@ -253,6 +253,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         )
 
     # Mobile-friendly scrollable popup wrapper
+        html = f"""
         <div style='
             width: 90vw;
             max-width: 640px;
