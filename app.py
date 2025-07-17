@@ -566,14 +566,19 @@ def render_map_two_layers():
   #  });
    # </script>
     #""")
-    #m.get_root().html.add_child(folium.Element("""
-     #   <style>
-      #      /* Ensure the body (and thus the map) allows touch actions for zooming */
-       #     body {
-        #        touch-action: pan-x pan-y pinch-zoom !important;
-         #   }
-        #</style>
-   # """))
+    m.get_root().html.add_child(Element("""
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+    """))
+    
+    # Ensure the body (and thus the map) allows touch actions for zooming
+    m.get_root().html.add_child(Element("""
+        <style>
+            body {
+                touch-action: pan-x pan-y pinch-zoom !important;
+            }
+        </style>
+    """))
+
     Fullscreen().add_to(m)
 
     # FeatureGroups for two modes
@@ -667,13 +672,15 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
 
     # Render and display the map
     m = render_map_two_layers()
-    map_html = m.get_root().render()
-    
+    # Now simply render the map directly to HTML
+    st.components.v1.html(m._repr_html_(), height=1200, scrolling=True) # Use m._repr_html_() for direct rendering
+
     # Inject mobile-friendly viewport settings into <head>
-    map_html = map_html.replace(
-        "<head>",
-        "<head><meta name='viewport' content='width=device-width, initial-scale=1'>"
-    )
+#    map_html = map_html.replace(
+#        "<head>",
+#        "<head><meta name='viewport' content='width=device-width, initial-scale=1'>"
+#    )
     
     # Display map
-    st.components.v1.html(map_html, height=1200, scrolling=True)
+#
+#st.components.v1.html(map_html, height=1200, scrolling=True)
