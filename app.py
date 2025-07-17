@@ -577,13 +577,26 @@ with st.sidebar.expander("ℹ️ Who Cares?"):
     """)
 # Pre-generate both popup caches upfront
 
-def get_most_recent_valid_date(row, dates):
-    for d in sorted(dates, reverse=True):
-        daily = extract_daily_data(row['time_series'], d)
-        if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
-            return d
-    return None
-
+def get_most_recent_valid_date_for_map_color(row):
+    """
+    Finds the most recent date for a station that has a non-null Daily flow or Calculated flow.
+    This is used for the map marker color, and should check ALL available data for the station.
+    """
+    latest_valid_date = None
+    if isinstance(row['time_series'], (list, tuple)):
+        # Sort in reverse chronological order to easily find the latest
+        sorted_ts = sorted(row['time_series'], key=lambda x: parse(x['date']) if 'date' in x else datetime.min, reverse=True)
+        for item in sorted_ts:
+            if 'date' in item:
+                daily_flow = item.get('Daily flow')
+                calc_flow = item.get('Calculated flow')
+                # Check if either flow value is not null/NA
+                if pd.notna(daily_flow) or pd.notna(calc_flow):
+                    try:
+                        return datetime.strptime(item['date'], '%Y-%m-%d').date().strftime('%Y-%m-%d')
+                    except ValueError:
+                        continue # Skip malformed dates
+    return None # No valid date with flow data found
 @st.cache_data(show_spinner=True)
 def render_map_two_layers():
     m = folium.Map(
@@ -648,11 +661,11 @@ def render_map_two_layers():
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
 
-        date = get_most_recent_valid_date(row, selected_dates)
-        if not date:
+        date_for_map_color = get_most_recent_valid_date_for_map_color(row)
+        if not date_for_map_color: # If no valid flow data, skip this station for map coloring
             continue
 
-        color = get_color_for_date(row, date)
+        color = get_color_for_date(row, date_for_map_color)
 
         # Use diversion popup cache if available
         wsc = row['WSC']
