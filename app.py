@@ -685,7 +685,7 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Render and display the map
     m = render_map_two_layers()
     # Now simply render the map directly to HTML
-    st.components.v1.html(m._repr_html_(), height=1200, scrolling=True) # Use m._repr_html_() for direct rendering
+    st.components.v1.html(m._repr_html_(), height=2000, scrolling=True) # Use m._repr_html_() for direct rendering
 
     # Inject mobile-friendly viewport settings into <head>
 #    map_html = map_html.replace(
