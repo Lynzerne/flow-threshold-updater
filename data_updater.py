@@ -100,51 +100,44 @@ for _, row in stns.iterrows():
     all_data.append(df)
 
 # --- Merge/Update Master Dataset ---
-if all_data:
-    new_data_df = pd.concat(all_data, ignore_index=True)
+if not master_df.empty:
+    updated_rows = []
 
-    merge_keys = ['station_no', 'Date']
-    metadata_cols = ['station_no', 'station_name', 'Date', 'lon', 'lat']
-    ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
+    for _, new_row in new_data_df.iterrows():
+        match = (master_df['station_no'] == new_row['station_no']) & (master_df['Date'] == new_row['Date'])
+        if match.any():
+            old_row = master_df[match].iloc[0]
 
-    if not master_df.empty:
-        updated_rows = []
+            # Detect revisions
+            revised_fields = []
 
-        for _, new_row in new_data_df.iterrows():
-            match = (master_df['station_no'] == new_row['station_no']) & (master_df['Date'] == new_row['Date'])
-            if match.any():
-                old_row = master_df[match].iloc[0]
+            for col in ts_cols:
+                old_val = old_row.get(col)
+                new_val = new_row.get(col)
+                if pd.isna(old_val) and pd.notna(new_val):
+                    revised_fields.append(f"{col}: null → {new_val}")
+                elif pd.notna(old_val) and pd.notna(new_val) and not pd.isclose(old_val, new_val, equal_nan=True):
+                    revised_fields.append(f"{col}: {old_val} → {new_val}")
 
-                # Detect revisions
-                revised_fields = []
+            new_row['is_revised'] = bool(revised_fields)
+            new_row['revised_fields'] = "; ".join(revised_fields) if revised_fields else None
 
-                for col in ts_cols:
-                    old_val = old_row.get(col)
-                    new_val = new_row.get(col)
-                    if pd.isna(old_val) and pd.notna(new_val):
-                        revised_fields.append(f"{col}: null → {new_val}")
-                    elif pd.notna(old_val) and pd.notna(new_val) and not pd.isclose(old_val, new_val, equal_nan=True):
-                        revised_fields.append(f"{col}: {old_val} → {new_val}")
+            if new_row['is_revised']:
+                print(f"🔁 Revision for {new_row['station_no']} on {new_row['Date']}: {new_row['revised_fields']}")
 
-                new_row['is_revised'] = bool(revised_fields)
-                new_row['revised_fields'] = "; ".join(revised_fields) if revised_fields else None
+            updated_rows.append(new_row)
+        else:
+            # New record (not in master)
+            new_row['is_revised'] = False
+            new_row['revised_fields'] = None
+            updated_rows.append(new_row)
 
-                updated_rows.append(new_row)  
-            else:
-                # New record (not in master)
-                new_row['is_revised'] = False
-                new_row['revised_fields'] = None
-                updated_rows.append(new_row)
-          if new_row['is_revised']:
-              print(f"🔁 Revision for {new_row['station_no']} on {new_row['Date']}: {new_row['revised_fields']}")
+    # ✅ Define updated_df from all updated rows
+    updated_df = pd.DataFrame(updated_rows)
 
-        # Remove old rows with matching keys, then append updated rows
-        master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_df.set_index(merge_keys).index)]
-        master_df = pd.concat([master_df, updated_df], ignore_index=True)
-
-    else:
-        new_data_df['is_revised'] = False
-        master_df = new_data_df
+    # ✅ Replace old rows with updated ones
+    master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_df.set_index(merge_keys).index)]
+    master_df = pd.concat([master_df, updated_df], ignore_index=True)
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
 
