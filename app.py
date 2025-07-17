@@ -26,7 +26,7 @@ body {
     overflow: auto !important;
 }
 </style>
-""", unsafe_allow_html=True
+""", unsafe_allow_html=True)
 # --- Paths ---
 DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
