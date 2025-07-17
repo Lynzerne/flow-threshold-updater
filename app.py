@@ -75,7 +75,48 @@ def load_data():
     geo_data = geo_data.drop(columns=['geometry'])
 
     # Parse time_series safely
-def safe_parse_and_convert_time_series(val):
+def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert list columns to tuples, and dicts within time_series lists to frozensets,
+    for Streamlit caching compatibility.
+    """
+    df_copy = df.copy()
+    for col in df_copy.columns:
+        if col == 'time_series':
+            # This handles the specific 'time_series' column
+            df_copy[col] = df_copy[col].apply(
+                lambda ts_list: tuple(
+                    frozenset(item.items()) if isinstance(item, dict) else item
+                    for item in ts_list
+                ) if isinstance(ts_list, (list, tuple)) else ts_list
+            )
+        elif df_copy[col].apply(lambda x: isinstance(x, list)).any():
+            # This handles other columns that might be lists
+            df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
+    return df_copy
+
+@st.cache_data
+def load_data():
+    # Load spatial GeoData
+    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+    geo_data = geo_data.rename(columns={'station_no': 'WSC'})
+
+    # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
+    station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
+
+    # Merge in additional attributes
+    merged_data = geo_data.merge( # Renamed to merged_data to avoid confusion with global 'merged'
+        station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
+        on='WSC', how='left'
+    )
+
+    # Convert geometry to WKT (safe for caching)
+    merged_data['geometry_wkt'] = merged_data.geometry.apply(lambda g: g.wkt if g else None)
+    merged_data = merged_data.drop(columns=['geometry'])
+
+    # Parse time_series safely AND robustly convert flow values immediately
+    # This is the function we've been refining, now correctly integrated
+    def safe_parse_and_convert_time_series(val):
         parsed_ts = []
         if isinstance(val, str):
             try:
@@ -120,6 +161,11 @@ def safe_parse_and_convert_time_series(val):
     # into tuples of frozensets, making the DataFrame hashable.
     merged_data = make_df_hashable(merged_data)
     print("Columns in merged DataFrame:", merged_data.columns.tolist())
+
+    return merged_data
+
+# Call load_data and assign merged here
+merged = load_data() # This will now be hashable!
 
     return merged_data
 
