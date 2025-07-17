@@ -111,6 +111,7 @@ base_url_template = "https://rivers.alberta.ca/apps/Basins/data/figures/river/ab
 
 # --- Date Window (last 7 days; source JSON provides last 7 days of data) ---
 today = datetime.today().date()
+print(f"Script run date (today): {today}") # DEBUG
 lookback_days = 7
 date_window = [today - timedelta(days=i) for i in range(lookback_days)]
 
@@ -173,9 +174,22 @@ for _, row in stns.iterrows():
         print(f"No 'Date' column in data for {station_id}, skipping.")
         continue
 
-    df['Date'] = pd.to_datetime(df['Date']).dt.date
-    # Remove future-dated entries
+    original_df_len = len(df) # DEBUG
     df = df[df['Date'] <= today]
+    if len(df) < original_df_len: # DEBUG
+        print(f"  DEBUG: Filtered out {original_df_len - len(df)} future dates for {station_id}.") # DEBUG
+        # DEBUG: Check the max date *after* filtering for this station's API data
+    if not df.empty:
+        print(f"  DEBUG: Latest date from API for {station_id}: {df['Date'].max()}")
+        # Define latest_date_data here, inside the `if not df.empty` block
+        latest_date_data = df[df['Date'] == df['Date'].max()]
+
+        if 'Daily flow' in latest_date_data.columns:
+            print(f"    DEBUG: Daily flow for latest date ({df['Date'].max()}): {latest_date_data['Daily flow'].iloc[0]}")
+        if 'Calculated flow' in latest_date_data.columns:
+             print(f"    DEBUG: Calculated flow for latest date ({df['Date'].max()}): {latest_date_data['Calculated flow'].iloc[0]}")
+    else: # Add this else block to indicate if df is empty even after initial fetch
+        print(f"  DEBUG: No valid data remaining for {station_id} after date filtering.")
 
     # Don't filter by date_window - keep all up to 7 days
 
@@ -316,9 +330,4 @@ print(f"📍 Daily GeoJSON snapshot saved: {geojson_updated_path}")
 with open(master_geojson_path, 'w') as f:
     json.dump(geojson, f, indent=2)
 print(f"🔁 Rolling master GeoJSON updated: {master_geojson_path}")
-print(f"  DEBUG: Latest date from API for {station_id}: {df['Date'].max()}")
-# Also check for presence of 'Daily flow' for the latest date
-if 'Daily flow' in latest_date_data.columns:
-    print(f"    DEBUG: Daily flow for latest date ({df['Date'].max()}): {latest_date_data['Daily flow'].iloc[0]}")
-if 'Calculated flow' in latest_date_data.columns:
-     print(f"    DEBUG: Calculated flow for latest date ({df['Date'].max()}): {latest_date_data['Calculated flow'].iloc[0]}")
+
