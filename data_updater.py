@@ -2,7 +2,6 @@ import os
 import json
 import requests
 import pandas as pd
-import numpy as np
 from collections import Counter
 from datetime import datetime, timedelta, date
 
@@ -12,98 +11,6 @@ except ImportError:
     raise ImportError("pyarrow is required to read/write Parquet files. Please install it via pip.")
 pd.options.io.parquet.engine = "pyarrow"
 
-
-# --- PATCH START ---
-# New update function to keep original published data for finalized days,
-# allow filling nulls anytime, and track revisions with revision_number.
-
-def update_master_dataset(master_df, new_data_df, ts_cols, merge_keys=['station_no', 'Date']):
-    today = datetime.today().date()
-    finalization_cutoff = today - timedelta(days=2)
-
-    def is_nan_or_null(x):
-        return pd.isna(x) or (isinstance(x, str) and x.strip() == "")
-
-    updated_rows = []
-    master_indices_to_keep = []
-
-    master_indexed = master_df.set_index(merge_keys)
-
-    for _, new_row in new_data_df.iterrows():
-        station = new_row['station_no']
-        date = pd.to_datetime(new_row['Date']).date()
-        key = tuple(new_row[k] for k in merge_keys)
-
-        if key not in master_indexed.index:
-            # New record, add as-is
-            new_row['is_revised'] = False
-            new_row['revision_number'] = 0
-            updated_rows.append(new_row)
-            continue
-
-        old_row = master_indexed.loc[key]
-        if isinstance(old_row, pd.DataFrame):
-            old_row = old_row.iloc[0]
-
-        # Allow overwriting null/blank values anytime
-        fill_null_allowed = any(
-            is_nan_or_null(old_row.get(col)) and not is_nan_or_null(new_row.get(col))
-            for col in ts_cols
-        )
-        if fill_null_allowed:
-            # Just overwrite nulls with new data, no revision mark
-            new_row['is_revised'] = old_row.get('is_revised', False)
-            new_row['revision_number'] = old_row.get('revision_number', 0)
-            updated_rows.append(new_row)
-            continue
-
-        # If date is recent (<= 2 days old), overwrite freely, no revision
-        if date > finalization_cutoff:
-            new_row['is_revised'] = False
-            new_row['revision_number'] = 0
-            updated_rows.append(new_row)
-            continue
-
-        # For finalized data, detect revisions and keep original + add revised row
-        revised_fields = []
-        for col in ts_cols:
-            old_val = old_row.get(col)
-            new_val = new_row.get(col)
-            if pd.isna(old_val) and pd.notna(new_val):
-                revised_fields.append(f"{col}: null → {new_val}")
-            elif pd.notna(old_val) and pd.notna(new_val) and old_val != new_val:
-                revised_fields.append(f"{col}: {old_val} → {new_val}")
-
-        if revised_fields:
-            # Keep original row by not removing it here (master_indices_to_keep)
-            # Add new revised row with revision_number incremented
-            new_row['is_revised'] = True
-
-            existing_revs = master_df[
-                (master_df['station_no'] == station) & 
-                (master_df['Date'] == new_row['Date']) & 
-                (master_df['is_revised'] == True)
-            ]
-            max_rev = existing_revs['revision_number'].max() if not existing_revs.empty else 0
-            new_row['revision_number'] = max_rev + 1
-
-            updated_rows.append(new_row)
-            print(f"🔁 Revision for {station} on {date}: {'; '.join(revised_fields)}")
-        else:
-            # No revision, keep old row
-            idx = master_df[
-                (master_df['station_no'] == station) & (master_df['Date'] == new_row['Date'])
-            ].index[0]
-            master_indices_to_keep.append(idx)
-
-    # Keep original rows that were not replaced by revisions
-    master_rows_to_keep = master_df.loc[master_indices_to_keep]
-    updated_df = pd.DataFrame(updated_rows)
-
-    final_master_df = pd.concat([master_rows_to_keep, updated_df], ignore_index=True)
-    final_master_df.sort_values(by=merge_keys, inplace=True)
-    return final_master_df
-# --- PATCH END ---
 # --- Config ---
 station_list_csv = "data/AB_WS_R_StationList.csv"
 output_parquet = "data/WS_R_master_daily.parquet"
@@ -111,7 +18,6 @@ base_url_template = "https://rivers.alberta.ca/apps/Basins/data/figures/river/ab
 
 # --- Date Window (last 7 days; source JSON provides last 7 days of data) ---
 today = datetime.today().date()
-print(f"Script run date (today): {today}") # DEBUG
 lookback_days = 7
 date_window = [today - timedelta(days=i) for i in range(lookback_days)]
 
@@ -174,35 +80,11 @@ for _, row in stns.iterrows():
         print(f"No 'Date' column in data for {station_id}, skipping.")
         continue
 
-    # *** THESE LINES MUST BE HERE, BEFORE ANY DATE COMPARISONS ***
-    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-    df['Date'] = df['Date'].dt.date
-    df.dropna(subset=['Date'], inplace=True) # Ensure NaT values are removed BEFORE filtering
+    df['Date'] = pd.to_datetime(df['Date']).dt.date
 
 
-    # Remove future-dated entries
-    original_df_len = len(df) # DEBUG
-    # The 'today' variable is already a datetime.date object.
-    # Now df['Date'] is also reliably datetime.date objects.
-    df = df[df['Date'] <= today]
-    if len(df) < original_df_len: # DEBUG
-        print(f"  DEBUG: Filtered out {original_df_len - len(df)} future dates for {station_id}.") # DEBUG
-    
-    # DEBUG: Check the max date *after* filtering for this station's API data
-    if not df.empty:
-        print(f"  DEBUG: Latest date from API for {station_id}: {df['Date'].max()}")
-        # Define latest_date_data here, inside the `if not df.empty` block
-        latest_date_data = df[df['Date'] == df['Date'].max()]
-
-        if 'Daily flow' in latest_date_data.columns:
-            print(f"    DEBUG: Daily flow for latest date ({df['Date'].max()}): {latest_date_data['Daily flow'].iloc[0]}")
-        if 'Calculated flow' in latest_date_data.columns:
-             print(f"    DEBUG: Calculated flow for latest date ({df['Date'].max()}): {latest_date_data['Calculated flow'].iloc[0]}")
-    else: # Add this else block to indicate if df is empty even after initial fetch
-        print(f"  DEBUG: No valid data remaining for {station_id} after date filtering.")
-
-    # Don't filter by date_window - keep all up to 7 days
-    # This comment is accurate now, as the filtering is by 'today' not 'date_window'
+    # Don't filter by date_window - keep all dates from source JSON (up to 7 days)
+    # This allows backfill of missing days automatically.
 
     if df.empty:
         print(f"No recent data for {station_id}, skipping.")
@@ -218,27 +100,63 @@ for _, row in stns.iterrows():
 # --- Merge/Update Master Dataset ---
 if all_data:
     new_data_df = pd.concat(all_data, ignore_index=True)
-    print(f"Total new data rows collected before merge: {len(new_data_df)}") # DEBUG
-    print(f"Max date in new_data_df: {new_data_df['Date'].max()}") # DEBUG
 
     merge_keys = ['station_no', 'Date']
     metadata_cols = ['station_no', 'station_name', 'Date', 'lon', 'lat']
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        master_df = update_master_dataset(master_df, new_data_df, ts_cols, merge_keys=merge_keys)
+        updated_rows = []
+
+        for _, new_row in new_data_df.iterrows():
+            match = (master_df['station_no'] == new_row['station_no']) & (master_df['Date'] == new_row['Date'])
+            if match.any():
+                old_row = master_df[match].iloc[0]
+
+                # Determine if revision is needed (only if old value is NaN and new value is not)
+                revised = False
+                for col in ts_cols:
+                    old_val = old_row.get(col)
+                    new_val = new_row.get(col)
+                    if pd.isna(old_val) and pd.notna(new_val):
+                        revised = True
+                        break
+
+                new_row['is_revised'] = revised
+                updated_rows.append(new_row)
+            else:
+                # New record (not in master)
+                new_row['is_revised'] = False
+                updated_rows.append(new_row)
+
+        updated_df = pd.DataFrame(updated_rows)
+
+        # Remove old rows with matching keys, then append updated rows
+        master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_df.set_index(merge_keys).index)]
+        master_df = pd.concat([master_df, updated_df], ignore_index=True)
+
     else:
         new_data_df['is_revised'] = False
-        new_data_df['revision_number'] = 0
         master_df = new_data_df
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
+
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
-    print(f"Master dataset saved to {output_parquet} with {len(master_df)} rows. Latest date in saved master_df: {master_df['Date'].max()}") # DEBUG
+    print(f"Master dataset saved to {output_parquet}")
+
+    # --- Save Daily Snapshot for Most Recent Date Available ---
+    iday = new_data_df['Date'].max()
+    daily_snapshot_df = master_df[master_df['Date'] == iday]
+
+    daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
+    daily_snapshot_df.to_parquet(daily_parquet_path, index=False, engine="pyarrow")
+    print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
 
 else:
     print("No new data collected from any stations.")
+
 #############################Stitch#############################
+from datetime import date
 import pandas as pd
 import json
 import os
@@ -308,6 +226,7 @@ for stn_id, group_df in master_df.groupby('station_no'):
     feat['properties']['lat'] = float(latest_record.get('lat', feat['properties'].get('lat', 0)))
     feat['properties']['lon'] = float(latest_record.get('lon', feat['properties'].get('lon', 0)))
 
+    # Build timeseries list with date and parameter values
     # --- Build timeseries list with date, parameter values, and is_revised ---
     timeseries = []
     for _, row in group_df.iterrows():
@@ -318,10 +237,7 @@ for stn_id, group_df in master_df.groupby('station_no'):
                 ts_entry[col] = val
         # Add is_revised flag if it exists, else default to False
         ts_entry['is_revised'] = bool(row.get('is_revised', False))
-        # Add revision_number for insight
-        val = row.get('revision_number', 0)
-        ts_entry['revision_number'] = int(val) if pd.notna(val) else 0
-
+        
         timeseries.append(ts_entry)
 
     # Defensive cleanup: remove NaN keys inside timeseries dicts (optional)
