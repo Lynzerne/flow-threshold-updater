@@ -259,36 +259,48 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         .leaflet-popup-content {{
           width: auto !important;
           max-width: 95vw !important;
-          max-width: 95vw !important; /* Allow it to be almost full width of the viewport */
           min-width: 10px !important;
+      /* Base styles for the popup content - apply to all screen sizes first */
+      .leaflet-popup-content {{
           padding: 0 !important;
           margin: 0 !important;
         }}
     
         .leaflet-popup-content-wrapper {{
+          box-sizing: border-box; /* Crucial for consistent sizing */
+      }}
+
+      .leaflet-popup-content-wrapper {{
           padding: 4px !important;
         }}
     
         .leaflet-popup-content > div {{
+          background: #fff; /* Ensure white background */
+          border-radius: 12px;
+      }}
+
+      .leaflet-popup-content > div {{
           width: 100% !important;
-          width: 100% !important; /* Ensure direct child takes full width */
         }}
     
         .popup-wrapper {{
-          width: 95vw !important;
-          max-width: 100vw !important;
-          width: 100% !important; /* Ensure this takes full available width from parent */
-          max-width: 100% !important; /* Cap it at 100% of its parent, not viewport */
+      }}
+
+      .popup-wrapper {{
+          width: 100% !important;
+          max-width: 100% !important;
           min-width: 10px !important;
           max-height: 85vh !important;
           overflow-x: auto !important;
           overflow-y: auto !important;
-          overflow-x: auto !important; /* Enable horizontal scrolling if content overflows */
-          overflow-y: auto !important; /* Enable vertical scrolling */
+          height: auto; /* Let content dictate height */
+          min-width: 10px; /* Smallest possible width */
+          overflow-x: auto; /* Enable horizontal scrolling for overflow */
+          overflow-y: auto; /* Enable vertical scrolling */
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           box-sizing: border-box;
-          padding: 5px; /* Add some internal padding */
+          padding: 5px;
         }}
     
         .popup-wrapper table, .popup-wrapper h4 {{
@@ -297,51 +309,105 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     
         .popup-wrapper table {{
           width: 100% !important;
-          table-layout: fixed !important;
-          table-layout: auto !important; /* Change to auto for better content fitting */
+          table-layout: auto !important;
+          padding: 5px; /* Internal padding for content */
+      }}
+
+      .popup-wrapper h4 {{
+          font-size: {font_size};
+          margin-top: 0; /* Remove default margin */
+          margin-bottom: 10px;
+          text-align: center; /* Center the title */
+      }}
+
+      .popup-wrapper table {{
+          border-collapse: collapse;
+          border: {border};
+          font-size: {font_size};
+          width: 100% !important; /* Table must take full width of its container */
+          table-layout: auto; /* Allow columns to size based on content */
           word-wrap: break-word;
-          min-width: 280px; /* Give it a minimum width to prevent excessive squishing */
+          min-width: 280px;
         }}
     
         .popup-wrapper img {{
+          min-width: 280px; /* Minimum width for table on mobile */
+          margin-bottom: 15px; /* Space below table */
+      }}
+
+      .popup-wrapper th, .popup-wrapper td {{
+          padding: {padding};
+          border: {border};
+          text-align: center; /* Center text in cells */
+          vertical-align: middle;
+      }}
+
+      .popup-wrapper th {{
+          background-color: #f2f2f2; /* Light grey background for headers */
+      }}
+
+      .popup-wrapper img {{
           max-width: 100% !important;
           height: auto !important;
           display: block !important;
           margin: 0 auto !important;
-          min-width: 280px; /* Give plot image a minimum width */
+          min-width: 280px;
         }}
+          min-width: 280px; /* Minimum width for image on mobile */
       }}
     
-      /* Styles for larger screens to ensure consistency */
+      /* Styles for larger screens to ensure consistency and proper sizing */
       @media (min-width: 501px) {{
+
+      /* Mobile-specific adjustments */
+      @media (max-width: 500px) {{
         .leaflet-popup-content {{
-            width: 600px !important; /* Adjust as needed for desktop */
-            max-width: 90vw !important;
+            /* The overall popup container width will be largely controlled by folium.Popup max_width */
+            /* We'll let the content wrapper fill that space */
+            width: auto !important; /* Allow content to dictate width up to max_width */
+            max-width: 700px !important; /* Should match folium.Popup max_width or slightly less */
+            min-width: 600px !important; /* Ensure a minimum size on desktop */
+          max-width: 95vw !important; /* Allow almost full viewport width */
         }}
         .popup-wrapper {{
-            width: 100% !important; /* Ensure content fills available popup width */
+            width: 100% !important; /* Ensure content fills available popup width within the IFrame */
             max-width: 100% !important;
-            max-height: 600px !important; /* Desktop max height */
+            max-height: 500px !important; /* Should match IFrame height or slightly less for padding */
             overflow-x: hidden !important; /* No horizontal scroll on desktop normally */
             overflow-y: auto !important;
-            padding: 10px;
+            padding: 10px; /* More padding for desktop view */
+          max-height: 85vh !important; /* Max height for mobile to prevent overflow */
         }}
         .popup-wrapper table {{
-            width: 100% !important;
+            width: 100% !important; /* Ensure table fills 100% of the wrapper */
             table-layout: auto !important;
+        .popup-wrapper table, .popup-wrapper h4 {{
+          font-size: 12px !important; /* Smaller font on mobile */
         }}
         .popup-wrapper img {{
-            max-width: 100% !important;
+            max-width: 100% !important; /* Ensure image scales within the wrapper */
             height: auto !important;
+      }}
+
+      /* Desktop-specific adjustments */
+      @media (min-width: 501px) {{
+        .leaflet-popup-content {{
+            /* These values align with the IFrame size set in render_map_two_layers */
+            min-width: 650px !important; 
+            max-width: 700px !important; /* Max width for the overall popup, slightly more than IFrame */
+            width: auto !important; /* Allow internal content to dictate width if smaller than min/max */
+        }}
+        .popup-wrapper {{
+            max-height: 500px !important; /* Max height for desktop to match IFrame */
+            overflow-x: hidden; /* No horizontal scroll on desktop normally */
+            padding: 10px; /* More padding for desktop */
         }}
       }}
     </style>
     
-    <!-- Responsive popup container -->
     <div class='popup-wrapper'>
       <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
-      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%; table-layout: fixed;'>
-      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%;'>
+      <table style='border-collapse: collapse; font-size:{font_size}; width: 100%; max-width: 100%;'>
         <tr><th style='padding:{padding}; border:{border};'>Metric</th>
     """
     html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
@@ -374,7 +440,6 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</table><br>"
 
     # --- Plot rendering ---
-    fig, ax = plt.subplots(figsize=(7.6, 3.5))
     # Adjusted figsize for better mobile display; width 6.8 is roughly 320px at 72dpi, suitable for mobile
     fig, ax = plt.subplots(figsize=(6.8, 3.5)) 
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
@@ -552,6 +617,14 @@ def render_map_two_layers():
     """)
     m.get_root().html.add_child(popup_resize_script)
 
+    m.get_root().html.add_child(folium.Element("""
+        <style>
+            /* Ensure the body (and thus the map) allows touch actions for zooming */
+            body {
+                touch-action: pan-x pan-y pinch-zoom !important;
+            }
+        </style>
+    """))
     Fullscreen().add_to(m)
 
     # FeatureGroups for two modes
@@ -573,11 +646,11 @@ def render_map_two_layers():
         popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=300, height=400)
-        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width='auto')
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=650, height=500) # Increased size for desktop
+        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=700) # Slightly larger max_width for the overall popup
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=300, height=400)
-        popup_diversion = folium.Popup(iframe_diversion, max_width='auto')
+        iframe_diversion = IFrame(html=popup_html_diversion, width=650, height=500) # Increased size for desktop
+        popup_diversion = folium.Popup(iframe_diversion, max_width=700) # Slightly larger max_width for the overall popup
 
         # Marker for ALL stations (show no diversion popup)
         folium.CircleMarker(
@@ -650,7 +723,7 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Inject mobile-friendly viewport settings into <head>
     map_html = map_html.replace(
         "<head>",
-        "<head><meta name='viewport' content='width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=5, user-scalable=yes'>"
+        "<head><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1'>"
     )
 
     # Display map
