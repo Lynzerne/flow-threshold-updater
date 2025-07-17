@@ -316,3 +316,9 @@ print(f"📍 Daily GeoJSON snapshot saved: {geojson_updated_path}")
 with open(master_geojson_path, 'w') as f:
     json.dump(geojson, f, indent=2)
 print(f"🔁 Rolling master GeoJSON updated: {master_geojson_path}")
+print(f"  DEBUG: Latest date from API for {station_id}: {df['Date'].max()}")
+# Also check for presence of 'Daily flow' for the latest date
+if 'Daily flow' in latest_date_data.columns:
+    print(f"    DEBUG: Daily flow for latest date ({df['Date'].max()}): {latest_date_data['Daily flow'].iloc[0]}")
+if 'Calculated flow' in latest_date_data.columns:
+     print(f"    DEBUG: Calculated flow for latest date ({df['Date'].max()}): {latest_date_data['Calculated flow'].iloc[0]}")
