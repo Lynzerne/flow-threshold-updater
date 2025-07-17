@@ -81,6 +81,8 @@ for _, row in stns.iterrows():
         continue
 
     df['Date'] = pd.to_datetime(df['Date']).dt.date
+    # Remove future-dated entries
+    df = df[df['Date'] <= today]
 
 
     # Don't filter by date_window - keep all dates from source JSON (up to 7 days)
@@ -113,23 +115,28 @@ if all_data:
             if match.any():
                 old_row = master_df[match].iloc[0]
 
-                # Determine if revision is needed (only if old value is NaN and new value is not)
-                revised = False
+                # Detect revisions
+                revised_fields = []
+
                 for col in ts_cols:
                     old_val = old_row.get(col)
                     new_val = new_row.get(col)
                     if pd.isna(old_val) and pd.notna(new_val):
-                        revised = True
-                        break
+                        revised_fields.append(f"{col}: null → {new_val}")
+                    elif pd.notna(old_val) and pd.notna(new_val) and not pd.isclose(old_val, new_val, equal_nan=True):
+                        revised_fields.append(f"{col}: {old_val} → {new_val}")
 
-                new_row['is_revised'] = revised
-                updated_rows.append(new_row)
+                new_row['is_revised'] = bool(revised_fields)
+                new_row['revised_fields'] = "; ".join(revised_fields) if revised_fields else None
+
+                updated_rows.append(new_row)  
             else:
                 # New record (not in master)
                 new_row['is_revised'] = False
+                new_row['revised_fields'] = None
                 updated_rows.append(new_row)
-
-        updated_df = pd.DataFrame(updated_rows)
+          if new_row['is_revised']:
+              print(f"🔁 Revision for {new_row['station_no']} on {new_row['Date']}: {new_row['revised_fields']}")
 
         # Remove old rows with matching keys, then append updated rows
         master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_df.set_index(merge_keys).index)]
@@ -144,8 +151,8 @@ if all_data:
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
 
-    # --- Save Daily Snapshot for Most Recent Date Available ---
-    iday = new_data_df['Date'].max()
+    # --- Save Daily Snapshot for Today Only ---
+    iday = today
     daily_snapshot_df = master_df[master_df['Date'] == iday]
 
     daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
