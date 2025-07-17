@@ -230,14 +230,14 @@ def get_valid_dates(merged):
     dates = set()
     for ts in merged['time_series']:
         for item in ts:
-            if 'date' in item and 'Daily flow' in item:
+            if 'date' in item: # Only check for presence of 'date' key
                 try:
-                    d = parse(item['date']).strftime('%Y-%m-%d')
-                    if item['Daily flow'] is not None:
-                        dates.add(d)
-                except:
+                    # Parse and format consistently
+                    d = datetime.strptime(item['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+                    dates.add(d)
+                except ValueError: # Catch cases where date string is malformed
                     pass
-    return sorted(dates)
+    return sorted(list(dates)) # Convert set to list and sort
 
 valid_dates = get_valid_dates(merged)
 
@@ -582,21 +582,24 @@ def get_most_recent_valid_date_for_map_color(row):
     Finds the most recent date for a station that has a non-null Daily flow or Calculated flow.
     This is used for the map marker color, and should check ALL available data for the station.
     """
-    latest_valid_date = None
+    latest_valid_date_str = None # Store as string 'YYYY-MM-DD'
     if isinstance(row['time_series'], (list, tuple)):
         # Sort in reverse chronological order to easily find the latest
+        # Ensure we can parse the date string for sorting
         sorted_ts = sorted(row['time_series'], key=lambda x: parse(x['date']) if 'date' in x else datetime.min, reverse=True)
         for item in sorted_ts:
             if 'date' in item:
                 daily_flow = item.get('Daily flow')
                 calc_flow = item.get('Calculated flow')
-                # Check if either flow value is not null/NA
+                # Check if either flow value is not None/NaN
                 if pd.notna(daily_flow) or pd.notna(calc_flow):
                     try:
-                        return datetime.strptime(item['date'], '%Y-%m-%d').date().strftime('%Y-%m-%d')
+                        latest_valid_date_str = item['date'] # Return the string directly
+                        return latest_valid_date_str
                     except ValueError:
                         continue # Skip malformed dates
     return None # No valid date with flow data found
+
 @st.cache_data(show_spinner=True)
 def render_map_two_layers():
     m = folium.Map(
