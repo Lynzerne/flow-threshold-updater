@@ -174,11 +174,21 @@ for _, row in stns.iterrows():
         print(f"No 'Date' column in data for {station_id}, skipping.")
         continue
 
+    # *** THESE LINES MUST BE HERE, BEFORE ANY DATE COMPARISONS ***
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df['Date'] = df['Date'].dt.date
+    df.dropna(subset=['Date'], inplace=True) # Ensure NaT values are removed BEFORE filtering
+
+
+    # Remove future-dated entries
     original_df_len = len(df) # DEBUG
+    # The 'today' variable is already a datetime.date object.
+    # Now df['Date'] is also reliably datetime.date objects.
     df = df[df['Date'] <= today]
     if len(df) < original_df_len: # DEBUG
         print(f"  DEBUG: Filtered out {original_df_len - len(df)} future dates for {station_id}.") # DEBUG
-        # DEBUG: Check the max date *after* filtering for this station's API data
+    
+    # DEBUG: Check the max date *after* filtering for this station's API data
     if not df.empty:
         print(f"  DEBUG: Latest date from API for {station_id}: {df['Date'].max()}")
         # Define latest_date_data here, inside the `if not df.empty` block
@@ -192,6 +202,7 @@ for _, row in stns.iterrows():
         print(f"  DEBUG: No valid data remaining for {station_id} after date filtering.")
 
     # Don't filter by date_window - keep all up to 7 days
+    # This comment is accurate now, as the filtering is by 'today' not 'date_window'
 
     if df.empty:
         print(f"No recent data for {station_id}, skipping.")
@@ -207,15 +218,15 @@ for _, row in stns.iterrows():
 # --- Merge/Update Master Dataset ---
 if all_data:
     new_data_df = pd.concat(all_data, ignore_index=True)
+    print(f"Total new data rows collected before merge: {len(new_data_df)}") # DEBUG
+    print(f"Max date in new_data_df: {new_data_df['Date'].max()}") # DEBUG
 
     merge_keys = ['station_no', 'Date']
     metadata_cols = ['station_no', 'station_name', 'Date', 'lon', 'lat']
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        # --- PATCH START ---
         master_df = update_master_dataset(master_df, new_data_df, ts_cols, merge_keys=merge_keys)
-        # --- PATCH END ---
     else:
         new_data_df['is_revised'] = False
         new_data_df['revision_number'] = 0
@@ -223,7 +234,7 @@ if all_data:
 
     master_df.sort_values(['station_no', 'Date'], inplace=True)
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
-    print(f"Master dataset saved to {output_parquet}")
+    print(f"Master dataset saved to {output_parquet} with {len(master_df)} rows. Latest date in saved master_df: {master_df['Date'].max()}") # DEBUG
 
 else:
     print("No new data collected from any stations.")
