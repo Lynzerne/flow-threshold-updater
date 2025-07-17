@@ -183,23 +183,38 @@ def load_diversion_tables():
 def extract_daily_data(time_series, date_str):
     for item in time_series:
         if item.get("date") == date_str:
-            # Explicitly convert flow values to float, coercing errors to None
-            daily_flow = item.get('Daily flow')
-            calc_flow = item.get('Calculated flow')
+            daily_flow_raw = item.get('Daily flow')
+            calc_flow_raw = item.get('Calculated flow')
 
-            try:
-                daily_flow = float(daily_flow) if pd.notna(daily_flow) else None
-            except (ValueError, TypeError):
+            # --- ADD THIS DEBUGGING HERE ---
+            if date_str in ["2025-07-15", "2025-07-16", "2025-07-17", "2025-07-18"] and item.get('station_no') == '07HC001': # Add station_no check if extract_daily_data gets it, otherwise you'll need to print outside this func.
+                 st.sidebar.write(f"DEBUG: Station 07HC001, Date {date_str}")
+                 st.sidebar.write(f"  Raw Daily Flow: {daily_flow_raw} (Type: {type(daily_flow_raw)})")
+                 st.sidebar.write(f"  Raw Calculated Flow: {calc_flow_raw} (Type: {type(calc_flow_raw)})")
+            # --- END DEBUGGING ---
+
+            daily_flow = None
+            calc_flow = None
+
+            # First, handle explicit None/NaN
+            if pd.isna(daily_flow_raw): # This catches Python None and numpy.nan
                 daily_flow = None
+            else:
+                try:
+                    daily_flow = float(daily_flow_raw)
+                except (ValueError, TypeError):
+                    daily_flow = None # Coerce any non-convertible value (like "NA" string) to None
 
-            try:
-                calc_flow = float(calc_flow) if pd.notna(calc_flow) else None
-            except (ValueError, TypeError):
+            if pd.isna(calc_flow_raw):
                 calc_flow = None
-                
-            # Create a new dictionary with safely converted values
+            else:
+                try:
+                    calc_flow = float(calc_flow_raw)
+                except (ValueError, TypeError):
+                    calc_flow = None
+
             return {
-                **item, # Include all other original items
+                **item,
                 'Daily flow': daily_flow,
                 'Calculated flow': calc_flow
             }
