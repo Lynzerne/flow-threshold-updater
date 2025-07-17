@@ -183,8 +183,27 @@ def load_diversion_tables():
 def extract_daily_data(time_series, date_str):
     for item in time_series:
         if item.get("date") == date_str:
-            return item
-    return {}
+            # Explicitly convert flow values to float, coercing errors to None
+            daily_flow = item.get('Daily flow')
+            calc_flow = item.get('Calculated flow')
+
+            try:
+                daily_flow = float(daily_flow) if pd.notna(daily_flow) else None
+            except (ValueError, TypeError):
+                daily_flow = None
+
+            try:
+                calc_flow = float(calc_flow) if pd.notna(calc_flow) else None
+            except (ValueError, TypeError):
+                calc_flow = None
+                
+            # Create a new dictionary with safely converted values
+            return {
+                **item, # Include all other original items
+                'Daily flow': daily_flow,
+                'Calculated flow': calc_flow
+            }
+    return {} # Return empty dict if date not found
 
 def extract_thresholds(entry):
     keys = {'WCO', 'IO', 'Minimum flow', 'Industrial IO', 'Non-industrial IO', 'IFN'}
