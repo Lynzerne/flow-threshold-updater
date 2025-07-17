@@ -167,11 +167,8 @@ def load_data():
 # Call load_data and assign merged here
 merged = load_data() # This will now be hashable!
 
-    return merged_data
 
 
-# Call load_data and assign merged here
-merged = load_data()
 
 # --- ADD THESE DEBUG PRINTS HERE ---
 st.write("---") # Add a separator for clarity in Streamlit
