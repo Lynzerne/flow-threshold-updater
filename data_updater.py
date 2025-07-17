@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import pandas as pd
+import numpy as np
 from collections import Counter
 from datetime import datetime, timedelta, date
 
@@ -123,7 +124,7 @@ if all_data:
                     new_val = new_row.get(col)
                     if pd.isna(old_val) and pd.notna(new_val):
                         revised_fields.append(f"{col}: null → {new_val}")
-                    elif pd.notna(old_val) and pd.notna(new_val) and not pd.isclose(old_val, new_val, equal_nan=True):
+                    elif pd.notna(old_val) and pd.notna(new_val) and not np.isclose(old_val, new_val, equal_nan=True):
                         revised_fields.append(f"{col}: {old_val} → {new_val}")
 
                 new_row['is_revised'] = bool(revised_fields)
