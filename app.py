@@ -258,7 +258,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
       @media (max-width: 500px) {{
         .leaflet-popup-content {{
           width: auto !important;
-          max-width: 95vw !important;
+          max-width: 95vw !important; /* Allow it to be almost full width of the viewport */
           min-width: 10px !important;
           padding: 0 !important;
           margin: 0 !important;
@@ -269,19 +269,20 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         }}
     
         .leaflet-popup-content > div {{
-          width: 100% !important;
+          width: 100% !important; /* Ensure direct child takes full width */
         }}
     
         .popup-wrapper {{
-          width: 95vw !important;
-          max-width: 100vw !important;
+          width: 100% !important; /* Ensure this takes full available width from parent */
+          max-width: 100% !important; /* Cap it at 100% of its parent, not viewport */
           min-width: 10px !important;
           max-height: 85vh !important;
-          overflow-x: auto !important;
-          overflow-y: auto !important;
+          overflow-x: auto !important; /* Enable horizontal scrolling if content overflows */
+          overflow-y: auto !important; /* Enable vertical scrolling */
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           box-sizing: border-box;
+          padding: 5px; /* Add some internal padding */
         }}
     
         .popup-wrapper table, .popup-wrapper h4 {{
@@ -290,8 +291,9 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     
         .popup-wrapper table {{
           width: 100% !important;
-          table-layout: fixed !important;
+          table-layout: auto !important; /* Change to auto for better content fitting */
           word-wrap: break-word;
+          min-width: 280px; /* Give it a minimum width to prevent excessive squishing */
         }}
     
         .popup-wrapper img {{
@@ -299,14 +301,38 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
           height: auto !important;
           display: block !important;
           margin: 0 auto !important;
+          min-width: 280px; /* Give plot image a minimum width */
+        }}
+      }}
+    
+      /* Styles for larger screens to ensure consistency */
+      @media (min-width: 501px) {{
+        .leaflet-popup-content {{
+            width: 600px !important; /* Adjust as needed for desktop */
+            max-width: 90vw !important;
+        }}
+        .popup-wrapper {{
+            width: 100% !important; /* Ensure content fills available popup width */
+            max-width: 100% !important;
+            max-height: 600px !important; /* Desktop max height */
+            overflow-x: hidden !important; /* No horizontal scroll on desktop normally */
+            overflow-y: auto !important;
+            padding: 10px;
+        }}
+        .popup-wrapper table {{
+            width: 100% !important;
+            table-layout: auto !important;
+        }}
+        .popup-wrapper img {{
+            max-width: 100% !important;
+            height: auto !important;
         }}
       }}
     </style>
     
-    <!-- Responsive popup container -->
     <div class='popup-wrapper'>
       <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
-      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%; table-layout: fixed;'>
+      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%;'>
         <tr><th style='padding:{padding}; border:{border};'>Metric</th>
     """
     html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
@@ -339,7 +365,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</table><br>"
 
     # --- Plot rendering ---
-    fig, ax = plt.subplots(figsize=(7.6, 3.5))
+    # Adjusted figsize for better mobile display; width 6.8 is roughly 320px at 72dpi, suitable for mobile
+    fig, ax = plt.subplots(figsize=(6.8, 3.5)) 
     ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
     ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
     ax.set_axisbelow(True)
