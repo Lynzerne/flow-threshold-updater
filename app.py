@@ -14,7 +14,19 @@ import os
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
-
+st.markdown("""
+<style>
+/* Target Streamlit's main content area and potentially the iframe */
+.stApp, .streamlit-container, .stApp > header, .main, .block-container, iframe {
+    touch-action: pan-x pan-y pinch-zoom !important;
+    -ms-touch-action: pan-x pan-y pinch-zoom !important; /* For older IE/Edge */
+}
+/* Ensure no overflow issues from main app container */
+body {
+    overflow: auto !important;
+}
+</style>
+""", unsafe_allow_html=True
 # --- Paths ---
 DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
@@ -530,7 +542,7 @@ def render_map_two_layers():
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
         width='100%',
-        height='1200px',
+        height='100%',
         zoom_control=True,       # Ensures zoom +/- buttons are there
         scrollWheelZoom=True,    # For desktop scroll wheel
         dragging=True,           # Allows panning
@@ -673,7 +685,7 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Render and display the map
     m = render_map_two_layers()
     # Now simply render the map directly to HTML
-    st.components.v1.html(m._repr_html_(), height=1200, scrolling=True) # Use m._repr_html_() for direct rendering
+     st.components.v1.html(m._repr_html_(), height="70vh", scrolling=True) # Use m._repr_html_() for direct rendering
 
     # Inject mobile-friendly viewport settings into <head>
 #    map_html = map_html.replace(
