@@ -530,44 +530,50 @@ def render_map_two_layers():
         location=[merged['LAT'].mean(), merged['LON'].mean()],
         zoom_start=6,
         width='100%',
-        height='1200px'
+        height='1200px',
+        zoom_control=True,       # Ensures zoom +/- buttons are there
+        scrollWheelZoom=True,    # For desktop scroll wheel
+        dragging=True,           # Allows panning
+        touchZoom=True,          # VERY IMPORTANT for mobile pinch-zoom
+        doubleClickZoom=True     # Allows double-tap/click zoom
+      
     )
 
     # Add responsive popup size script
     from branca.element import Element
     
     # Responsive popup width JS
-    popup_resize_script = Element("""
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const resizePopups = () => {
-            const popups = document.querySelectorAll('.leaflet-popup-content');
-            popups.forEach(p => {
-                if (window.innerWidth < 500) {
-                    p.style.width = '320px';
-                    p.style.maxHeight = '90vh';
-                    p.style.overflow = 'auto';
-                } else {
-                    p.style.width = '650px';
-                    p.style.maxHeight = '600px';
-                    p.style.overflow = 'auto';
-                }
-            });
-        };
-        const observer = new MutationObserver(resizePopups);
-        observer.observe(document.body, { childList: true, subtree: true });
-        resizePopups();
-    });
-    </script>
-    """)
-    m.get_root().html.add_child(folium.Element("""
-        <style>
-            /* Ensure the body (and thus the map) allows touch actions for zooming */
-            body {
-                touch-action: pan-x pan-y pinch-zoom !important;
-            }
-        </style>
-    """))
+  #  popup_resize_script = Element("""
+   # <script>
+    #document.addEventListener("DOMContentLoaded", function() {
+     #   const resizePopups = () => {
+      #      const popups = document.querySelectorAll('.leaflet-popup-content');
+       #     popups.forEach(p => {
+        #        if (window.innerWidth < 500) {
+         #           p.style.width = '320px';
+          #          p.style.maxHeight = '90vh';
+           #         p.style.overflow = 'auto';
+            #    } else {
+             #       p.style.width = '650px';
+              #      p.style.maxHeight = '600px';
+               #     p.style.overflow = 'auto';
+                #}
+            #});
+       # };
+        #const observer = new MutationObserver(resizePopups);
+        #observer.observe(document.body, { childList: true, subtree: true });
+       # resizePopups();
+  #  });
+   # </script>
+    #""")
+    #m.get_root().html.add_child(folium.Element("""
+     #   <style>
+      #      /* Ensure the body (and thus the map) allows touch actions for zooming */
+       #     body {
+        #        touch-action: pan-x pan-y pinch-zoom !important;
+         #   }
+        #</style>
+   # """))
     Fullscreen().add_to(m)
 
     # FeatureGroups for two modes
@@ -666,7 +672,7 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Inject mobile-friendly viewport settings into <head>
     map_html = map_html.replace(
         "<head>",
-        "<head><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1'>"
+        "<head><meta name='viewport' content='width=device-width, initial-scale=1'>"
     )
     
     # Display map
