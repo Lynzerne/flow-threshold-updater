@@ -84,6 +84,54 @@ def load_data():
 # Call load_data and assign merged here
 merged = load_data()
 
+# --- ADD THESE DEBUG PRINTS HERE ---
+st.write("---") # Add a separator for clarity in Streamlit
+st.write("### Debugging Data in Streamlit App")
+if not merged.empty:
+    latest_date_in_merged = None
+    if 'time_series' in merged.columns:
+        # Iterate through time_series to find the absolute latest date present
+        for _, row_data in merged.iterrows():
+            if isinstance(row_data['time_series'], (list, tuple)): # Ensure it's iterable
+                for item in row_data['time_series']:
+                    if 'date' in item:
+                        try:
+                            current_date = datetime.strptime(item['date'], '%Y-%m-%d').date()
+                            if latest_date_in_merged is None or current_date > latest_date_in_merged:
+                                latest_date_in_merged = current_date
+                        except ValueError:
+                            pass # Handle cases where date format might be off
+
+    st.write(f"**Latest date found across all time_series in `merged` DataFrame:** {latest_date_in_merged}")
+    # You can also add a check for a specific station if needed, e.g., '07HC001'
+    # Find the row for '07HC001'
+    station_07HC001_row = merged[merged['WSC'] == '07HC001']
+    if not station_07HC001_row.empty:
+        station_07HC001_ts = station_07HC001_row.iloc[0]['time_series']
+        latest_date_07HC001 = None
+        latest_flow_07HC001 = 'N/A'
+        latest_calc_flow_07HC001 = 'N/A'
+
+        if isinstance(station_07HC001_ts, (list, tuple)):
+            for item in sorted(station_07HC001_ts, key=lambda x: parse(x['date']) if 'date' in x else datetime.min):
+                if 'date' in item:
+                    try:
+                        current_date = datetime.strptime(item['date'], '%Y-%m-%d').date()
+                        if latest_date_07HC001 is None or current_date > latest_date_07HC001:
+                            latest_date_07HC001 = current_date
+                            latest_flow_07HC001 = item.get('Daily flow', 'N/A')
+                            latest_calc_flow_07HC001 = item.get('Calculated flow', 'N/A')
+                    except ValueError:
+                        pass
+        st.write(f"**For station 07HC001:**")
+        st.write(f"  Latest Date: {latest_date_07HC001}")
+        st.write(f"  Daily Flow: {latest_flow_07HC001}")
+        st.write(f"  Calculated Flow: {latest_calc_flow_07HC001}")
+    else:
+        st.write("Station 07HC001 not found in merged data.")
+
+st.write("---")
+# --- END DEBUG PRINTS ---
 
 
 # --- Load diversion tables ---
