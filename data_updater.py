@@ -294,7 +294,8 @@ for stn_id, group_df in master_df.groupby('station_no'):
         # Add is_revised flag if it exists, else default to False
         ts_entry['is_revised'] = bool(row.get('is_revised', False))
         # Add revision_number for insight
-        ts_entry['revision_number'] = int(row.get('revision_number', 0))
+        val = row.get('revision_number', 0)
+        ts_entry['revision_number'] = int(val) if pd.notna(val) else 0
 
         timeseries.append(ts_entry)
 
