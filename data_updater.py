@@ -126,6 +126,7 @@ if not master_df.empty:
                 print(f"🔁 Revision for {new_row['station_no']} on {new_row['Date']}: {new_row['revised_fields']}")
 
             updated_rows.append(new_row)
+            updated_df = pd.DataFrame(updated_rows)
         else:
             # New record (not in master)
             new_row['is_revised'] = False
@@ -156,7 +157,6 @@ else:
     print("No new data collected from any stations.")
 
 #############################Stitch#############################
-from datetime import date
 import pandas as pd
 import json
 import os
