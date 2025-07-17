@@ -636,7 +636,7 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     map_html = m.get_root().render()
     
     # Inject mobile-friendly viewport settings into <head>
-     map_html = map_html.replace(
+    map_html = map_html.replace(
         "<head>",
         "<head><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1'>"
     )
