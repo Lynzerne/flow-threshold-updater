@@ -37,13 +37,24 @@ geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
 # --- Load data ---
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convert list columns to tuples for Streamlit caching compatibility.
+    Convert list columns to tuples, and dicts within time_series lists to frozensets,
+    for Streamlit caching compatibility.
     """
     df_copy = df.copy()
     for col in df_copy.columns:
-        if df_copy[col].apply(lambda x: isinstance(x, list)).any():
+        if col == 'time_series':
+            # This handles the specific 'time_series' column
+            df_copy[col] = df_copy[col].apply(
+                lambda ts_list: tuple(
+                    frozenset(item.items()) if isinstance(item, dict) else item
+                    for item in ts_list
+                ) if isinstance(ts_list, (list, tuple)) else ts_list
+            )
+        elif df_copy[col].apply(lambda x: isinstance(x, list)).any():
+            # This handles other columns that might be lists
             df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
     return df_copy
+
 @st.cache_data
 def load_data():
     # Load spatial GeoData
@@ -64,21 +75,53 @@ def load_data():
     geo_data = geo_data.drop(columns=['geometry'])
 
     # Parse time_series safely
-    def safe_parse(val):
+def safe_parse_and_convert_time_series(val):
+        parsed_ts = []
         if isinstance(val, str):
             try:
-                return json.loads(val)
-            except:
-                return []
-        return val
+                parsed_ts = json.loads(val)
+            except json.JSONDecodeError:
+                return [] # Return empty list if JSON parsing fails
+        elif isinstance(val, (list, tuple)): # Already a list/tuple, common when reading Parquet directly
+            parsed_ts = list(val) # Convert tuple to list for modification
+        else:
+            return [] # Handle unexpected types
 
-    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse)
+        converted_ts = []
+        for item in parsed_ts:
+            if isinstance(item, dict):
+                converted_item = item.copy() # Work on a copy
+                
+                # Safely convert 'Daily flow'
+                daily_flow_val = converted_item.get('Daily flow')
+                try:
+                    # Check if pd.notna before attempting float conversion.
+                    # pd.isna handles None and np.nan. If it's a string, it won't be pd.isna.
+                    converted_item['Daily flow'] = float(daily_flow_val) if pd.notna(daily_flow_val) else None
+                except (ValueError, TypeError):
+                    converted_item['Daily flow'] = None # Coerce any non-convertible value (like "NA" string) to None
+
+                # Safely convert 'Calculated flow'
+                calc_flow_val = converted_item.get('Calculated flow')
+                try:
+                    converted_item['Calculated flow'] = float(calc_flow_val) if pd.notna(calc_flow_val) else None
+                except (ValueError, TypeError):
+                    converted_item['Calculated flow'] = None
+                
+                converted_ts.append(converted_item)
+            else:
+                converted_ts.append(item) # Should not happen with well-formed data
+        return converted_ts
+
+    merged_data['time_series'] = merged_data['time_series'].apply(safe_parse_and_convert_time_series)
 
     # Make compatible with streamlit cache
-    geo_data = make_df_hashable(geo_data)
-    print("Columns in merged DataFrame:", geo_data.columns.tolist())
+    # Now, make_df_hashable will convert the lists of dictionaries (after float conversion)
+    # into tuples of frozensets, making the DataFrame hashable.
+    merged_data = make_df_hashable(merged_data)
+    print("Columns in merged DataFrame:", merged_data.columns.tolist())
 
-    return geo_data
+    return merged_data
 
 
 # Call load_data and assign merged here
