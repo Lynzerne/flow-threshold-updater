@@ -153,41 +153,33 @@ def compliance_color_SWA(stream_size, flow, q80, q95):
         return 'red'
     return 'gray'
 
-def get_color_for_date(row, date):
-    daily = extract_daily_data(row['time_series'], date)
-    flow_daily = daily.get('Daily flow')
-    flow_calc = daily.get('Calculated flow')
-    flow = max(filter(pd.notna, [flow_daily, flow_calc]), default=None)
+from dateutil.parser import parse
 
-    policy = row['PolicyType']
-    if policy == 'SWA':
-        return compliance_color_SWA(row.get('StreamSize'), flow, daily.get('Q80'), daily.get('Q95'))
-    elif policy == 'WMP':
-        return compliance_color_WMP(flow, extract_thresholds(daily))
-    return 'gray'
+def get_valid_dates(merged, debug=False):
+    dates = set()
+    skipped_entries = 0
 
-valid_dates = get_valid_dates(merged)
+    for idx, ts in enumerate(merged['time_series']):
+        for item in ts:
+            if 'date' in item:
+                try:
+                    d = parse(item['date']).strftime('%Y-%m-%d')
+                    if any(item.get(k) is not None for k in ['Daily flow', 'Calculated flow']):
+                        dates.add(d)
+                    else:
+                        if debug:
+                            print(f"Skipped date {d} at station {merged.iloc[idx]['WSC']} — no flow data")
+                        skipped_entries += 1
+                except Exception as e:
+                    if debug:
+                        print(f"Date parse error: {item.get('date')} → {e}")
+                    skipped_entries += 1
 
-# Set date range picker defaults
-min_date = parse(valid_dates[0])
-max_date = parse(valid_dates[-1])
-start_date, end_date = st.sidebar.date_input(
-    "Select a date range",
-    value=[max_date, max_date],
-    min_value=min_date,
-    max_value=max_date
-)
+    if debug:
+        print(f"Total valid dates found: {len(dates)}")
+        print(f"Skipped entries: {skipped_entries}")
 
-# ⬇️ This needs to come AFTER the date picker
-selected_dates = [
-    d for d in valid_dates
-    if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')
-]
-
-# Now safe to write
-st.sidebar.write("Currently selected date range:")
-st.sidebar.write(selected_dates)
-
+    return sorted(dates
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
