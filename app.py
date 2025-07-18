@@ -71,11 +71,9 @@ def hash_dataframe(df: pd.DataFrame):
     # Hash values (which are already made hashable by make_df_hashable)
     values_hash = tuple(tuple(row) for row in df_for_hash.values)
 
-    # --- UPDATED: Hash index more robustly ---
-    # Convert index to a tuple of its values, ensuring each value is hashable (e.g., string)
+    # Hash index more robustly
     index_values_as_str = tuple(str(x) for x in df_for_hash.index)
     index_hash = hash(index_values_as_str)
-    # --- END UPDATED ---
 
     # Hash columns
     columns_hash = hash(tuple(df_for_hash.columns))
@@ -178,7 +176,7 @@ def load_diversion_tables():
     return diversion_tables, diversion_labels
 
 
-# --- Helper functions (no changes needed here, they handle the frozenset/tuple structure) ---
+# --- Helper functions ---
 def extract_daily_data(time_series, date_str):
     for item_frozenset in time_series:
         if isinstance(item_frozenset, frozenset):
@@ -254,14 +252,32 @@ def get_valid_dates(data: pd.DataFrame):
 
 # --- Main App Logic ---
 valid_dates = get_valid_dates(merged)
-selected_dates = st.slider(
-    "Select Date Range",
-    min_value=min(valid_dates),
-    max_value=max(valid_dates),
-    value=(min(valid_dates), max(valid_dates)),
-    format="YYYY-MM-DD"
-)
 
+# Check if valid_dates is empty or contains non-date objects before accessing elements
+if not valid_dates:
+    st.error("No valid dates found for selection.")
+    st.stop() # Stop the app execution if no valid dates
+
+# Define default date. If current date is not in valid_dates, use the latest valid date.
+current_date = datetime.now().date()
+if current_date not in valid_dates:
+    # Find the closest date or simply use the max available date
+    selected_date_default = max(valid_dates)
+else:
+    selected_date_default = current_date
+
+
+# Place the date input in the sidebar
+with st.sidebar:
+    st.header("Select Date")
+    # Use st.date_input instead of st.slider
+    # Set min_value, max_value, and value using datetime.date objects
+    selected_date = st.date_input(
+        "Choose a date",
+        value=selected_date_default,
+        min_value=min(valid_dates),
+        max_value=max(valid_dates)
+    )
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
