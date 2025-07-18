@@ -167,6 +167,11 @@ def get_color_for_date(row, date):
     return 'gray'
 
 def get_valid_dates(merged):
+    st.sidebar.subheader("🔍 Debug Info")
+
+# Show the 10 most recent valid dates
+    st.sidebar.write("Latest available dates from time_series:")
+    st.sidebar.write(valid_dates[-10:])
     dates = set()
     for ts in merged['time_series']:
         for item in ts:
@@ -180,6 +185,22 @@ def get_valid_dates(merged):
     return sorted(dates)
 
 valid_dates = get_valid_dates(merged)
+st.sidebar.write("Currently selected date range:")
+st.sidebar.write(selected_dates)
+if st.sidebar.checkbox("Show most recent flow for each station"):
+    debug_data = []
+    for _, row in merged.iterrows():
+        date = get_most_recent_valid_date(row, selected_dates)
+        if date:
+            daily = extract_daily_data(row['time_series'], date)
+            debug_data.append({
+                'WSC': row['WSC'],
+                'Station': row['station_name'],
+                'Date': date,
+                'Daily flow': daily.get('Daily flow'),
+                'Calc flow': daily.get('Calculated flow'),
+            })
+    st.dataframe(pd.DataFrame(debug_data))
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
@@ -728,3 +749,15 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
 
     # Display map
     st.components.v1.html(map_html, height=1200, scrolling=True)
+
+station_options = merged['WSC'].tolist()
+selected_station = st.sidebar.selectbox("Pick a station to debug", station_options)
+
+# Extract and display the time_series entries for this station
+station_row = merged[merged['WSC'] == selected_station].iloc[0]
+time_series = station_row['time_series']
+
+# Sort and show last few entries
+sorted_series = sorted(time_series, key=lambda x: x['date'], reverse=True)
+st.sidebar.write(f"Last 5 entries for {selected_station}:")
+st.sidebar.json(sorted_series[:5])
