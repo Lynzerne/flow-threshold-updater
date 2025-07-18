@@ -24,12 +24,28 @@ STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 # --- Load data ---
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convert list columns to tuples for Streamlit caching compatibility.
+    Convert unhashable columns (lists, dicts, potentially nested) to hashable types (tuples).
     """
     df_copy = df.copy()
     for col in df_copy.columns:
-        if df_copy[col].apply(lambda x: isinstance(x, list)).any():
+        if col == 'time_series' and not df_copy[col].empty:
+            # Process time_series column specifically
+            # Each element should be a tuple of dictionaries,
+            # and each dictionary's values should also be hashable.
+            df_copy[col] = df_copy[col].apply(lambda ts_list:
+                tuple(
+                    # Convert each inner dict to a tuple of (key, value) pairs,
+                    # and ensure values are hashable (e.g., nested lists to tuples)
+                    tuple(sorted((k, (tuple(v) if isinstance(v, list) else v)) for k, v in item.items()))
+                    for item in ts_list
+                ) if isinstance(ts_list, list) else ts_list # if it's not a list, leave as is
+            )
+        elif df_copy[col].apply(lambda x: isinstance(x, list)).any():
+            # For other list columns, convert directly to tuple
             df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
+        # You might also need to handle dict columns directly if any exist outside of time_series
+        elif df_copy[col].apply(lambda x: isinstance(x, dict)).any():
+            df_copy[col] = df_copy[col].apply(lambda x: tuple(sorted(x.items())) if isinstance(x, dict) else x)
     return df_copy
 
 @st.cache_data
@@ -82,30 +98,30 @@ def load_data():
 
     # --- IMPROVED safe_parse function to handle potential NaNs more robustly ---
     def safe_parse(val):
-    if pd.isna(val):
-        return []
-    if isinstance(val, str):
-        try:
-            parsed_val = json.loads(val)
-            # Ensure it's a list even if a single dict was parsed
-            # And ensure all values within the dictionaries are hashable (e.g., convert inner lists to tuples if they exist)
-            if isinstance(parsed_val, list):
-                return tuple(
-                    {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
-                    for item in parsed_val
-                )
-            elif isinstance(parsed_val, dict):
-                return ({k: (tuple(v) if isinstance(v, list) else v) for k, v in parsed_val.items()},)
-            return [] # Fallback for unexpected types
-        except json.JSONDecodeError:
+        if pd.isna(val):
             return []
-    # If it's already a list (or anything else that's not NaN), ensure it's a tuple of hashable dicts
-    if isinstance(val, list): # This handles the case where it's already a list from previous runs or caching
-        return tuple(
-            {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
-            for item in val
-        )
-    return val # Return as is if already hashable
+        if isinstance(val, str):
+            try:
+                parsed_val = json.loads(val)
+                # Ensure it's a list even if a single dict was parsed
+                # And ensure all values within the dictionaries are hashable (e.g., convert inner lists to tuples if they exist)
+                if isinstance(parsed_val, list):
+                    return tuple(
+                        {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
+                        for item in parsed_val
+                    )
+                elif isinstance(parsed_val, dict):
+                    return ({k: (tuple(v) if isinstance(v, list) else v) for k, v in parsed_val.items()},)
+                return [] # Fallback for unexpected types
+            except json.JSONDecodeError:
+                return []
+        # If it's already a list (or anything else that's not NaN), ensure it's a tuple of hashable dicts
+        if isinstance(val, list): # This handles the case where it's already a list from previous runs or caching
+            return tuple(
+                {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
+                for item in val
+            )
+        return val # Return as is if already hashable
 
 
 # Call load_data and assign merged here
