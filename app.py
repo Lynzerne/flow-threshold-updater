@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 import pandas as pd
-import geopandas as gpd # We'll use this again for reading parquet
+import geopandas as gpd
 import json
 import folium
 from folium import IFrame
@@ -21,32 +21,35 @@ DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
 
-# --- Load data ---
+# --- Utility function to make objects recursively hashable for Streamlit caching ---
+def make_hashable_recursive(obj):
+    """
+    Recursively converts unhashable objects (lists, dicts) to hashable ones (tuples, frozensets).
+    """
+    if isinstance(obj, list):
+        return tuple(make_hashable_recursive(item) for item in obj)
+    if isinstance(obj, dict):
+        # Convert dict to frozenset of (key, value) pairs.
+        # Sorted items ensure consistent hashing order.
+        return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
+    # Handle pandas NaT (Not a Time) which can be unhashable
+    if pd.isna(obj):
+        return None # Convert to None or a sentinel value
+    return obj
+
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convert unhashable columns (lists, dicts, potentially nested) to hashable types (tuples).
+    Applies make_hashable_recursive to all columns in a DataFrame that might contain unhashable types.
     """
     df_copy = df.copy()
     for col in df_copy.columns:
-        if col == 'time_series' and not df_copy[col].empty:
-            # Process time_series column specifically
-            # Each element should be a tuple of dictionaries,
-            # and each dictionary's values should also be hashable.
-            df_copy[col] = df_copy[col].apply(lambda ts_list:
-                tuple(
-                    # Convert each inner dict to a tuple of (key, value) pairs,
-                    # and ensure values are hashable (e.g., nested lists to tuples)
-                    tuple(sorted((k, (tuple(v) if isinstance(v, list) else v)) for k, v in item.items()))
-                    for item in ts_list
-                ) if isinstance(ts_list, list) else ts_list # if it's not a list, leave as is
-            )
-        elif df_copy[col].apply(lambda x: isinstance(x, list)).any():
-            # For other list columns, convert directly to tuple
-            df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
-        # You might also need to handle dict columns directly if any exist outside of time_series
-        elif df_copy[col].apply(lambda x: isinstance(x, dict)).any():
-            df_copy[col] = df_copy[col].apply(lambda x: tuple(sorted(x.items())) if isinstance(x, dict) else x)
+        # Check if the column's dtype is 'object' (likely contains mixed types, lists, dicts)
+        # or if it explicitly contains lists or dictionaries
+        if df_copy[col].dtype == 'object' and not df_copy[col].empty and \
+           df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or pd.isna(x)).any():
+            df_copy[col] = df_copy[col].apply(make_hashable_recursive)
     return df_copy
+
 
 @st.cache_data
 def load_data():
@@ -55,73 +58,55 @@ def load_data():
 
     try:
         geo_data_df = gpd.read_parquet(PARQUET_FILE_PATH)
-        # Ensure 'station_no' is 'WSC' from the Parquet file, as it was previously.
-        # Parquet files might sometimes retain different original column names.
         if 'station_no' in geo_data_df.columns and 'WSC' not in geo_data_df.columns:
             geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'})
         elif 'WSC' not in geo_data_df.columns:
             st.error(f"ERROR: 'WSC' or 'station_no' column not found in {PARQUET_FILE_PATH}.")
-            st.write("DEBUG: Columns in geo_data_df from Parquet:", geo_data_df.columns.tolist())
+            # st.write("DEBUG: Columns in geo_data_df from Parquet:", geo_data_df.columns.tolist())
             st.stop()
-        
     except FileNotFoundError:
         st.error(f"Error: Parquet file not found at {PARQUET_FILE_PATH}")
-        return pd.DataFrame() # Return empty DataFrame on error
+        return pd.DataFrame()
     except Exception as e:
         st.error(f"Error loading Parquet file: {e}")
         return pd.DataFrame()
 
-
-    # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
+    # Load station attributes from CSV
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
-
-    # Strip whitespace from all column names in station_info
     station_info.columns = station_info.columns.str.strip()
 
-    # Check for 'WSC' or 'station_no' in station_info
     if 'WSC' in station_info.columns:
-        pass # 'WSC' is already there
+        pass
     elif 'station_no' in station_info.columns:
         station_info = station_info.rename(columns={'station_no': 'WSC'})
     else:
         st.error(f"ERROR: Neither 'WSC' nor 'station_no' column found in AB_WS_R_StationList.csv.")
-        st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
+        # st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
         st.stop()
 
-
     # Merge in additional attributes
-    # Use LAT/LON from station_info as it is likely more accurate/consistent for display
     geo_data_df = geo_data_df.merge(
         station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
         on='WSC', how='left'
     )
 
-    # --- IMPROVED safe_parse function to handle potential NaNs more robustly ---
-    def safe_parse(val):
-        if pd.isna(val):
+    # --- Initial parsing of time_series from string to Python list of dicts ---
+    def parse_time_series_string(val):
+        if pd.isna(val) or not isinstance(val, str):
             return []
-        if isinstance(val, str):
-            try:
-                parsed_val = json.loads(val)
-                # Ensure it's a list even if a single dict was parsed
-                # And ensure all values within the dictionaries are hashable (e.g., convert inner lists to tuples if they exist)
-                if isinstance(parsed_val, list):
-                    return tuple(
-                        {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
-                        for item in parsed_val
-                    )
-                elif isinstance(parsed_val, dict):
-                    return ({k: (tuple(v) if isinstance(v, list) else v) for k, v in parsed_val.items()},)
-                return [] # Fallback for unexpected types
-            except json.JSONDecodeError:
-                return []
-        # If it's already a list (or anything else that's not NaN), ensure it's a tuple of hashable dicts
-        if isinstance(val, list): # This handles the case where it's already a list from previous runs or caching
-            return tuple(
-                {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
-                for item in val
-            )
-        return val # Return as is if already hashable
+        try:
+            parsed = json.loads(val)
+            return parsed if isinstance(parsed, list) else [parsed]
+        except json.JSONDecodeError:
+            return []
+    
+    geo_data_df['time_series'] = geo_data_df['time_series'].apply(parse_time_series_string)
+
+    # --- Apply recursive hashable conversion to the entire DataFrame ---
+    # This is the crucial step to ensure everything in 'merged' is hashable for caching.
+    geo_data_df = make_df_hashable(geo_data_df)
+
+    return geo_data_df
 
 
 # Call load_data and assign merged here
@@ -136,15 +121,12 @@ def load_diversion_tables():
 
     for f in os.listdir(DIVERSION_DIR):
         if f.endswith(".parquet"):
-            wsc = f.split("_")[0]  
+            wsc = f.split("_")[0]
             file_path = os.path.join(DIVERSION_DIR, f)
 
             df = pd.read_parquet(file_path)
-
             df.columns = df.columns.str.strip()
 
-            # Expected columns: ['Date', 'Cutback1', 'Cutback2', 'Cutback3 or Cutoff']
-            # Handle missing or renamed last column:
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
             if len(df.columns) == 4:
                 third_label = df.columns[3]
@@ -154,7 +136,6 @@ def load_diversion_tables():
                 diversion_labels[wsc] = "Cutback3"
                 df.columns = standard_columns + ['Cutback3']
 
-            # Normalize and fix date format (year replaced by 1900)
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
             def safe_replace_year(d):
@@ -166,8 +147,9 @@ def load_diversion_tables():
                 return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
-
-            diversion_tables[wsc] = df
+            
+            # Apply make_hashable_recursive here if diversion_tables DataFrame also contains unhashable types
+            diversion_tables[wsc] = make_df_hashable(df) # Apply make_df_hashable to each diversion table
 
     return diversion_tables, diversion_labels
 
@@ -175,12 +157,16 @@ def load_diversion_tables():
 
 # --- Helper functions ---
 def extract_daily_data(time_series, date_str):
-    for item in time_series:
-        if item.get("date") == date_str:
-            return item
+    # Expects time_series to be a tuple of frozensets
+    for item_frozenset in time_series:
+        # Convert frozenset back to a dict for easy key access
+        item_dict = dict(item_frozenset)
+        if item_dict.get("date") == date_str:
+            return item_dict
     return {}
 
 def extract_thresholds(entry):
+    # entry is expected to be a dict (converted from frozenset by extract_daily_data)
     keys = {'WCO', 'IO', 'Minimum flow', 'Industrial IO', 'Non-industrial IO', 'IFN'}
     return {k: v for k, v in entry.items() if k in keys and v is not None}
 
@@ -208,6 +194,7 @@ def compliance_color_SWA(stream_size, flow, q80, q95):
     return 'gray'
 
 def get_color_for_date(row, date):
+    # row['time_series'] is now a tuple of frozensets
     daily = extract_daily_data(row['time_series'], date)
     flow_daily = daily.get('Daily flow')
     flow_calc = daily.get('Calculated flow')
@@ -220,20 +207,43 @@ def get_color_for_date(row, date):
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
 
-def get_valid_dates(merged):
-    dates = set()
-    for ts in merged['time_series']:
-        for item in ts:
-            if 'date' in item and 'Daily flow' in item:
-                try:
-                    d = parse(item['date']).strftime('%Y-%m-%d')
-                    if item['Daily flow'] is not None:
-                        dates.add(d)
-                except:
-                    pass
-    return sorted(dates)
+@st.cache_data # Add caching here as well!
+def get_valid_dates(data: pd.DataFrame): # Renamed `merged` to `data` for clarity within function
+    """
+    Extracts all unique dates from the 'time_series' for all stations.
+    """
+    all_dates = set()
+    for ts_tuple in data['time_series']: # 'ts_tuple' is now a tuple of frozensets
+        if isinstance(ts_tuple, tuple):
+            for item_frozenset in ts_tuple:
+                if isinstance(item_frozenset, frozenset):
+                    item_dict = dict(item_frozenset) # Convert frozenset back to dict
+                    if 'date' in item_dict and ('Daily flow' in item_dict or 'Calculated flow' in item_dict):
+                        # Ensure 'Daily flow' or 'Calculated flow' is not None before adding date
+                        if item_dict.get('Daily flow') is not None or item_dict.get('Calculated flow') is not None:
+                            try:
+                                d = parse(item_dict['date']).strftime('%Y-%m-%d')
+                                all_dates.add(d)
+                            except (TypeError, ValueError):
+                                pass # Skip unparseable dates
+    
+    if not all_dates:
+        # Fallback for when no valid dates are found
+        today = datetime.now().date()
+        return sorted([today - timedelta(days=7), today + timedelta(days=7)])
 
+    sorted_dates = sorted(list(all_dates))
+    return [parse(d).date() for d in sorted_dates]
+
+# --- Main App Logic ---
 valid_dates = get_valid_dates(merged)
+selected_dates = st.slider(
+    "Select Date Range",
+    min_value=min(valid_dates),
+    max_value=max(valid_dates),
+    value=(min(valid_dates), max(valid_dates)),
+    format="YYYY-MM-DD"
+)
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
