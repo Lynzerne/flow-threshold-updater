@@ -156,18 +156,23 @@ else:
     print("No new data collected from any stations.")
 
 #############################Stitch#############################
+#############################Stitch#############################
 from datetime import date
 import pandas as pd
 import json
 import os
+import geopandas as gpd # <--- ADD THIS IMPORT
 
 # --- Paths & Date ---
-iday = date.today().strftime('%Y-%m-%d')  # Today's date
+iday = date.today().strftime('%Y-%m-%d')
 station_list_csv = "data/AB_WS_R_StationList.csv"
-daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
-master_parquet_path = "data/WS_R_master_daily.parquet"
-master_geojson_path = "data/AB_WS_R_stations.geojson"
-geojson_updated_path = f"data/AB_WS_R_stations_{iday}.geojson"
+daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet" # This is a daily snapshot from updater
+master_parquet_path = "data/WS_R_master_daily.parquet" # This is the full, continuously updated daily data
+master_geojson_path = "data/AB_WS_R_stations.geojson" # This is the rolling master GeoJSON
+geojson_updated_path = f"data/AB_WS_R_stations_{iday}.geojson" # This is the daily GeoJSON snapshot
+
+# --- NEW: Define the path for the PARQUET file the app will read ---
+output_app_parquet_path = "data/AB_WS_R_stations.parquet" # <--- NEW PATH DEFINITION
 
 # --- Load Station List ---
 stns = pd.read_csv(station_list_csv)
@@ -227,26 +232,17 @@ for stn_id, group_df in master_df.groupby('station_no'):
     feat['properties']['lon'] = float(latest_record.get('lon', feat['properties'].get('lon', 0)))
 
     # Build timeseries list with date, parameter values, and is_revised
-    # --- Build timeseries list with date, parameter values, and is_revised ---
     timeseries = []
     for _, row in group_df.iterrows():
         ts_entry = {'date': row['Date'].strftime('%Y-%m-%d')}
         for col in ts_cols:
             val = row[col]
-            # OLD LINE: if pd.notnull(val):
-            # --- START OF CHANGE ---
-            if pd.notnull(val) and str(val).strip() != '': # Check for non-null AND non-empty/whitespace string
+            if pd.notnull(val) and str(val).strip() != '':
                 try:
-                    # Attempt to convert to float; if it fails, it's not a valid number
                     ts_entry[col] = float(val)
                 except (ValueError, TypeError):
-                    # If it's not a number (e.g., '', 'NA', etc.), skip adding it to the entry
-                    # print(f"Warning: Skipping non-numeric value '{val}' for station {stn_id}, date {row['Date']}, column {col}")
-                    pass # Do nothing, effectively skipping this value
-            # --- END OF CHANGE ---
-        # Add is_revised flag if it exists, else default to False
+                    pass
         ts_entry['is_revised'] = bool(row.get('is_revised', False))
-
         timeseries.append(ts_entry)
 
     # Defensive cleanup: remove NaN keys inside timeseries dicts (optional)
@@ -266,4 +262,23 @@ print(f"📍 Daily GeoJSON snapshot saved: {geojson_updated_path}")
 with open(master_geojson_path, 'w') as f:
     json.dump(geojson, f, indent=2)
 print(f"🔁 Rolling master GeoJSON updated: {master_geojson_path}")
+
+# --- NEW: Convert GeoJSON back to GeoDataFrame and save as AB_WS_R_stations.parquet ---
+# This is the file your Streamlit app loads!
+try:
+    # Convert the geojson dictionary (FeatureCollection) into a GeoDataFrame
+    # This requires 'geometry' column to be properly formatted (e.g., from WKT or dicts)
+    # The 'geojson' variable here is already the full FeatureCollection dictionary.
+    # geopandas.GeoDataFrame.from_features expects a list of features or a dict with 'features' key.
+    stations_gdf = gpd.GeoDataFrame.from_features(geojson['features'])
+
+    # Ensure the 'geometry' column is correctly set if it's not automatically inferred
+    # In your case, it should be fine since you set geometry.coordinates
+    
+    # Save to Parquet
+    stations_gdf.to_parquet(output_app_parquet_path, index=False, engine="pyarrow")
+    print(f"✅ Stations GeoDataFrame saved to {output_app_parquet_path} for Streamlit app.")
+
+except Exception as e:
+    print(f"❌ Error saving GeoDataFrame to Parquet: {e}")
 
