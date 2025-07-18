@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
+import geopandas as gpd # Keep this for general use, but you'll use json for the main file
 import json
 import folium
 from folium import IFrame
@@ -12,7 +12,7 @@ from io import BytesIO
 from dateutil.parser import parse
 import os
 
-st.cache_data.clear()
+st.cache_data.clear() # Good, this will clear previous caches
 st.set_page_config(layout="wide")
 
 # --- Paths ---
@@ -20,7 +20,9 @@ DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
-geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+# REMOVE OR COMMENT OUT THIS LINE:
+# geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+
 
 # --- Load data ---
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
@@ -32,41 +34,69 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
         if df_copy[col].apply(lambda x: isinstance(x, list)).any():
             df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
     return df_copy
+
 @st.cache_data
 def load_data():
-    # Load spatial GeoData
-    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
-    geo_data = geo_data.rename(columns={'station_no': 'WSC'})
+    # Load spatial GeoJSON data
+    # --- CHANGE THIS LINE ---
+    GEOJSON_FILE_PATH = os.path.join(DATA_DIR, "AB_WS_R_stations.geojson")
+    
+    try:
+        with open(GEOJSON_FILE_PATH, 'r') as f:
+            geo_json_raw = json.load(f)
+    except FileNotFoundError:
+        st.error(f"Error: GeoJSON file not found at {GEOJSON_FILE_PATH}")
+        return pd.DataFrame() # Return empty DataFrame on error
+
+    # Convert GeoJSON features to a pandas DataFrame
+    # Each feature's properties become a row
+    properties_list = [feature['properties'] for feature in geo_json_raw['features']]
+    geo_data_df = pd.DataFrame(properties_list)
+
+    # Rename station_no to WSC if necessary (it's already WSC in the GeoJSON from stitch.py)
+    # Ensure it's 'WSC' for consistency with other parts of your app
+    # geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'}) # This rename should not be needed if stitch output 'WSC' directly
 
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
 
     # Merge in additional attributes
-    geo_data = geo_data.merge(
+    # Use 'WSC' column directly, assuming it exists from the GeoJSON properties
+    geo_data_df = geo_data_df.merge(
         station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
         on='WSC', how='left'
     )
 
-    # Convert geometry to WKT (safe for caching)
-    geo_data['geometry_wkt'] = geo_data.geometry.apply(lambda g: g.wkt if g else None)
-    geo_data = geo_data.drop(columns=['geometry'])
+    # Note: 'geometry_wkt' is no longer needed if you're working directly with LAT/LON for Folium markers
+    # and the time_series is embedded. If you need geometry for other reasons, extract it here.
 
-    # Parse time_series safely
+    # Parse time_series safely (this is crucial for lists of dicts)
+    # The time_series from stitch.py should already be a list of dictionaries,
+    # not a JSON string, so safe_parse might not be strictly needed for json.loads,
+    # but it's good for robustness.
+    # If time_series is already a list of dicts, safe_parse will just return it.
     def safe_parse(val):
         if isinstance(val, str):
             try:
+                # If it's a string, try to parse it as JSON
                 return json.loads(val)
-            except:
+            except json.JSONDecodeError:
+                # If it's a malformed JSON string, return an empty list or handle as needed
                 return []
+        # If it's already a list (or anything else), return as is
         return val
 
-    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse)
+    geo_data_df['time_series'] = geo_data_df['time_series'].apply(safe_parse)
+
 
     # Make compatible with streamlit cache
-    geo_data = make_df_hashable(geo_data)
-    print("Columns in merged DataFrame:", geo_data.columns.tolist())
+    geo_data_df = make_df_hashable(geo_data_df)
+    print("Columns in merged DataFrame:", geo_data_df.columns.tolist())
+    st.write("DEBUG: Columns in merged DataFrame (from app):", geo_data_df.columns.tolist())
+    st.write("DEBUG: Sample of time_series from app:", geo_data_df['time_series'].head(1).iloc[0])
 
-    return geo_data
+
+    return geo_data_df
 
 
 # Call load_data and assign merged here
