@@ -79,14 +79,7 @@ def load_data():
         on='WSC', how='left'
     )
 
-    # Note: 'geometry_wkt' is no longer needed if you're working directly with LAT/LON for Folium markers
-    # and the time_series is embedded. If you need geometry for other reasons, extract it here.
 
-    # Parse time_series safely (this is crucial for lists of dicts)
-    # The time_series from stitch.py should already be a list of dictionaries,
-    # not a JSON string, so safe_parse might not be strictly needed for json.loads,
-    # but it's good for robustness.
-    # If time_series is already a list of dicts, safe_parse will just return it.
     def safe_parse(val):
         if isinstance(val, str):
             try:
