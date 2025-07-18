@@ -66,21 +66,25 @@ def hash_dataframe(df: pd.DataFrame):
     df_for_hash = df.drop(columns=['geometry'], errors='ignore')
 
     # Ensure all remaining columns are hashable before converting to values for hashing
-    # This calls make_df_hashable on a potentially already-processed df, which is fine.
     df_for_hash = make_df_hashable(df_for_hash) 
 
-    # Hash values
+    # Hash values (which are already made hashable by make_df_hashable)
     values_hash = tuple(tuple(row) for row in df_for_hash.values)
-    # Hash index and columns
-    index_hash = hash(df_for_hash.index.to_json())
+
+    # --- UPDATED: Hash index more robustly ---
+    # Convert index to a tuple of its values, ensuring each value is hashable (e.g., string)
+    index_values_as_str = tuple(str(x) for x in df_for_hash.index)
+    index_hash = hash(index_values_as_str)
+    # --- END UPDATED ---
+
+    # Hash columns
     columns_hash = hash(tuple(df_for_hash.columns))
     return (values_hash, index_hash, columns_hash)
 
 # --- Define the hash_funcs dictionary ---
-# This dictionary tells Streamlit how to hash specific types.
 PANDAS_HASH_FUNCS = {
     pd.DataFrame: hash_dataframe,
-    gpd.GeoDataFrame: hash_dataframe, # <--- NEW: Explicitly handle GeoDataFrame
+    gpd.GeoDataFrame: hash_dataframe,
 }
 
 @st.cache_data
@@ -127,24 +131,7 @@ def load_data():
     
     geo_data_df['time_series'] = geo_data_df['time_series'].apply(parse_time_series_string)
 
-    # Apply recursive hashable conversion to the entire DataFrame after initial parsing
-    # This handles time_series and other columns, including attempting to hash geometry if needed later
     geo_data_df = make_df_hashable(geo_data_df)
-
-    # Debugging checks (can remove after confirmation)
-    # st.write("DEBUG: After make_df_hashable in load_data:")
-    # if not geo_data_df['time_series'].empty:
-    #     sample_ts = geo_data_df['time_series'].iloc[0]
-    #     st.write(f"  Type of first time_series entry: {type(sample_ts)}")
-    #     st.write(f"  Sample of first time_series entry: {sample_ts}")
-    #     try:
-    #         hash(sample_ts)
-    #         st.write("  First time_series entry IS hashable.")
-    #     except TypeError as e:
-    #         st.error(f"  ERROR: First time_series entry IS NOT hashable: {e}")
-    #         st.stop()
-    # else:
-    #     st.write("  time_series column is empty.")
 
     return geo_data_df
 
@@ -240,12 +227,9 @@ def get_color_for_date(row, date):
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
 
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # <--- Apply hash_funcs here as well!
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def get_valid_dates(data: pd.DataFrame):
     all_dates = set()
-    # The 'geometry' column in GeoDataFrame is typically unhashable.
-    # get_valid_dates does not need 'geometry', so we can safely drop it for iteration.
-    # Note: `data.drop` creates a copy, so the original cached DataFrame is not modified.
     df_for_iteration = data.drop(columns=['geometry'], errors='ignore')
     
     for ts_tuple in df_for_iteration['time_series']:
