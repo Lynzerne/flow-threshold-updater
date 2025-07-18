@@ -85,7 +85,10 @@ def hash_dataframe(df: pd.DataFrame):
 PANDAS_HASH_FUNCS = {
     pd.DataFrame: hash_dataframe,
     gpd.GeoDataFrame: hash_dataframe,
+    datetime.date: lambda d: d.isoformat(), # Add this line
+    datetime: lambda dt: dt.isoformat(), # Add this line
 }
+
 
 @st.cache_data
 def load_data():
