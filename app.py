@@ -45,9 +45,15 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     for col in df_copy.columns:
         # Check if the column's dtype is 'object' (likely contains mixed types, lists, dicts)
         # or if it explicitly contains lists or dictionaries
-        if df_copy[col].dtype == 'object' and not df_copy[col].empty and \
-           df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or pd.isna(x)).any():
-            df_copy[col] = df_copy[col].apply(make_hashable_recursive)
+        # Applying to all object columns is safest.
+        if df_copy[col].dtype == 'object':
+            # Only apply if there's at least one non-null value that is a list or dict
+            if not df_copy[col].empty and \
+               df_copy[col].apply(lambda x: isinstance(x, (list, dict))).any():
+                df_copy[col] = df_copy[col].apply(make_hashable_recursive)
+            elif not df_copy[col].empty and df_copy[col].isnull().any():
+                # Handle NaNs in object columns by converting them to None explicitly
+                df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
     return df_copy
 
 
@@ -62,7 +68,6 @@ def load_data():
             geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'})
         elif 'WSC' not in geo_data_df.columns:
             st.error(f"ERROR: 'WSC' or 'station_no' column not found in {PARQUET_FILE_PATH}.")
-            # st.write("DEBUG: Columns in geo_data_df from Parquet:", geo_data_df.columns.tolist())
             st.stop()
     except FileNotFoundError:
         st.error(f"Error: Parquet file not found at {PARQUET_FILE_PATH}")
@@ -81,7 +86,6 @@ def load_data():
         station_info = station_info.rename(columns={'station_no': 'WSC'})
     else:
         st.error(f"ERROR: Neither 'WSC' nor 'station_no' column found in AB_WS_R_StationList.csv.")
-        # st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
         st.stop()
 
     # Merge in additional attributes
@@ -103,8 +107,23 @@ def load_data():
     geo_data_df['time_series'] = geo_data_df['time_series'].apply(parse_time_series_string)
 
     # --- Apply recursive hashable conversion to the entire DataFrame ---
-    # This is the crucial step to ensure everything in 'merged' is hashable for caching.
     geo_data_df = make_df_hashable(geo_data_df)
+
+    # --- DEBUGGING: Check hashability of the first few time_series entries ---
+    st.write("DEBUG: After make_df_hashable in load_data:")
+    if not geo_data_df['time_series'].empty:
+        sample_ts = geo_data_df['time_series'].iloc[0]
+        st.write(f"  Type of first time_series entry: {type(sample_ts)}")
+        st.write(f"  Sample of first time_series entry: {sample_ts}")
+        try:
+            hash(sample_ts)
+            st.write("  First time_series entry IS hashable.")
+        except TypeError as e:
+            st.error(f"  ERROR: First time_series entry IS NOT hashable: {e}")
+            st.stop()
+    else:
+        st.write("  time_series column is empty.")
+    # --- END DEBUGGING ---
 
     return geo_data_df
 
@@ -148,8 +167,9 @@ def load_diversion_tables():
 
             df['Date'] = df['Date'].apply(safe_replace_year)
             
-            # Apply make_hashable_recursive here if diversion_tables DataFrame also contains unhashable types
-            diversion_tables[wsc] = make_df_hashable(df) # Apply make_df_hashable to each diversion table
+            # Apply make_df_hashable to each diversion table if needed
+            # Only apply if these DataFrames are passed to other cached functions
+            diversion_tables[wsc] = make_df_hashable(df) 
 
     return diversion_tables, diversion_labels
 
@@ -159,14 +179,13 @@ def load_diversion_tables():
 def extract_daily_data(time_series, date_str):
     # Expects time_series to be a tuple of frozensets
     for item_frozenset in time_series:
-        # Convert frozenset back to a dict for easy key access
-        item_dict = dict(item_frozenset)
-        if item_dict.get("date") == date_str:
-            return item_dict
+        if isinstance(item_frozenset, frozenset):
+            item_dict = dict(item_frozenset)
+            if item_dict.get("date") == date_str:
+                return item_dict
     return {}
 
 def extract_thresholds(entry):
-    # entry is expected to be a dict (converted from frozenset by extract_daily_data)
     keys = {'WCO', 'IO', 'Minimum flow', 'Industrial IO', 'Non-industrial IO', 'IFN'}
     return {k: v for k, v in entry.items() if k in keys and v is not None}
 
@@ -194,7 +213,6 @@ def compliance_color_SWA(stream_size, flow, q80, q95):
     return 'gray'
 
 def get_color_for_date(row, date):
-    # row['time_series'] is now a tuple of frozensets
     daily = extract_daily_data(row['time_series'], date)
     flow_daily = daily.get('Daily flow')
     flow_calc = daily.get('Calculated flow')
@@ -207,28 +225,23 @@ def get_color_for_date(row, date):
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
 
-@st.cache_data # Add caching here as well!
-def get_valid_dates(data: pd.DataFrame): # Renamed `merged` to `data` for clarity within function
-    """
-    Extracts all unique dates from the 'time_series' for all stations.
-    """
+@st.cache_data
+def get_valid_dates(data: pd.DataFrame):
     all_dates = set()
-    for ts_tuple in data['time_series']: # 'ts_tuple' is now a tuple of frozensets
+    for ts_tuple in data['time_series']:
         if isinstance(ts_tuple, tuple):
             for item_frozenset in ts_tuple:
                 if isinstance(item_frozenset, frozenset):
-                    item_dict = dict(item_frozenset) # Convert frozenset back to dict
+                    item_dict = dict(item_frozenset)
                     if 'date' in item_dict and ('Daily flow' in item_dict or 'Calculated flow' in item_dict):
-                        # Ensure 'Daily flow' or 'Calculated flow' is not None before adding date
                         if item_dict.get('Daily flow') is not None or item_dict.get('Calculated flow') is not None:
                             try:
                                 d = parse(item_dict['date']).strftime('%Y-%m-%d')
                                 all_dates.add(d)
                             except (TypeError, ValueError):
-                                pass # Skip unparseable dates
+                                pass
     
     if not all_dates:
-        # Fallback for when no valid dates are found
         today = datetime.now().date()
         return sorted([today - timedelta(days=7), today + timedelta(days=7)])
 
@@ -244,6 +257,7 @@ selected_dates = st.slider(
     value=(min(valid_dates), max(valid_dates)),
     format="YYYY-MM-DD"
 )
+
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
