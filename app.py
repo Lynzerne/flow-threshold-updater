@@ -167,18 +167,13 @@ def get_color_for_date(row, date):
     return 'gray'
 
 def get_valid_dates(merged):
-    st.sidebar.subheader("🔍 Debug Info")
-
-# Show the 10 most recent valid dates
-    st.sidebar.write("Latest available dates from time_series:")
-    st.sidebar.write(valid_dates[-10:])
     dates = set()
     for ts in merged['time_series']:
         for item in ts:
-            if 'date' in item and 'Daily flow' in item:
+            if 'date' in item:
                 try:
                     d = parse(item['date']).strftime('%Y-%m-%d')
-                    if item['Daily flow'] is not None:
+                    if any(item.get(k) is not None for k in ['Daily flow', 'Calculated flow']):
                         dates.add(d)
                 except:
                     pass
