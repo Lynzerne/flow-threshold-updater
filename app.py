@@ -155,6 +155,8 @@ def compliance_color_SWA(stream_size, flow, q80, q95):
 
 from dateutil.parser import parse
 
+from dateutil.parser import parse
+
 def get_valid_dates(merged, debug=False):
     dates = set()
     skipped_entries = 0
@@ -168,7 +170,7 @@ def get_valid_dates(merged, debug=False):
                         dates.add(d)
                     else:
                         if debug:
-                            print(f"Skipped date {d} at station {merged.iloc[idx]['WSC']} — no flow data")
+                            print(f"Skipped date {d} — no flow data")
                         skipped_entries += 1
                 except Exception as e:
                     if debug:
@@ -176,8 +178,8 @@ def get_valid_dates(merged, debug=False):
                     skipped_entries += 1
 
     if debug:
-        print(f"Total valid dates found: {len(dates)}")
-        print(f"Skipped entries: {skipped_entries}")
+        print(f"✅ Total valid dates found: {len(dates)}")
+        print(f"❌ Skipped entries: {skipped_entries}")
 
     return sorted(dates)
 
