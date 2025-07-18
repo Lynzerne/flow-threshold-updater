@@ -437,3 +437,379 @@ def make_popup_html_with_plot(row, selected_dates_strs, show_diversion):
           width: 100% !important;
           table-layout: auto !important;
           min-width: 280px;
+        }}
+        .popup-wrapper img {{
+          min-width: 280px;
+        }}
+      }}
+      
+      /* Desktop-specific adjustments */
+      @media (min-width: 501px) {{
+        .leaflet-popup-content {{
+            min-width: 650px !important; 
+            max-width: 700px !important;
+            width: auto !important;
+        }}
+        .popup-wrapper {{
+            max-height: 500px !important;
+            overflow-x: hidden;
+            padding: 10px;
+        }}
+        .popup-wrapper table {{
+            width: 100% !important;
+            table-layout: auto !important;
+        }}
+        .popup-wrapper img {{
+            max-width: 100% !important;
+            height: auto !important;
+        }}
+      }}
+
+      /* Base styles for the popup content - apply to all screen sizes first */
+      .leaflet-popup-content {{
+          padding: 0 !important;
+          margin: 0 !important;
+      }}
+      .leaflet-popup-content-wrapper {{
+          box-sizing: border-box; /* Crucial for consistent sizing */
+          padding: 4px !important;
+      }}
+      .leaflet-popup-content > div {{
+          background: #fff; /* Ensure white background */
+          border-radius: 12px;
+          width: 100% !important; /* Ensure direct child takes full width */
+      }}
+      .popup-wrapper {{
+          height: auto; /* Let content dictate height */
+          box-sizing: border-box;
+          padding: 5px; /* Add some internal padding */
+      }}
+      .popup-wrapper h4 {{
+          font-size: {font_size};
+          margin-top: 0; /* Remove default margin */
+          margin-bottom: 10px;
+          text-align: center; /* Center the title */
+      }}
+      .popup-wrapper table {{
+          border-collapse: collapse;
+          border: {border};
+          font-size: {font_size};
+          width: 100% !important; /* Table must take full width of its container */
+          word-wrap: break-word;
+      }}
+      .popup-wrapper th, .popup-wrapper td {{
+          padding: {padding};
+          border: {border};
+          text-align: center; /* Center text in cells */
+          vertical-align: middle;
+      }}
+      .popup-wrapper th {{
+          background-color: #f2f2f2; /* Light grey background for headers */
+      }}
+      .popup-wrapper img {{
+          display: block !important;
+          margin: 0 auto !important;
+      }}
+    </style>
+    
+    <div class='popup-wrapper'>
+      <h4 style='font-size:{font_size};'>{row['Station Name']}</h4>
+      <table style='border-collapse: collapse; font-size:{font_size}; width: 100%; max-width: 100%;'>
+        <tr><th style='padding:{padding}; border:{border};'>Metric</th>
+    """
+    html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in plot_dates]) # Use string dates for table headers
+    html += "</tr>"
+
+    if show_daily_flow:
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Daily Flow</td>"
+        html += ''.join([
+            f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
+            for v, c in zip(flows, daily_colors)
+        ])
+        html += "</tr>"
+
+    if show_calc_flow and any(pd.notna(val) for val in calc_flows):
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>Calculated Flow</td>"
+        html += ''.join([
+            f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
+            for v, c in zip(calc_flows, calc_colors)
+        ])
+        html += "</tr>"
+
+    for label in threshold_labels:
+        html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>{label}</td>"
+        html += ''.join([
+            f"<td style='padding:{padding}; border:{border};'>" + (f"{t.get(label):.2f}" if pd.notna(t.get(label)) else "NA") + "</td>"
+            for t in threshold_sets
+        ])
+        html += "</tr>"
+
+    html += "</table><br>"
+
+    # --- Plot rendering ---
+    fig, ax = plt.subplots(figsize=(6.8, 3.5)) # Adjusted figsize for better mobile display
+    ax.plot(plot_dates_dt, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2) # Use datetime objects for plotting
+    ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
+    ax.set_axisbelow(True)
+    if any(pd.notna(val) for val in calc_flows):
+        ax.plot(plot_dates_dt, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2) # Use datetime objects for plotting
+
+    threshold_colors = {
+        'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
+        'IO': 'orange', 'WCO': 'crimson', 'Q80': 'green', 'Q90': 'yellow',
+        'Q95': 'orange', 'Minimum flow': 'red', 'IFN': 'red'
+    }
+
+    for label in threshold_labels:
+        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
+        if all(pd.isna(threshold_vals)):
+            continue
+        ax.plot(plot_dates_dt, threshold_vals, linestyle='--', label=label, # Use datetime objects for plotting
+                     color=threshold_colors.get(label, 'gray'), linewidth=2)
+
+    ax.set_ylabel('Flow')
+    ax.legend(fontsize=8)
+    ax.set_title('Flow and Thresholds Over Time')
+    ax.tick_params(axis='x', rotation=45)
+    fig.tight_layout()
+
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches='tight')
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width: 100%; height: auto; display: block; margin: 0 auto;'>"
+    html += "</div>"
+
+    return html
+
+# --- Caching for generated popups ---
+def get_date_hash(dates):
+    """Create a short unique hash string for a list of dates."""
+    date_str = ",".join(sorted(dates))
+    return hashlib.md5(date_str.encode()).hexdigest()
+
+@st.cache_data(show_spinner=True, hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
+def generate_all_popups(merged_df, selected_dates_tuple):
+    # Convert tuple back to list of strings for processing within the function
+    selected_dates_strs = list(selected_dates_tuple) 
+
+    popup_cache_no_diversion = {}
+    popup_cache_diversion = {}
+
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        try:
+            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates_strs, show_diversion=False)
+            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates_strs, show_diversion=True)
+        except Exception as e:
+            st.exception(e) # Display error in Streamlit if popup generation fails for a station
+            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
+            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
+
+    return popup_cache_no_diversion, popup_cache_diversion
+
+
+# --- Streamlit Sidebar Elements ---
+with st.sidebar.expander("🚨 Note from Developer", expanded=False):
+    st.markdown("""
+    <div style='color: red'>
+        This app pre-computes charts and tables for all stations before displaying the map.  
+        That means loading can take **2-3 minutes**, depending on your date range and device.
+    </div>
+    <div style='margin-top: 8px;'>
+        We're working on making this faster and more responsive. Thanks for your patience!
+    </div>
+    """, unsafe_allow_html=True)
+
+st.sidebar.header("Date Range")
+# Ensure min_date and max_date are actual date objects from the valid_dates string list
+min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
+max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
+end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
+
+if start_date > end_date:
+    st.sidebar.error("Start date must be before end date.")
+    st.stop()
+
+# Filter `valid_dates` (which are strings) based on the selected `start_date` and `end_date` (date objects)
+selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
+
+with st.sidebar.expander("ℹ️ About this App"):
+    st.markdown("""
+    **🔍 What is this?** This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
+
+    **📊 Data Sources:** - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
+    - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
+    - **Diversion Tables** from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations.
+    - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions (Water Management Plans)
+
+    **📏 Threshold Definitions:** - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
+    - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
+    - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
+    - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow".  
+    - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
+    - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
+    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion or daily limits
+
+    **🟢 Color Codes in Map:** - 🟢 Flow meets all thresholds  
+    - 🔴 Flow below one or more thresholds  
+    - 🟡 Intermediate (depends on stream size & Q-values)  
+    - ⚪ Missing or insufficient data
+    - 🔵 **Blue border**: Station has a Diversion Table (click layer on right for additional thresholds)
+
+    _🚧 This app is under development. Thanks for your patience — and coffee! ☕ - Lyndsay Greenwood_
+    """)
+with st.sidebar.expander("ℹ️ Who Cares?"):
+    st.markdown("""
+    **❓ Why does this matter?** Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.  
+    However, water supply is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
+    
+    In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
+    
+    While water conservation is a personal responsibility we all share, ensuring that diversion limits exist—and are respected—is a vital tool in protecting Alberta’s water systems and ecosystems for generations to come.
+
+    """)
+
+# --- Map Rendering Logic ---
+def get_most_recent_valid_date(row, dates):
+    # Find the most recent date with flow data for a given station within the selected range
+    for d in sorted(dates, reverse=True):
+        daily = extract_daily_data(row['time_series'], d)
+        if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
+            return d
+    return None
+
+@st.cache_data(show_spinner=True, hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
+def render_map_two_layers():
+    m = folium.Map(
+        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        zoom_start=6,
+        width='100%',
+        height='1200px'
+    )
+
+    # Add responsive popup size script (ensures popups adapt to screen size)
+    popup_resize_script = Element("""
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const resizePopups = () => {
+            const popups = document.querySelectorAll('.leaflet-popup-content');
+            popups.forEach(p => {
+                p.style.maxHeight = window.innerWidth < 500 ? '90vh' : '600px';
+                p.style.overflow = 'auto';
+            });
+        };
+        const observer = new MutationObserver(resizePopups);
+        observer.observe(document.body, { childList: true, subtree: true });
+        resizePopups(); // Initial call
+    });
+    </script>
+    """)
+    m.get_root().html.add_child(popup_resize_script)
+
+    # Enable touch actions for map interactions on mobile
+    m.get_root().html.add_child(folium.Element("""
+        <style>
+            body {
+                touch-action: pan-x pan-y pinch-zoom !important;
+            }
+        </style>
+    """))
+    Fullscreen().add_to(m) # Add fullscreen button
+
+    # FeatureGroups for two map layers (All Stations and Diversion Stations)
+    fg_all = folium.FeatureGroup(name='All Stations')
+    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
+
+    for _, row in merged.iterrows():
+        coords = [row['LAT'], row['LON']]
+
+        date = get_most_recent_valid_date(row, selected_dates)
+        if not date:
+            continue # Skip stations with no valid flow data in the selected range
+
+        color = get_color_for_date(row, date)
+
+        wsc = row['WSC']
+        # Retrieve pre-generated popup HTML from session state caches
+        popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
+        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
+
+        # Define IFrame and Popup with general dimensions, letting internal CSS handle responsiveness
+        iframe_width = 700 
+        iframe_height = 550 
+
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=iframe_width, height=iframe_height)
+        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=iframe_width + 50) 
+
+        iframe_diversion = IFrame(html=popup_html_diversion, width=iframe_width, height=iframe_height)
+        popup_diversion = folium.Popup(iframe_diversion, max_width=iframe_width + 50)
+
+
+        # Marker for ALL stations (shows no diversion popup by default)
+        folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color='black',
+            weight=3,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7,
+            popup=popup_no_diversion,
+            tooltip=row['Station Name'] 
+        ).add_to(fg_all)
+
+        # Marker for diversion stations only (shows diversion popup)
+        if wsc in diversion_tables:
+            folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue', # Blue border indicates diversion table available
+                weight=3,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.7,
+                popup=popup_diversion,
+                tooltip=row['Station Name']
+            ).add_to(fg_diversion)
+
+    # Add both layers to map and enable layer control
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=False).add_to(m)
+
+    return m
+
+# --- Main Application Display ---
+st.title("Alberta Flow Threshold Viewer")
+
+with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
+    # Always compute the current date hash based on selected_dates
+    current_dates_hash = get_date_hash(selected_dates)
+
+    # Check session state for cached popups using the date hash.
+    # If caches don't exist, or the date range has changed (hash mismatch), re-generate popups.
+    if ('popup_cache_no_diversion' not in st.session_state or
+        'popup_cache_diversion' not in st.session_state or
+        st.session_state.get('cached_dates_hash', '') != current_dates_hash):
+
+        no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
+        st.session_state.popup_cache_no_diversion = no_diversion_cache
+        st.session_state.popup_cache_diversion = diversion_cache
+        st.session_state.cached_dates_hash = current_dates_hash
+    
+    # Render and display the map
+    m = render_map_two_layers()
+    map_html = m.get_root().render()
+
+    # Inject mobile-friendly viewport settings into <head> for proper scaling
+    map_html = map_html.replace(
+        "<head>",
+        "<head><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1'>"
+    )
+
+    # Display map using Streamlit's components.v1.html
+    st.components.v1.html(map_html, height=1200, scrolling=True)
