@@ -97,55 +97,105 @@ for _, row in stns.iterrows():
 
     all_data.append(df)
 
-# --- Merge/Update Master Dataset ---
+# --- Merge/Update Master Dataset (Revised for Auditing) ---
 if all_data:
     new_data_df = pd.concat(all_data, ignore_index=True)
+    new_data_df['Date'] = pd.to_datetime(new_data_df['Date']).dt.date # Ensure date type consistency
 
     merge_keys = ['station_no', 'Date']
     metadata_cols = ['station_no', 'station_name', 'Date', 'lon', 'lat']
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        updated_rows = []
+        # Create a combined DataFrame of existing master and new data
+        # This will contain duplicate rows for existing (station, date) pairs
+        combined_df = pd.concat([master_df, new_data_df], ignore_index=True)
 
-        for _, new_row in new_data_df.iterrows():
-            match = (master_df['station_no'] == new_row['station_no']) & (master_df['Date'] == new_row['Date'])
-            if match.any():
-                old_row = master_df[match].iloc[0]
+        # Sort by station, date, and then potentially by a timestamp of collection (if you had one)
+        # For now, we'll rely on the existing data being the "older" one if there are duplicates.
+        combined_df.sort_values(merge_keys, inplace=True)
 
-                # Determine if revision is needed (only if old value is NaN and new value is not)
-                revised = False
-                for col in ts_cols:
-                    old_val = old_row.get(col)
-                    new_val = new_row.get(col)
+        # Drop duplicates, keeping the FIRST occurrence (i.e., the original master_df record)
+        # This ensures that if data for a (station, date, column) already exists and is not NaN,
+        # it is NOT overwritten by a new non-NaN value from new_data_df.
+        # This is the core change for compliance.
+        # We also want to update metadata from the latest scrape, as it doesn't represent "data."
+        # So we'll update those separately.
+
+        # First, handle the time-series data: only update NaNs
+        # Group by merge_keys and fill NaNs forward from the combined (old then new) data
+        # This ensures that if the old value was NaN and the new one has a value, it's filled.
+        # If old value was already non-NaN, it remains.
+        filled_ts_data = combined_df.groupby(merge_keys)[ts_cols].apply(
+            lambda x: x.bfill().iloc[0] if not x.isnull().all().all() else x.iloc[0]
+        ).reset_index()
+
+        # Re-merge the metadata (station_name, lat, lon) from the latest available scrape (new_data_df)
+        # and ensure original is_revised flag is handled carefully.
+        # We need to preserve the is_revised flag from the master_df if the value wasn't revised
+        # to ensure historical accuracy, or set it if a blank was filled.
+
+        # Identify which values were actually "revised" (i.e., blank filled)
+        # Create a temporary DataFrame of old values for comparison
+        temp_master_for_comparison = master_df.set_index(merge_keys)
+        
+        # This list will store the final, unique rows for the new master_df
+        final_master_rows = []
+
+        # Iterate through unique station-date combinations from the combined data
+        for (stn, dt), group in combined_df.groupby(merge_keys):
+            existing_master_row = temp_master_for_comparison.loc[(stn, dt)] if (stn, dt) in temp_master_for_comparison.index else None
+            new_scrape_row = new_data_df[(new_data_df['station_no'] == stn) & (new_data_df['Date'] == dt)].iloc[0] if not new_data_df[(new_data_df['station_no'] == stn) & (new_data_df['Date'] == dt)].empty else None
+
+            # Start with new scrape row as the base, then overlay existing master data
+            # for actual flow values IF they existed and were non-NaN.
+            final_row_data = new_scrape_row.to_dict() if new_scrape_row is not None else {}
+            
+            is_revised_flag = False
+            for col in ts_cols:
+                new_val = new_scrape_row[col] if new_scrape_row is not None and col in new_scrape_row else None
+                
+                # Check if this specific value was "filled in" (was NaN in master_df, now has value)
+                if existing_master_row is not None and col in existing_master_row:
+                    old_val = existing_master_row[col]
                     if pd.isna(old_val) and pd.notna(new_val):
-                        revised = True
-                        break
+                        # This specific parameter was revised (filled from NaN)
+                        is_revised_flag = True
+                        final_row_data[col] = new_val # Take the new value as it was filling a blank
+                    elif pd.notna(old_val):
+                        # If old value was already NOT NaN, keep the OLD value for audit compliance
+                        final_row_data[col] = old_val
+                        # The 'is_revised' flag on the old row might indicate it was blank-filled previously.
+                        # For audit, we only care if *we* just revised it.
+                        # You might need a separate mechanism if you need to track *every* revision.
+                        # For now, if old value was present, we assume it's the "official" version.
+                    else: # old_val was NaN, new_val is also NaN
+                        final_row_data[col] = new_val # Keep it NaN
+                else: # New (station, date) combination, or new column for existing (station, date)
+                    final_row_data[col] = new_val # Take the new value
 
-                new_row['is_revised'] = revised
-                updated_rows.append(new_row)
-            else:
-                # New record (not in master)
-                new_row['is_revised'] = False
-                updated_rows.append(new_row)
+            # Set 'is_revised' based on if *we* just filled a blank from the scrape
+            final_row_data['is_revised'] = is_revised_flag
+            
+            # Reconstruct the row for the final DataFrame
+            final_master_rows.append(final_row_data)
 
-        updated_df = pd.DataFrame(updated_rows)
-
-        # Remove old rows with matching keys, then append updated rows
-        master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_df.set_index(merge_keys).index)]
-        master_df = pd.concat([master_df, updated_df], ignore_index=True)
-
-    else:
+        master_df = pd.DataFrame(final_master_rows)
+        master_df = master_df.drop_duplicates(subset=merge_keys, keep='first') # Just in case to ensure unique rows
+        
+    else: # master_df is empty, so all new_data_df are new records
         new_data_df['is_revised'] = False
         master_df = new_data_df
 
-    master_df.sort_values(['station_no', 'Date'], inplace=True)
+    master_df.sort_values(merge_keys, inplace=True) # Sort by WSC and Date
 
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
 
     # --- Save Daily Snapshot for Most Recent Date Available ---
-    iday = new_data_df['Date'].max()
+    # This snapshot will reflect the data as of today's run based on the master_df
+    # and is suitable for displaying the current state in the app.
+    iday = master_df['Date'].max() # Get the latest date available in the master data
     daily_snapshot_df = master_df[master_df['Date'] == iday]
 
     daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
