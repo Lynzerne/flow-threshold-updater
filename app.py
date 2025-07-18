@@ -1,20 +1,3 @@
-It's completely understandable to feel confused when dealing with these kinds of issues! The problem you're encountering with data not showing up past July 14th is likely related to how the selected_dates variable is being determined and used, especially in conjunction with Streamlit's execution flow and session state.
-
-The core issue is that selected_dates is being used in render_map_two_layers before it's populated by the start_date and end_date inputs from the sidebar. When Streamlit re-runs the script (which it does whenever a widget changes), the code executes top-down.
-
-I've made several key adjustments to your code to:
-
-Correct the placement of valid_dates: This was the cause of your previous NameError.
-
-Ensure selected_dates is correctly defined and updated: This is crucial for the map to display data based on the chosen date range.
-
-Add more comprehensive debugging outputs: These will help you inspect the valid_dates and selected_dates directly in your Streamlit app to pinpoint why data might not be appearing beyond a certain date.
-
-Add a get_color_for_date placeholder: This function was missing but called in render_map_two_layers. I've added a basic version so the code runs. You'll need to implement your actual compliance logic here.
-
-Revised Code with Debugging and Fixes
-Python
-
 from datetime import datetime, timedelta
 import streamlit as st
 import pandas as pd
