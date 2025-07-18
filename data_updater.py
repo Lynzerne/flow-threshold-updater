@@ -97,7 +97,7 @@ for _, row in stns.iterrows():
 
     all_data.append(df)
 
-# --- Merge/Update Master Dataset (Revised for Date-Based Logic) ---
+# --- Merge/Update Master Dataset (Revised for Date-Based Logic - FIX for KeyError: 'Date') ---
 if all_data:
     new_data_df = pd.concat(all_data, ignore_index=True)
 
@@ -106,61 +106,96 @@ if all_data:
     ts_cols = [col for col in new_data_df.columns if col not in metadata_cols]
 
     if not master_df.empty:
-        # We will iterate through new_data_df and decide how to merge it into master_df
         # Create a temporary DataFrame to hold the updated rows
         updated_rows_list = []
         
         # Convert master_df to a dictionary for faster lookups
         master_dict = master_df.set_index(merge_keys).to_dict('index')
 
-        for _, new_row in new_data_df.iterrows():
-            current_key = (new_row['station_no'], new_row['Date'])
-            
-            if current_key in master_dict:
-                # This record already exists in master_df
-                old_row_data = master_dict[current_key]
-                
-                # Start with the old_row_data as the base
-                merged_row_data = old_row_data.copy()
+        # Use a combined set of (station_no, Date) pairs to ensure we cover all existing and new dates
+        # This handles cases where a station-date exists in master_df but not in new_data_df (e.g., no recent scrape data for it)
+        # Or vice versa.
+        # Ensure 'Date' column exists before dropping duplicates, if new_data_df is empty.
+        all_unique_keys_df = pd.DataFrame(columns=merge_keys)
+        if not master_df.empty:
+            all_unique_keys_df = pd.concat([all_unique_keys_df, master_df[merge_keys]], ignore_index=True)
+        if not new_data_df.empty: # Only add new_data_df keys if it's not empty
+            all_unique_keys_df = pd.concat([all_unique_keys_df, new_data_df[merge_keys]], ignore_index=True)
+        all_unique_keys_df.drop_duplicates(inplace=True)
 
-                # Iterate through all time-series columns (including potentially new ones)
-                for col in ts_cols:
-                    new_val = new_row.get(col)
-                    old_val = old_row_data.get(col)
 
-                    # Only update if the old value was NaN AND the new value is not NaN
-                    if pd.isna(old_val) and pd.notna(new_val):
-                        merged_row_data[col] = new_val # Fill the blank
-                        merged_row_data['is_revised'] = True # Mark as revised if a blank was filled
-                    elif col not in merged_row_data: # If new column appears in current scrape, add it
-                        merged_row_data[col] = new_val
-                        # No need to set is_revised for entirely new columns
-                
-                # Update metadata (station_name, lat, lon) from the *latest* scrape,
-                # as these are attributes, not auditable time-series values.
-                merged_row_data['station_name'] = new_row['station_name']
-                merged_row_data['lon'] = new_row['lon']
-                merged_row_data['lat'] = new_row['lat']
+        for _, row_key in all_unique_keys_df.iterrows():
+            stn = row_key['station_no']
+            dt = row_key['Date']
 
-                updated_rows_list.append(merged_row_data)
+            existing_master_row_data = master_dict.get((stn, dt)) # Use .get() to safely retrieve None if not found
+            new_scrape_row_data = new_data_df[(new_data_df['station_no'] == stn) & (new_data_df['Date'] == dt)].iloc[0].to_dict() if not new_data_df[(new_data_df['station_no'] == stn) & (new_data_df['Date'] == dt)].empty else None
 
+            # Initialize the row to be added to the temporary master.
+            # Start with existing master data if available, otherwise new scrape data, otherwise just the key info.
+            if existing_master_row_data is not None:
+                current_row_data = existing_master_row_data.copy()
+            elif new_scrape_row_data is not None:
+                current_row_data = new_scrape_row_data.copy()
             else:
-                # This is a completely new record (new station-date combination)
-                # Add it directly, mark as not revised (as it's new)
-                new_row_data = new_row.to_dict()
-                new_row_data['is_revised'] = False # Default for new records
-                updated_rows_list.append(new_row_data)
+                # If neither existing nor new data, it means this key came from master_df but has no corresponding scrape.
+                # In this case, we still need to preserve it. Initialize with merge_keys.
+                current_row_data = {'station_no': stn, 'Date': dt, 'is_revised': False}
+                # Add other metadata if known from master_df, otherwise they might be NaN initially.
+                # This ensures at least 'Date' and 'station_no' exist.
+
+
+            is_row_revised = False # Flag for this entire row
+
+            # --- Update Time-Series Columns ---
+            for col in ts_cols: # Iterate through all possible time-series columns
+                old_val = existing_master_row_data.get(col) if existing_master_row_data is not None else None
+                new_val = new_scrape_row_data.get(col) if new_scrape_row_data is not None and col in new_scrape_row_data else None
+
+                # Only update if the old value was NaN AND the new value is not NaN
+                if pd.isna(old_val) and pd.notna(new_val):
+                    current_row_data[col] = new_val # Fill the blank
+                    is_row_revised = True # Mark as revised if a blank was filled
+                elif pd.notna(old_val): # If old value exists and is not NaN, keep it
+                    current_row_data[col] = old_val
+                else: # Both old and new are NaN, or no new value; ensure it's in current_row_data
+                    current_row_data[col] = new_val # This will make it NaN if new_val is NaN or None
+
+            # Update metadata (station_name, lat, lon) from the *latest* scrape, if available,
+            # otherwise keep existing, or make NaN if neither.
+            if new_scrape_row_data is not None:
+                current_row_data['station_name'] = new_scrape_row_data.get('station_name', current_row_data.get('station_name'))
+                current_row_data['lon'] = new_scrape_row_data.get('lon', current_row_data.get('lon'))
+                current_row_data['lat'] = new_scrape_row_data.get('lat', current_row_data.get('lat'))
+            elif existing_master_row_data is not None: # If only existing master data, use its metadata
+                current_row_data['station_name'] = existing_master_row_data.get('station_name')
+                current_row_data['lon'] = existing_master_row_data.get('lon')
+                current_row_data['lat'] = existing_master_row_data.get('lat')
+            else: # If a completely new record was constructed from all_unique_keys_df, ensure these are present
+                current_row_data['station_name'] = None
+                current_row_data['lon'] = None
+                current_row_data['lat'] = None
+
+
+            # Set the is_revised flag for the row
+            current_row_data['is_revised'] = is_row_revised
+
+            updated_rows_list.append(current_row_data)
 
         # Convert list of dicts to DataFrame
         updated_df = pd.DataFrame(updated_rows_list)
         # Ensure correct dtypes, especially for 'Date' and numeric columns
+        # Explicitly ensure merge_keys and metadata_cols are present even if all NaN.
+        for col in merge_keys + metadata_cols:
+            if col not in updated_df.columns:
+                updated_df[col] = None # Or pd.NA, or a default value
+
         updated_df['Date'] = pd.to_datetime(updated_df['Date']).dt.date
         for col in ts_cols: # Convert time-series cols to numeric, coercing errors
              updated_df[col] = pd.to_numeric(updated_df[col], errors='coerce')
 
 
         # Reconstruct master_df: remove old versions of updated rows, then concat
-        # Get keys of rows that were updated/added
         updated_keys_df = updated_df[merge_keys].drop_duplicates()
         master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_keys_df.set_index(merge_keys).index)]
         master_df = pd.concat([master_df, updated_df], ignore_index=True)
@@ -178,16 +213,19 @@ if all_data:
     # --- Save Daily Snapshot for Most Recent Date Available ---
     # This snapshot will reflect the data as of today's run based on the master_df
     # and is suitable for displaying the current state in the app.
-    iday = master_df['Date'].max() # Get the latest date available in the master data
-    daily_snapshot_df = master_df[master_df['Date'] == iday]
+    # Check if master_df is empty before trying to get max date
+    if not master_df.empty:
+        iday = master_df['Date'].max()
+        daily_snapshot_df = master_df[master_df['Date'] == iday]
 
-    daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
-    daily_snapshot_df.to_parquet(daily_parquet_path, index=False, engine="pyarrow")
-    print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
+        daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
+        daily_snapshot_df.to_parquet(daily_parquet_path, index=False, engine="pyarrow")
+        print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
+    else:
+        print("Master dataset is empty, no daily snapshot saved.")
 
 else:
     print("No new data collected from any stations.")
-#############################Stitch#############################
 #############################Stitch#############################
 from datetime import date
 import pandas as pd
