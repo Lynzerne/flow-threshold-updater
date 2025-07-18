@@ -238,46 +238,69 @@ def get_valid_dates(data: pd.DataFrame):
                     if 'date' in item_dict and ('Daily flow' in item_dict or 'Calculated flow' in item_dict):
                         if item_dict.get('Daily flow') is not None or item_dict.get('Calculated flow') is not None:
                             try:
-                                d = parse(item_dict['date']).strftime('%Y-%m-%d')
+                                # Ensure the date is parsed into a datetime.date object for consistency
+                                d = parse(item_dict['date']).date() # Changed from .strftime('%Y-%m-%d')
                                 all_dates.add(d)
                             except (TypeError, ValueError):
                                 pass
     
     if not all_dates:
+        # If no valid dates, provide a sensible default range around today's date
         today = datetime.now().date()
         return sorted([today - timedelta(days=7), today + timedelta(days=7)])
 
     sorted_dates = sorted(list(all_dates))
-    return [parse(d).date() for d in sorted_dates]
+    return sorted_dates # Already datetime.date objects
 
 # --- Main App Logic ---
 valid_dates = get_valid_dates(merged)
 
-# Check if valid_dates is empty or contains non-date objects before accessing elements
+# Ensure valid_dates is not empty before proceeding
 if not valid_dates:
-    st.error("No valid dates found for selection.")
-    st.stop() # Stop the app execution if no valid dates
+    st.error("No valid dates found in the data. Please check your data source.")
+    st.stop() # Stop the app if no dates are available
 
-# Define default date. If current date is not in valid_dates, use the latest valid date.
-current_date = datetime.now().date()
-if current_date not in valid_dates:
-    # Find the closest date or simply use the max available date
-    selected_date_default = max(valid_dates)
-else:
-    selected_date_default = current_date
+# Determine default end date (today or latest valid date)
+default_end_date = min(datetime.now().date(), max(valid_dates))
+# Determine default start date (8 days before default_end_date, or min valid date)
+default_start_date = max(min(valid_dates), default_end_date - timedelta(days=8))
 
 
-# Place the date input in the sidebar
 with st.sidebar:
-    st.header("Select Date")
-    # Use st.date_input instead of st.slider
-    # Set min_value, max_value, and value using datetime.date objects
-    selected_date = st.date_input(
-        "Choose a date",
-        value=selected_date_default,
+    st.header("Select Date Range")
+
+    # Start Date input
+    selected_start_date = st.date_input(
+        "Start Date",
+        value=default_start_date, # Set default to 8 days before end date
         min_value=min(valid_dates),
         max_value=max(valid_dates)
     )
+
+    # End Date input
+    selected_end_date = st.date_input(
+        "End Date",
+        value=default_end_date, # Set default to today or latest valid date
+        min_value=min(valid_dates),
+        max_value=max(valid_dates)
+    )
+
+# Ensure start date is not after end date
+if selected_start_date > selected_end_date:
+    st.sidebar.warning("Start date cannot be after end date. Adjusting start date.")
+    selected_start_date = selected_end_date # Automatically adjust if invalid
+
+# Now, use selected_start_date and selected_end_date for your logic
+st.write(f"Displaying data from: {selected_start_date.strftime('%Y-%m-%d')} to {selected_end_date.strftime('%Y-%m-%d')}")
+
+# You will need to adapt your filtering/display logic to use these two date variables
+# Example:
+# filtered_data = merged[
+#     merged['time_series'].apply(lambda ts_list: 
+#         any(parse(dict(item).get('date')).date() >= selected_start_date and 
+#             parse(dict(item).get('date')).date() <= selected_end_date for item in ts_list)
+#     )
+# ]
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
