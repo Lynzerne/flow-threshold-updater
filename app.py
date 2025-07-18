@@ -50,42 +50,28 @@ def load_data():
     properties_list = [feature['properties'] for feature in geo_json_raw['features']]
     geo_data_df = pd.DataFrame(properties_list)
      # --- ADD THIS SECTION ---
-    st.write("DEBUG: Original columns in geo_data_df (from GeoJSON properties):", geo_data_df.columns.tolist())
-    # Ensure 'station_no' from GeoJSON properties is renamed to 'WSC'
+   
     if 'station_no' in geo_data_df.columns:
         geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'})
-        st.write("DEBUG: Renamed 'station_no' to 'WSC' in geo_data_df.")
+        
     elif 'WSC' not in geo_data_df.columns:
-        st.error("ERROR: 'WSC' or 'station_no' column not found in GeoJSON properties for geo_data_df.")
-        st.write("DEBUG: Final columns in geo_data_df before merge attempt:", geo_data_df.columns.tolist())
-        st.stop() # Stop the app to highlight the issue
-    # --- END ADDITION ---
+        
 
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
 
-    # --- START CRITICAL DEBUGGING SECTION ---
-    st.write("DEBUG: Original columns in AB_WS_R_StationList.csv (station_info):", station_info.columns.tolist())
-
+  
     # Strip whitespace from all column names
     station_info.columns = station_info.columns.str.strip()
-    st.write("DEBUG: Columns in station_info after stripping whitespace:", station_info.columns.tolist())
+   
 
     # Check for 'WSC' or 'station_no'
     if 'WSC' in station_info.columns:
-        st.write("DEBUG: 'WSC' column found directly in station_info.")
+       
     elif 'station_no' in station_info.columns:
         station_info = station_info.rename(columns={'station_no': 'WSC'})
-        st.write("DEBUG: Renamed 'station_no' to 'WSC' in station_info.")
-    else:
-        # If neither is found, explicitly list all columns and raise an error
-        st.error(f"ERROR: Neither 'WSC' nor 'station_no' column found in AB_WS_R_StationList.csv.")
-        st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
-        st.stop() # Stop the app here to prevent the KeyError and show debug info
-
-    st.write("DEBUG: station_info head before merge:")
-    st.write(station_info.head())
-    # --- END CRITICAL DEBUGGING SECTION ---
+       
+  
 
     # Merge in additional attributes
     geo_data_df = geo_data_df.merge(
