@@ -82,30 +82,30 @@ def load_data():
 
     # --- IMPROVED safe_parse function to handle potential NaNs more robustly ---
     def safe_parse(val):
-        if pd.isna(val): # Handle NaN values directly before trying to parse
+    if pd.isna(val):
+        return []
+    if isinstance(val, str):
+        try:
+            parsed_val = json.loads(val)
+            # Ensure it's a list even if a single dict was parsed
+            # And ensure all values within the dictionaries are hashable (e.g., convert inner lists to tuples if they exist)
+            if isinstance(parsed_val, list):
+                return tuple(
+                    {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
+                    for item in parsed_val
+                )
+            elif isinstance(parsed_val, dict):
+                return ({k: (tuple(v) if isinstance(v, list) else v) for k, v in parsed_val.items()},)
+            return [] # Fallback for unexpected types
+        except json.JSONDecodeError:
             return []
-        if isinstance(val, str):
-            try:
-                parsed_val = json.loads(val)
-                # Ensure it's a list even if a single dict was parsed
-                return parsed_val if isinstance(parsed_val, list) else [parsed_val]
-            except json.JSONDecodeError:
-                return []
-        # If it's already a list (or anything else that's not NaN), return as is
-        return val
-
-    geo_data_df['time_series'] = geo_data_df['time_series'].apply(safe_parse)
-
-    # Make compatible with streamlit cache
-    geo_data_df = make_df_hashable(geo_data_df)
-    
-    # Optional debug prints (remove once confirmed working)
-    # print("Columns in merged DataFrame:", geo_data_df.columns.tolist())
-    # st.write("DEBUG: Columns in merged DataFrame (from app):", geo_data_df.columns.tolist())
-    # st.write("DEBUG: Sample of time_series from app:", geo_data_df['time_series'].head(1).iloc[0])
-
-
-    return geo_data_df
+    # If it's already a list (or anything else that's not NaN), ensure it's a tuple of hashable dicts
+    if isinstance(val, list): # This handles the case where it's already a list from previous runs or caching
+        return tuple(
+            {k: (tuple(v) if isinstance(v, list) else v) for k, v in item.items()}
+            for item in val
+        )
+    return val # Return as is if already hashable
 
 
 # Call load_data and assign merged here
