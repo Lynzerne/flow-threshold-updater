@@ -157,31 +157,23 @@ from dateutil.parser import parse
 
 from dateutil.parser import parse
 
-def get_valid_dates(merged, debug=False):
-    dates = set()
-    skipped_entries = 0
+# --- Sidebar ---
+with st.sidebar.expander("🚨 Note from Developer", expanded=False):
+    st.markdown("""
+    <div style='color: red'>
+        This app pre-computes charts and tables for all stations before displaying the map.  
+        That means loading can take **2-3 minutes**, depending on your date range and device.
+    </div>
+    <div style='margin-top: 8px;'>
+        We're working on making this faster and more responsive. Thanks for your patience!
+    </div>
+    """, unsafe_allow_html=True)
 
-    for idx, ts in enumerate(merged['time_series']):
-        for item in ts:
-            if 'date' in item:
-                try:
-                    d = parse(item['date']).strftime('%Y-%m-%d')
-                    if any(item.get(k) is not None for k in ['Daily flow', 'Calculated flow']):
-                        dates.add(d)
-                    else:
-                        if debug:
-                            print(f"Skipped date {d} — no flow data")
-                        skipped_entries += 1
-                except Exception as e:
-                    if debug:
-                        print(f"Date parse error: {item.get('date')} → {e}")
-                    skipped_entries += 1
-
-    if debug:
-        print(f"✅ Total valid dates found: {len(dates)}")
-        print(f"❌ Skipped entries: {skipped_entries}")
-
-    return sorted(dates)
+st.sidebar.header("Date Range")
+min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
+max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
+end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
@@ -505,7 +497,7 @@ def generate_all_popups(merged_df, selected_dates_tuple):
 
     return popup_cache_no_diversion, popup_cache_diversion
 
-
+valid_dates = get_valid_dates(merged)
 # --- Sidebar ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
@@ -523,12 +515,6 @@ min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
 max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
 start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
 end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
-
-if start_date > end_date:
-    st.sidebar.error("Start date must be before end date.")
-    st.stop()
-
-selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
 
 with st.sidebar.expander("ℹ️ About this App"):
     st.markdown("""
