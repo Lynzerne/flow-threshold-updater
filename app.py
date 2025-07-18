@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date # Import date as well
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -11,6 +11,8 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
+import hashlib # For robust hashing of DataFrames
+from branca.element import Element
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -20,19 +22,95 @@ DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
-geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+# --- Utility function to make objects recursively hashable for Streamlit caching ---
+def make_hashable_recursive(obj):
+    """
+    Recursively converts unhashable objects (lists, dicts, numpy arrays, shapely geometries, NaNs)
+    to hashable ones (tuples, frozensets, strings, None).
+    """
+    if isinstance(obj, list):
+        return tuple(make_hashable_recursive(item) for item in obj)
+    if isinstance(obj, dict):
+        return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
+    
+    # Handle pandas/numpy NaN explicitly
+    if pd.isna(obj):
+        return None # Convert all NaN variations to hashable None
+    
+    # Handle None explicitly (already hashable, but good for consistency)
+    if obj is None:
+        return None
 
-# --- Load data ---
+    # For shapely geometry objects (e.g., Point, Polygon)
+    if hasattr(obj, 'wkt'):
+        return obj.wkt # Convert to Well-Known Text string, which is hashable
+
+    # Handle numpy arrays/scalars explicitly (convert to tuple or Python scalar)
+    if isinstance(obj, (pd.Series, pd.Index)):
+        return tuple(make_hashable_recursive(item) for item in obj.tolist())
+    if isinstance(obj, (set, frozenset)):
+        return frozenset(make_hashable_recursive(item) for item in obj)
+    if hasattr(obj, 'dtype') and hasattr(obj, 'tolist'): # Catches numpy arrays
+        # If it's a scalar numpy value (e.g., np.int64, np.float64)
+        if hasattr(obj, 'shape') and obj.shape == ():
+            return make_hashable_recursive(obj.item()) # Get the Python scalar
+        return tuple(make_hashable_recursive(item) for item in obj.tolist())
+
+    # Ensure any datetime/date objects are handled.
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+
+    # If it's still not hashable by now, try converting to a string as a last resort
+    try:
+        hash(obj) # Try hashing it directly
+        return obj # If hashable, return as is
+    except TypeError:
+        return str(obj) # Fallback: convert to string if unhashable
+
+
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Convert list columns to tuples for Streamlit caching compatibility.
+    Applies make_hashable_recursive to all object columns in a DataFrame.
     """
     df_copy = df.copy()
     for col in df_copy.columns:
-        if df_copy[col].apply(lambda x: isinstance(x, list)).any():
-            df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
+        if df_copy[col].dtype == 'object':
+            df_copy[col] = df_copy[col].apply(make_hashable_recursive)
+        # For numeric columns, ensure no non-hashable numpy types or NaNs remain if they somehow got in
+        elif df_copy[col].dtype in ['float64', 'int64'] and df_copy[col].isnull().any():
+            df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
     return df_copy
-@st.cache_data
+
+# --- Function to make a DataFrame or GeoDataFrame itself hashable for st.cache_data ---
+def hash_dataframe(df: pd.DataFrame):
+    """
+    Generates a hashable representation of a DataFrame or GeoDataFrame.
+    Assumes 'geometry' column (if present) is already in a hashable format (e.g., WKT strings).
+    """
+    df_for_hash = df.copy() # Work on a copy
+
+    # Ensure all columns are hashable before converting to values for hashing
+    df_for_hash = make_df_hashable(df_for_hash)
+
+    # Hash values (which are already made hashable by make_df_hashable)
+    values_hash = tuple(tuple(item) for item in df_for_hash.values)
+    
+    # Use a more robust hashing for index and columns
+    index_hash = hashlib.md5(str(tuple(str(x) for x in df_for_hash.index)).encode()).hexdigest()
+    columns_hash = hashlib.md5(str(tuple(str(x) for x in df_for_hash.columns)).encode()).hexdigest()
+    
+    return (values_hash, index_hash, columns_hash)
+
+# --- Define the hash_funcs dictionary ---
+PANDAS_HASH_FUNCS = {
+    pd.DataFrame: hash_dataframe,
+    gpd.GeoDataFrame: hash_dataframe,
+    date: lambda d: d.isoformat(),
+    datetime: lambda dt: dt.isoformat(),
+}
+
+
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
 def load_data():
     # Load spatial GeoData
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
@@ -47,35 +125,39 @@ def load_data():
         on='WSC', how='left'
     )
 
-    # Convert geometry to WKT (safe for caching)
-    geo_data['geometry_wkt'] = geo_data.geometry.apply(lambda g: g.wkt if g else None)
-    geo_data = geo_data.drop(columns=['geometry'])
+    # Convert geometry to WKT (safe for caching and handled by make_hashable_recursive)
+    # This ensures shapely objects are not directly passed to the cache
+    if 'geometry' in geo_data.columns and isinstance(geo_data, gpd.GeoDataFrame):
+        geo_data['geometry'] = geo_data['geometry'].apply(lambda g: g.wkt if g else None)
 
-    # Parse time_series safely
-    def safe_parse(val):
+
+    # Parse time_series safely and make fully hashable
+    def safe_parse_and_hash(val):
         if isinstance(val, str):
             try:
-                return json.loads(val)
-            except:
-                return []
-        return val
+                parsed_json = json.loads(val)
+                # Apply the recursive hashable conversion right after parsing
+                return make_hashable_recursive(parsed_json)
+            except json.JSONDecodeError:
+                return tuple() # Return an empty tuple if JSON parsing fails
+        # If it's already not a string or is NaN, make it a hashable empty tuple
+        return tuple() if pd.isna(val) else make_hashable_recursive(val)
 
-    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse)
+    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse_and_hash)
 
-    # Make compatible with streamlit cache
+    # Apply make_df_hashable to ensure all columns (especially 'object' types) are fully hashable
     geo_data = make_df_hashable(geo_data)
+
     print("Columns in merged DataFrame:", geo_data.columns.tolist())
 
     return geo_data
-
 
 # Call load_data and assign merged here
 merged = load_data()
 
 
-
 # --- Load diversion tables ---
-@st.cache_data
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
@@ -113,17 +195,21 @@ def load_diversion_tables():
 
             df['Date'] = df['Date'].apply(safe_replace_year)
 
-            diversion_tables[wsc] = df
+            # Ensure the diversion table itself is hashable before storing in dictionary
+            diversion_tables[wsc] = make_df_hashable(df) 
 
     return diversion_tables, diversion_labels
 
-
+diversion_tables, diversion_labels = load_diversion_tables()
 
 # --- Helper functions ---
-def extract_daily_data(time_series, date_str):
-    for item in time_series:
-        if item.get("date") == date_str:
-            return item
+def extract_daily_data(time_series_hashed, date_str):
+    # time_series_hashed is now expected to be a tuple of frozensets
+    for item_frozenset in time_series_hashed:
+        if isinstance(item_frozenset, frozenset):
+            item_dict = dict(item_frozenset)
+            if item_dict.get("date") == date_str:
+                return item_dict
     return {}
 
 def extract_thresholds(entry):
@@ -153,8 +239,8 @@ def compliance_color_SWA(stream_size, flow, q80, q95):
         return 'red'
     return 'gray'
 
-def get_color_for_date(row, date):
-    daily = extract_daily_data(row['time_series'], date)
+def get_color_for_date(row, date_str): # Expects date_str
+    daily = extract_daily_data(row['time_series'], date_str)
     flow_daily = daily.get('Daily flow')
     flow_calc = daily.get('Calculated flow')
     flow = max(filter(pd.notna, [flow_daily, flow_calc]), default=None)
@@ -166,23 +252,42 @@ def get_color_for_date(row, date):
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
 
-def get_valid_dates(merged):
-    dates = set()
-    for ts in merged['time_series']:
-        for item in ts:
-            if 'date' in item and 'Daily flow' in item:
-                try:
-                    d = parse(item['date']).strftime('%Y-%m-%d')
-                    if item['Daily flow'] is not None:
-                        dates.add(d)
-                except:
-                    pass
-    return sorted(dates)
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
+def get_valid_dates(data: pd.DataFrame):
+    all_dates = set()
+    df_for_iteration = data.drop(columns=['geometry'], errors='ignore')
+    
+    for ts_tuple in df_for_iteration['time_series']:
+        if isinstance(ts_tuple, tuple):
+            for item_frozenset in ts_tuple:
+                if isinstance(item_frozenset, frozenset):
+                    item_dict = dict(item_frozenset)
+                    if 'date' in item_dict and ('Daily flow' in item_dict or 'Calculated flow' in item_dict):
+                        # Ensure the flow value itself is not None/NaN before considering the date valid
+                        flow_daily = item_dict.get('Daily flow')
+                        flow_calc = item_dict.get('Calculated flow')
+                        if (flow_daily is not None and pd.notna(flow_daily)) or \
+                           (flow_calc is not None and pd.notna(flow_calc)):
+                            try:
+                                # Ensure the date is parsed into a datetime.date object for consistency
+                                d = parse(item_dict['date']).date() 
+                                all_dates.add(d)
+                            except (TypeError, ValueError):
+                                pass
+    
+    if not all_dates:
+        # If no valid dates, provide a sensible default range around today's date
+        today = datetime.now().date()
+        return sorted([today - timedelta(days=7), today + timedelta(days=7)])
+
+    sorted_dates = sorted(list(all_dates))
+    # Convert dates back to string format for consistency with `selected_dates` further down
+    return [d.strftime('%Y-%m-%d') for d in sorted_dates]
 
 valid_dates = get_valid_dates(merged)
 
 
-def make_popup_html_with_plot(row, selected_dates, show_diversion):
+def make_popup_html_with_plot(row, selected_dates_strs, show_diversion):
     font_size = '16px'
     padding = '6px'
     border = '2px solid black'
@@ -192,10 +297,12 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     threshold_labels = set()
     show_daily_flow = show_calc_flow = False
 
-    selected_dates = sorted(selected_dates, key=pd.to_datetime)
+    # Convert selected_dates_strs (list of strings) to datetime objects for plotting
+    plot_dates_dt = sorted([pd.to_datetime(d) for d in selected_dates_strs])
+    plot_dates = [d.strftime('%Y-%m-%d') for d in plot_dates_dt] # Keep as strings for table display
 
-    for d in selected_dates:
-        daily = extract_daily_data(row['time_series'], d)
+    for d_str in selected_dates_strs:
+        daily = extract_daily_data(row['time_series'], d_str)
         df = daily.get('Daily flow', float('nan'))
         cf = daily.get('Calculated flow', float('nan'))
         flows.append(df)
@@ -206,8 +313,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
         if show_diversion and row['WSC'] in diversion_tables:
             diversion_df = diversion_tables[row['WSC']]
-            target_day = pd.to_datetime(d).replace(year=1900).normalize()
-            div_row = diversion_df[diversion_df['Date'] == target_day]
+            target_day_1900 = pd.to_datetime(d_str).replace(year=1900).normalize()
+            div_row = diversion_df[diversion_df['Date'] == target_day_1900]
             if not div_row.empty:
                 div = div_row.iloc[0]
                 third_label = diversion_labels.get(row['WSC'], 'Cutback3')
@@ -231,11 +338,12 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         threshold_labels.update(thresholds.keys())
 
     threshold_labels = sorted(threshold_labels)
-    plot_dates = pd.to_datetime(selected_dates)
+    # Use plot_dates_dt (datetime objects) for matplotlib plotting
+    # Use plot_dates (strings) for table headers
 
     daily_colors, calc_colors = [], []
-    for d in selected_dates:
-        daily = extract_daily_data(row['time_series'], d)
+    for d_str in selected_dates_strs: # Iterate over string dates
+        daily = extract_daily_data(row['time_series'], d_str)
         flow_daily = daily.get('Daily flow')
         flow_calc = daily.get('Calculated flow')
         thresholds = extract_thresholds(daily) if row['PolicyType'] == 'WMP' else {}
@@ -259,182 +367,111 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         .leaflet-popup-content {{
           width: auto !important;
           max-width: 95vw !important;
-          max-width: 95vw !important; /* Allow it to be almost full width of the viewport */
           min-width: 10px !important;
-      /* Base styles for the popup content - apply to all screen sizes first */
-      .leaflet-popup-content {{
-          padding: 0 !important;
-          margin: 0 !important;
         }}
-    
         .leaflet-popup-content-wrapper {{
-          box-sizing: border-box; /* Crucial for consistent sizing */
-      }}
-
-      .leaflet-popup-content-wrapper {{
           padding: 4px !important;
         }}
-    
-        .leaflet-popup-content > div {{
-          background: #fff; /* Ensure white background */
-          border-radius: 12px;
-      }}
-
-      .leaflet-popup-content > div {{
-          width: 100% !important;
-          width: 100% !important; /* Ensure direct child takes full width */
-        }}
-    
         .popup-wrapper {{
-          width: 95vw !important;
-          max-width: 100vw !important;
-          width: 100% !important; /* Ensure this takes full available width from parent */
-          max-width: 100% !important; /* Cap it at 100% of its parent, not viewport */
-      }}
-
-      .popup-wrapper {{
           width: 100% !important;
           max-width: 100% !important;
           min-width: 10px !important;
           max-height: 85vh !important;
           overflow-x: auto !important;
           overflow-y: auto !important;
-          overflow-x: auto !important; /* Enable horizontal scrolling if content overflows */
-          overflow-y: auto !important; /* Enable vertical scrolling */
-          height: auto; /* Let content dictate height */
-          min-width: 10px; /* Smallest possible width */
-          overflow-x: auto; /* Enable horizontal scrolling for overflow */
-          overflow-y: auto; /* Enable vertical scrolling */
           -webkit-overflow-scrolling: touch;
           touch-action: pan-x pan-y;
           box-sizing: border-box;
-          padding: 5px; /* Add some internal padding */
           padding: 5px;
         }}
-    
         .popup-wrapper table, .popup-wrapper h4 {{
           font-size: 12px !important;
         }}
-    
         .popup-wrapper table {{
           width: 100% !important;
-          table-layout: fixed !important;
-          table-layout: auto !important; /* Change to auto for better content fitting */
           table-layout: auto !important;
-          padding: 5px; /* Internal padding for content */
+          min-width: 280px;
+        }}
+        .popup-wrapper img {{
+          min-width: 280px;
+        }}
+      }}
+      
+      /* Desktop-specific adjustments */
+      @media (min-width: 501px) {{
+        .leaflet-popup-content {{
+            min-width: 650px !important; 
+            max-width: 700px !important;
+            width: auto !important;
+        }}
+        .popup-wrapper {{
+            max-height: 500px !important;
+            overflow-x: hidden;
+            padding: 10px;
+        }}
+        .popup-wrapper table {{
+            width: 100% !important;
+            table-layout: auto !important;
+        }}
+        .popup-wrapper img {{
+            max-width: 100% !important;
+            height: auto !important;
+        }}
       }}
 
+      /* Base styles for the popup content - apply to all screen sizes first */
+      .leaflet-popup-content {{
+          padding: 0 !important;
+          margin: 0 !important;
+      }}
+      .leaflet-popup-content-wrapper {{
+          box-sizing: border-box; /* Crucial for consistent sizing */
+          padding: 4px !important;
+      }}
+      .leaflet-popup-content > div {{
+          background: #fff; /* Ensure white background */
+          border-radius: 12px;
+          width: 100% !important; /* Ensure direct child takes full width */
+      }}
+      .popup-wrapper {{
+          height: auto; /* Let content dictate height */
+          box-sizing: border-box;
+          padding: 5px; /* Add some internal padding */
+      }}
       .popup-wrapper h4 {{
           font-size: {font_size};
           margin-top: 0; /* Remove default margin */
           margin-bottom: 10px;
           text-align: center; /* Center the title */
       }}
-
       .popup-wrapper table {{
           border-collapse: collapse;
           border: {border};
           font-size: {font_size};
           width: 100% !important; /* Table must take full width of its container */
-          table-layout: auto; /* Allow columns to size based on content */
           word-wrap: break-word;
-          min-width: 280px; /* Give it a minimum width to prevent excessive squishing */
-          min-width: 280px;
-        }}
-    
-        .popup-wrapper img {{
-          min-width: 280px; /* Minimum width for table on mobile */
-          margin-bottom: 15px; /* Space below table */
       }}
-
       .popup-wrapper th, .popup-wrapper td {{
           padding: {padding};
           border: {border};
           text-align: center; /* Center text in cells */
           vertical-align: middle;
       }}
-
       .popup-wrapper th {{
           background-color: #f2f2f2; /* Light grey background for headers */
       }}
-
       .popup-wrapper img {{
-          max-width: 100% !important;
-          height: auto !important;
           display: block !important;
           margin: 0 auto !important;
-          min-width: 280px; /* Give plot image a minimum width */
-          min-width: 280px;
-        }}
-          min-width: 280px; /* Minimum width for image on mobile */
-      }}
-    
-      /* Styles for larger screens to ensure consistency */
-      /* Styles for larger screens to ensure consistency and proper sizing */
-      @media (min-width: 501px) {{
-
-      /* Mobile-specific adjustments */
-      @media (max-width: 500px) {{
-        .leaflet-popup-content {{
-            width: 600px !important; /* Adjust as needed for desktop */
-            max-width: 90vw !important;
-            /* The overall popup container width will be largely controlled by folium.Popup max_width */
-            /* We'll let the content wrapper fill that space */
-            width: auto !important; /* Allow content to dictate width up to max_width */
-            max-width: 700px !important; /* Should match folium.Popup max_width or slightly less */
-            min-width: 600px !important; /* Ensure a minimum size on desktop */
-          max-width: 95vw !important; /* Allow almost full viewport width */
-        }}
-        .popup-wrapper {{
-            width: 100% !important; /* Ensure content fills available popup width */
-            width: 100% !important; /* Ensure content fills available popup width within the IFrame */
-            max-width: 100% !important;
-            max-height: 600px !important; /* Desktop max height */
-            max-height: 500px !important; /* Should match IFrame height or slightly less for padding */
-            overflow-x: hidden !important; /* No horizontal scroll on desktop normally */
-            overflow-y: auto !important;
-            padding: 10px;
-            padding: 10px; /* More padding for desktop view */
-          max-height: 85vh !important; /* Max height for mobile to prevent overflow */
-        }}
-        .popup-wrapper table {{
-            width: 100% !important;
-            width: 100% !important; /* Ensure table fills 100% of the wrapper */
-            table-layout: auto !important;
-        .popup-wrapper table, .popup-wrapper h4 {{
-          font-size: 12px !important; /* Smaller font on mobile */
-        }}
-        .popup-wrapper img {{
-            max-width: 100% !important;
-            max-width: 100% !important; /* Ensure image scales within the wrapper */
-            height: auto !important;
-      }}
-
-      /* Desktop-specific adjustments */
-      @media (min-width: 501px) {{
-        .leaflet-popup-content {{
-            /* These values align with the IFrame size set in render_map_two_layers */
-            min-width: 650px !important; 
-            max-width: 700px !important; /* Max width for the overall popup, slightly more than IFrame */
-            width: auto !important; /* Allow internal content to dictate width if smaller than min/max */
-        }}
-        .popup-wrapper {{
-            max-height: 500px !important; /* Max height for desktop to match IFrame */
-            overflow-x: hidden; /* No horizontal scroll on desktop normally */
-            padding: 10px; /* More padding for desktop */
-        }}
       }}
     </style>
     
-    <!-- Responsive popup container -->
     <div class='popup-wrapper'>
-      <h4 style='font-size:{font_size};'>{row['station_name']}</h4>
-      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%; table-layout: fixed;'>
-      <table style='border-collapse: collapse; border: {border}; font-size:{font_size}; width: 100%; max-width: 100%;'>
+      <h4 style='font-size:{font_size};'>{row['Station Name']}</h4>
       <table style='border-collapse: collapse; font-size:{font_size}; width: 100%; max-width: 100%;'>
         <tr><th style='padding:{padding}; border:{border};'>Metric</th>
     """
-    html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
+    html += ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in plot_dates]) # Use string dates for table headers
     html += "</tr>"
 
     if show_daily_flow:
@@ -464,14 +501,12 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     html += "</table><br>"
 
     # --- Plot rendering ---
-    fig, ax = plt.subplots(figsize=(7.6, 3.5))
-    # Adjusted figsize for better mobile display; width 6.8 is roughly 320px at 72dpi, suitable for mobile
-    fig, ax = plt.subplots(figsize=(6.8, 3.5)) 
-    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
+    fig, ax = plt.subplots(figsize=(6.8, 3.5)) # Adjusted figsize for better mobile display
+    ax.plot(plot_dates_dt, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2) # Use datetime objects for plotting
     ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
     ax.set_axisbelow(True)
     if any(pd.notna(val) for val in calc_flows):
-        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
+        ax.plot(plot_dates_dt, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2) # Use datetime objects for plotting
 
     threshold_colors = {
         'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
@@ -483,8 +518,8 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
         if all(pd.isna(threshold_vals)):
             continue
-        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label,
-                color=threshold_colors.get(label, 'gray'), linewidth=2)
+        ax.plot(plot_dates_dt, threshold_vals, linestyle='--', label=label, # Use datetime objects for plotting
+                     color=threshold_colors.get(label, 'gray'), linewidth=2)
 
     ax.set_ylabel('Flow')
     ax.legend(fontsize=8)
@@ -510,9 +545,9 @@ def get_date_hash(dates):
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
 
-@st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=True, hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
 def generate_all_popups(merged_df, selected_dates_tuple):
-    selected_dates = list(selected_dates_tuple)  # Convert tuple back to list for processing
+    selected_dates_strs = list(selected_dates_tuple) # Convert tuple back to list of strings for processing
 
     popup_cache_no_diversion = {}
     popup_cache_diversion = {}
@@ -520,8 +555,8 @@ def generate_all_popups(merged_df, selected_dates_tuple):
     for _, row in merged_df.iterrows():
         wsc = row['WSC']
         try:
-            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
-            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
+            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates_strs, show_diversion=False)
+            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates_strs, show_diversion=True)
         except Exception as e:
             st.exception(e)
             popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
@@ -552,30 +587,27 @@ if start_date > end_date:
     st.sidebar.error("Start date must be before end date.")
     st.stop()
 
+# Ensure selected_dates is a list of strings for consistency with valid_dates
 selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
 
 with st.sidebar.expander("ℹ️ About this App"):
     st.markdown("""
-    **🔍 What is this?**  
-    This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
+    **🔍 What is this?** This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
 
-    **📊 Data Sources:**  
-    - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
+    **📊 Data Sources:** - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
     - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
     - **Diversion Tables** from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations.
     - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions (Water Management Plans)
 
-    **📏 Threshold Definitions:**  
-    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
+    **📏 Threshold Definitions:** - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
-    - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow". 
+    - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow".  
     - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
     - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
     - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion or daily limits
 
-    **🟢 Color Codes in Map:**  
-    - 🟢 Flow meets all thresholds  
+    **🟢 Color Codes in Map:** - 🟢 Flow meets all thresholds  
     - 🔴 Flow below one or more thresholds  
     - 🟡 Intermediate (depends on stream size & Q-values)  
     - ⚪ Missing or insufficient data
@@ -585,9 +617,7 @@ with st.sidebar.expander("ℹ️ About this App"):
     """)
 with st.sidebar.expander("ℹ️ Who Cares?"):
     st.markdown("""
-    **❓ Why does this matter?**  
-
-    Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.  
+    **❓ Why does this matter?** Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.  
     However, water supply is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
     
     In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
@@ -604,7 +634,7 @@ def get_most_recent_valid_date(row, dates):
             return d
     return None
 
-@st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=True, hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
 def render_map_two_layers():
     m = folium.Map(
         location=[merged['LAT'].mean(), merged['LON'].mean()],
@@ -614,29 +644,21 @@ def render_map_two_layers():
     )
 
     # Add responsive popup size script
-    from branca.element import Element
-
-    # Responsive popup width JS
     popup_resize_script = Element("""
     <script>
     document.addEventListener("DOMContentLoaded", function() {
         const resizePopups = () => {
             const popups = document.querySelectorAll('.leaflet-popup-content');
             popups.forEach(p => {
-                if (window.innerWidth < 500) {
-                    p.style.width = '320px';
-                    p.style.maxHeight = '90vh';
-                    p.style.overflow = 'auto';
-                } else {
-                    p.style.width = '650px';
-                    p.style.maxHeight = '600px';
-                    p.style.overflow = 'auto';
-                }
+                // No longer directly setting width here.
+                // CSS media queries in make_popup_html_with_plot's style block will handle this.
+                p.style.maxHeight = window.innerWidth < 500 ? '90vh' : '600px';
+                p.style.overflow = 'auto';
             });
         };
         const observer = new MutationObserver(resizePopups);
         observer.observe(document.body, { childList: true, subtree: true });
-        resizePopups();
+        resizePopups(); // Initial call
     });
     </script>
     """)
@@ -657,6 +679,8 @@ def render_map_two_layers():
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
+        # Reconstruct original geometry from WKT for Folium if needed, or pass as None if not using
+        # For CircleMarker, LAT/LON is sufficient, so we don't need to convert WKT back to shapely object here.
         coords = [row['LAT'], row['LON']]
 
         date = get_most_recent_valid_date(row, selected_dates)
@@ -667,19 +691,21 @@ def render_map_two_layers():
 
         # Use diversion popup cache if available
         wsc = row['WSC']
-        # fallback to no diversion popup if diversion cache missing
-        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
+        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
 
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=300, height=400)
-        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width='auto')
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=650, height=500) # Increased size for desktop
-        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=700) # Slightly larger max_width for the overall popup
+        # The width and height for IFrame should be general, and specific responsive adjustments
+        # should be handled by the CSS within the popup HTML, as designed in make_popup_html_with_plot.
+        # Set generous max_width for popups to allow the internal CSS to control the responsive size.
+        iframe_width = 700 # A generous width, let CSS control responsiveness
+        iframe_height = 550 # A generous height, let CSS control responsiveness
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=300, height=400)
-        popup_diversion = folium.Popup(iframe_diversion, max_width='auto')
-        iframe_diversion = IFrame(html=popup_html_diversion, width=650, height=500) # Increased size for desktop
-        popup_diversion = folium.Popup(iframe_diversion, max_width=700) # Slightly larger max_width for the overall popup
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=iframe_width, height=iframe_height)
+        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=iframe_width + 50) # Allow slightly more for popup wrapper
+
+        iframe_diversion = IFrame(html=popup_html_diversion, width=iframe_width, height=iframe_height)
+        popup_diversion = folium.Popup(iframe_diversion, max_width=iframe_width + 50)
+
 
         # Marker for ALL stations (show no diversion popup)
         folium.CircleMarker(
@@ -691,7 +717,7 @@ def render_map_two_layers():
             fill_color=color,
             fill_opacity=0.7,
             popup=popup_no_diversion,
-            tooltip=row['station_name']
+            tooltip=row['Station Name'] # Changed to 'Station Name' as per load_data output.
         ).add_to(fg_all)
 
         # Marker for diversion stations only (show diversion popup)
@@ -705,7 +731,7 @@ def render_map_two_layers():
                 fill_color=color,
                 fill_opacity=0.7,
                 popup=popup_diversion,
-                tooltip=row['station_name']
+                tooltip=row['Station Name'] # Changed to 'Station Name'.
             ).add_to(fg_diversion)
 
     # Add both layers to map
@@ -722,12 +748,14 @@ st.title("Alberta Flow Threshold Viewer")
 
 with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Load all data and set up popups
-    merged = load_data()
-    diversion_tables, diversion_labels = load_diversion_tables()
+    # `merged` and `diversion_tables` are already loaded globally and cached
+    # merged = load_data() # This line is redundant as `merged` is global
+    # diversion_tables, diversion_labels = load_diversion_tables() # This is also redundant
 
     # Always compute the current hash
     current_dates_hash = get_date_hash(selected_dates)
 
+    # Check session state for cached popups using the date hash
     if ('popup_cache_no_diversion' not in st.session_state or
         'popup_cache_diversion' not in st.session_state or
         st.session_state.get('cached_dates_hash', '') != current_dates_hash):
@@ -736,14 +764,8 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
         st.session_state.popup_cache_no_diversion = no_diversion_cache
         st.session_state.popup_cache_diversion = diversion_cache
         st.session_state.cached_dates_hash = current_dates_hash
-
-    else:
-        cached_dates_hash = st.session_state.get('cached_dates_hash', '')
-        if cached_dates_hash != current_dates_hash:
-            no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
-            st.session_state.popup_cache_no_diversion = no_diversion_cache
-            st.session_state.popup_cache_diversion = diversion_cache
-            st.session_state.cached_dates_hash = current_dates_hash
+    # The `else` block is no longer needed as the `if` condition covers both initial load and re-computation
+    # when the hash changes. If the hash doesn't change, Streamlit's @st.cache_data will handle it.
 
     # Render and display the map
     m = render_map_two_layers()
@@ -752,7 +774,6 @@ with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
     # Inject mobile-friendly viewport settings into <head>
     map_html = map_html.replace(
         "<head>",
-        "<head><meta name='viewport' content='width=device-width, initial-scale=1, minimum-scale=0.1, maximum-scale=5, user-scalable=yes'>"
         "<head><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1'>"
     )
 
