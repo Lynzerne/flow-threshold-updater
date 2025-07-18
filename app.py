@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, date # Import date as well
+from datetime import datetime, timedelta, date
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -11,7 +11,7 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
-import hashlib # For robust hashing of DataFrames
+import hashlib
 from branca.element import Element
 
 st.cache_data.clear()
@@ -119,14 +119,42 @@ def load_data():
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
 
-    # Merge in additional attributes
-    geo_data = geo_data.merge(
-        station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
-        on='WSC', how='left'
-    )
+    # Explicitly rename 'station_name' from geo_data to 'Station Name' to match popup expectations
+    # This assumes 'station_name' is present in AB_WS_R_stations.parquet
+    if 'station_name' in geo_data.columns:
+        geo_data = geo_data.rename(columns={'station_name': 'Station Name'})
+    else:
+        # Fallback if 'station_name' is not in parquet, maybe try to get it from station_info if available
+        # Or, if it's truly missing, you might need to handle this differently (e.g., provide a default name)
+        # For now, we'll assume it's in the parquet and rename for consistency.
+        # If 'Station Name' is also in station_info, merge will handle it
+        pass 
 
+    # Merge in additional attributes, now including 'Station Name'
+    # Ensure 'Station Name' is carried through the merge if it exists in either dataframe.
+    # We'll explicitly select it from geo_data to ensure it's there.
+    cols_to_merge_from_station_info = ['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']
+    # If station_info also has 'Station Name', we should use it consistently
+    if 'Station Name' in station_info.columns:
+        cols_to_merge_from_station_info.append('Station Name')
+
+    geo_data = geo_data.merge(
+        station_info[cols_to_merge_from_station_info],
+        on='WSC', how='left', suffixes=('_geo', '_info') # Use suffixes to manage potential column name conflicts
+    )
+    
+    # Resolve any potential duplicate 'Station Name' columns if suffixes were used
+    if 'Station Name_info' in geo_data.columns and 'Station Name_geo' in geo_data.columns:
+        # Prioritize the one from the original geo_data or decide based on completeness
+        # Here, we'll assume geo_data's 'Station Name' is the primary one, and drop info's
+        geo_data['Station Name'] = geo_data['Station Name_geo'].fillna(geo_data['Station Name_info'])
+        geo_data = geo_data.drop(columns=['Station Name_geo', 'Station Name_info'])
+    elif 'Station Name_geo' in geo_data.columns:
+        geo_data = geo_data.rename(columns={'Station Name_geo': 'Station Name'})
+    elif 'Station Name_info' in geo_data.columns:
+        geo_data = geo_data.rename(columns={'Station Name_info': 'Station Name'})
+    
     # Convert geometry to WKT (safe for caching and handled by make_hashable_recursive)
-    # This ensures shapely objects are not directly passed to the cache
     if 'geometry' in geo_data.columns and isinstance(geo_data, gpd.GeoDataFrame):
         geo_data['geometry'] = geo_data['geometry'].apply(lambda g: g.wkt if g else None)
 
@@ -255,7 +283,10 @@ def get_color_for_date(row, date_str): # Expects date_str
 @st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
 def get_valid_dates(data: pd.DataFrame):
     all_dates = set()
-    df_for_iteration = data.drop(columns=['geometry'], errors='ignore')
+    # Ensure 'geometry' is dropped if it exists and is not WKT to avoid issues
+    df_for_iteration = data.copy()
+    if 'geometry' in df_for_iteration.columns and not isinstance(df_for_iteration['geometry'].iloc[0], str):
+        df_for_iteration = df_for_iteration.drop(columns=['geometry'])
     
     for ts_tuple in df_for_iteration['time_series']:
         if isinstance(ts_tuple, tuple):
