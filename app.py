@@ -38,9 +38,8 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 @st.cache_data
 def load_data():
     # Load spatial GeoJSON data
-    # --- CHANGE THIS LINE ---
     GEOJSON_FILE_PATH = os.path.join(DATA_DIR, "AB_WS_R_stations.geojson")
-    
+
     try:
         with open(GEOJSON_FILE_PATH, 'r') as f:
             geo_json_raw = json.load(f)
@@ -48,20 +47,33 @@ def load_data():
         st.error(f"Error: GeoJSON file not found at {GEOJSON_FILE_PATH}")
         return pd.DataFrame() # Return empty DataFrame on error
 
-    # Convert GeoJSON features to a pandas DataFrame
-    # Each feature's properties become a row
     properties_list = [feature['properties'] for feature in geo_json_raw['features']]
     geo_data_df = pd.DataFrame(properties_list)
-
-    # Rename station_no to WSC if necessary (it's already WSC in the GeoJSON from stitch.py)
-    # Ensure it's 'WSC' for consistency with other parts of your app
-    # geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'}) # This rename should not be needed if stitch output 'WSC' directly
 
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
 
+    # --- ADD THIS SECTION ---
+    # 1. Strip whitespace from column names in station_info
+    station_info.columns = station_info.columns.str.strip()
+    # 2. Check if 'WSC' exists after stripping. If not, try common alternatives.
+    if 'WSC' not in station_info.columns:
+        # Example: If your column is 'station_no' in the CSV, rename it to 'WSC'
+        if 'station_no' in station_info.columns:
+            station_info = station_info.rename(columns={'station_no': 'WSC'})
+            st.write("DEBUG: Renamed 'station_no' to 'WSC' in station_info.")
+        # Add more `elif` conditions here if you find other common misspellings/cases
+        # elif 'wsc' in station_info.columns:
+        #     station_info = station_info.rename(columns={'wsc': 'WSC'})
+        #     st.write("DEBUG: Renamed 'wsc' to 'WSC' in station_info.")
+        else:
+            st.error("Error: 'WSC' column not found in AB_WS_R_StationList.csv even after stripping whitespace or trying common renames.")
+            st.write("DEBUG: station_info columns:", station_info.columns.tolist())
+            return pd.DataFrame() # Stop execution or return empty DF if critical column is missing
+    # --- END ADDITION ---
+
+
     # Merge in additional attributes
-    # Use 'WSC' column directly, assuming it exists from the GeoJSON properties
     geo_data_df = geo_data_df.merge(
         station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
         on='WSC', how='left'
