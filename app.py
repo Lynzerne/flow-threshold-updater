@@ -30,8 +30,14 @@ def make_hashable_recursive(obj):
         return tuple(make_hashable_recursive(item) for item in obj)
     if isinstance(obj, dict):
         return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
-    if pd.isna(obj): # Handle pandas NaT and other NaNs
+    if pd.isna(obj):
         return None
+    # For shapely geometry objects, convert to WKT or a simple representation
+    if hasattr(obj, '__geo_interface__'): # Catches shapely geometry objects
+        try:
+            return obj.wkt # Well-Known Text representation is a string and hashable
+        except:
+            return str(obj) # Fallback to string representation
     return obj
 
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
@@ -42,33 +48,39 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     for col in df_copy.columns:
         if df_copy[col].dtype == 'object':
             if not df_copy[col].empty and \
-               df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or pd.isna(x)).any():
+               df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or hasattr(x, '__geo_interface__') or pd.isna(x)).any():
                 df_copy[col] = df_copy[col].apply(make_hashable_recursive)
             elif not df_copy[col].empty and df_copy[col].isnull().any():
                 df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
     return df_copy
 
-# --- NEW: Function to make a DataFrame itself hashable for st.cache_data ---
+
+# --- Function to make a DataFrame or GeoDataFrame itself hashable for st.cache_data ---
 def hash_dataframe(df: pd.DataFrame):
     """
-    Generates a hashable representation of a DataFrame.
-    This creates a tuple of tuples from DataFrame values,
-    and includes hashes of index and columns for completeness.
+    Generates a hashable representation of a DataFrame or GeoDataFrame.
+    Handles the 'geometry' column specifically for GeoDataFrames.
     """
+    # Create a copy to avoid modifying the original DataFrame,
+    # and drop geometry column if present as it's typically unhashable
+    df_for_hash = df.drop(columns=['geometry'], errors='ignore')
+
+    # Ensure all remaining columns are hashable before converting to values for hashing
+    # This calls make_df_hashable on a potentially already-processed df, which is fine.
+    df_for_hash = make_df_hashable(df_for_hash) 
+
     # Hash values
-    values_hash = tuple(tuple(row) for row in df.values)
+    values_hash = tuple(tuple(row) for row in df_for_hash.values)
     # Hash index and columns
-    index_hash = hash(df.index.to_json()) # Convert index to JSON string for consistent hashing
-    columns_hash = hash(tuple(df.columns))
+    index_hash = hash(df_for_hash.index.to_json())
+    columns_hash = hash(tuple(df_for_hash.columns))
     return (values_hash, index_hash, columns_hash)
 
 # --- Define the hash_funcs dictionary ---
 # This dictionary tells Streamlit how to hash specific types.
-# We're telling it how to hash pandas DataFrames.
 PANDAS_HASH_FUNCS = {
     pd.DataFrame: hash_dataframe,
-    # You might need to add for GeoDataFrame if it's passed directly to cached functions
-    # geopandas.GeoDataFrame: hash_dataframe,
+    gpd.GeoDataFrame: hash_dataframe, # <--- NEW: Explicitly handle GeoDataFrame
 }
 
 @st.cache_data
@@ -116,6 +128,7 @@ def load_data():
     geo_data_df['time_series'] = geo_data_df['time_series'].apply(parse_time_series_string)
 
     # Apply recursive hashable conversion to the entire DataFrame after initial parsing
+    # This handles time_series and other columns, including attempting to hash geometry if needed later
     geo_data_df = make_df_hashable(geo_data_df)
 
     # Debugging checks (can remove after confirmation)
@@ -139,7 +152,7 @@ def load_data():
 merged = load_data()
 
 
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # <--- Apply hash_funcs here
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
@@ -173,7 +186,6 @@ def load_diversion_tables():
 
             df['Date'] = df['Date'].apply(safe_replace_year)
             
-            # Apply make_df_hashable to each diversion table
             diversion_tables[wsc] = make_df_hashable(df) 
 
     return diversion_tables, diversion_labels
@@ -231,7 +243,12 @@ def get_color_for_date(row, date):
 @st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # <--- Apply hash_funcs here as well!
 def get_valid_dates(data: pd.DataFrame):
     all_dates = set()
-    for ts_tuple in data['time_series']:
+    # The 'geometry' column in GeoDataFrame is typically unhashable.
+    # get_valid_dates does not need 'geometry', so we can safely drop it for iteration.
+    # Note: `data.drop` creates a copy, so the original cached DataFrame is not modified.
+    df_for_iteration = data.drop(columns=['geometry'], errors='ignore')
+    
+    for ts_tuple in df_for_iteration['time_series']:
         if isinstance(ts_tuple, tuple):
             for item_frozenset in ts_tuple:
                 if isinstance(item_frozenset, frozenset):
@@ -260,7 +277,6 @@ selected_dates = st.slider(
     value=(min(valid_dates), max(valid_dates)),
     format="YYYY-MM-DD"
 )
-
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
