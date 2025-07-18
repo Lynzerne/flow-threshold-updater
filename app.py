@@ -166,36 +166,27 @@ def get_color_for_date(row, date):
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
 
-def get_valid_dates(merged):
-    dates = set()
-    for ts in merged['time_series']:
-        for item in ts:
-            if 'date' in item:
-                try:
-                    d = parse(item['date']).strftime('%Y-%m-%d')
-                    if any(item.get(k) is not None for k in ['Daily flow', 'Calculated flow']):
-                        dates.add(d)
-                except:
-                    pass
-    return sorted(dates)
-
 valid_dates = get_valid_dates(merged)
+
+# Set date range picker defaults
+min_date = parse(valid_dates[0])
+max_date = parse(valid_dates[-1])
+start_date, end_date = st.sidebar.date_input(
+    "Select a date range",
+    value=[max_date, max_date],
+    min_value=min_date,
+    max_value=max_date
+)
+
+# ⬇️ This needs to come AFTER the date picker
+selected_dates = [
+    d for d in valid_dates
+    if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')
+]
+
+# Now safe to write
 st.sidebar.write("Currently selected date range:")
 st.sidebar.write(selected_dates)
-if st.sidebar.checkbox("Show most recent flow for each station"):
-    debug_data = []
-    for _, row in merged.iterrows():
-        date = get_most_recent_valid_date(row, selected_dates)
-        if date:
-            daily = extract_daily_data(row['time_series'], date)
-            debug_data.append({
-                'WSC': row['WSC'],
-                'Station': row['station_name'],
-                'Date': date,
-                'Daily flow': daily.get('Daily flow'),
-                'Calc flow': daily.get('Calculated flow'),
-            })
-    st.dataframe(pd.DataFrame(debug_data))
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
