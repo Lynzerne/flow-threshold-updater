@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
@@ -12,7 +13,7 @@ from io import BytesIO
 from dateutil.parser import parse
 import os
 import hashlib
-from branca.element import Element # Import Element for JS injection
+from branca.element import Element
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -27,6 +28,7 @@ STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 def make_hashable_recursive(obj):
     """
     Recursively converts unhashable objects (lists, dicts) to hashable ones (tuples, frozensets).
+    Handles GeoPandas/Shapely geometry objects by converting to WKT.
     """
     if isinstance(obj, list):
         return tuple(make_hashable_recursive(item) for item in obj)
@@ -34,12 +36,9 @@ def make_hashable_recursive(obj):
         return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
     if pd.isna(obj):
         return None
-    # For shapely geometry objects, convert to WKT or a simple representation
-    if hasattr(obj, '__geo_interface__'): # Catches shapely geometry objects
-        try:
-            return obj.wkt # Well-Known Text representation is a string and hashable
-        except:
-            return str(obj) # Fallback to string representation
+    # For shapely geometry objects (e.g., Point, Polygon)
+    if hasattr(obj, 'wkt'): # Checks if the object has a .wkt attribute (common for shapely)
+        return obj.wkt # Convert to Well-Known Text string, which is hashable
     return obj
 
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
@@ -48,11 +47,14 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
     df_copy = df.copy()
     for col in df_copy.columns:
+        # Check if the column is of object dtype and contains potentially unhashable types
         if df_copy[col].dtype == 'object':
+            # Check for lists, dicts, or shapely objects within the column
             if not df_copy[col].empty and \
-               df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or hasattr(x, '__geo_interface__') or pd.isna(x)).any():
+               df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or hasattr(x, 'wkt') or pd.isna(x)).any():
                 df_copy[col] = df_copy[col].apply(make_hashable_recursive)
             elif not df_copy[col].empty and df_copy[col].isnull().any():
+                # Handle NaNs in object columns to be consistently None (hashable)
                 df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
     return df_copy
 
@@ -61,36 +63,36 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 def hash_dataframe(df: pd.DataFrame):
     """
     Generates a hashable representation of a DataFrame or GeoDataFrame.
-    Handles the 'geometry' column specifically for GeoDataFrames.
+    Assumes 'geometry' column (if present) is already in a hashable format (e.g., WKT strings).
     """
-    # Create a copy to avoid modifying the original DataFrame,
-    # and drop geometry column if present as it's typically unhashable
-    df_for_hash = df.drop(columns=['geometry'], errors='ignore')
+    df_for_hash = df.copy() # Work on a copy
 
-    # Ensure all remaining columns are hashable before converting to values for hashing
-    df_for_hash = make_df_hashable(df_for_hash) 
+    # Ensure all columns are hashable before converting to values for hashing
+    # make_df_hashable will handle converting geometries to WKT if they are still shapely objects
+    # or will process other unhashable types
+    df_for_hash = make_df_hashable(df_for_hash)
 
     # Hash values (which are already made hashable by make_df_hashable)
     values_hash = tuple(tuple(row) for row in df_for_hash.values)
 
     # Hash index more robustly
     index_values_as_str = tuple(str(x) for x in df_for_hash.index)
-    index_hash = hash(index_values_as_str)
+    index_hash = hashlib.md5(str(index_values_as_str).encode()).hexdigest() # More robust hash for tuple of strings
 
     # Hash columns
-    columns_hash = hash(tuple(df_for_hash.columns))
+    columns_hash = hashlib.md5(str(tuple(df_for_hash.columns)).encode()).hexdigest() # More robust hash for tuple of strings
+    
     return (values_hash, index_hash, columns_hash)
 
 # --- Define the hash_funcs dictionary ---
 PANDAS_HASH_FUNCS = {
     pd.DataFrame: hash_dataframe,
     gpd.GeoDataFrame: hash_dataframe,
-    # These must be the *class types*, not instances
-    date: lambda d: d.isoformat(), # Use 'date' (the class) as the key
-    datetime: lambda dt: dt.isoformat(), # Use 'datetime' (the class) as the key
+    date: lambda d: d.isoformat(),
+    datetime: lambda dt: dt.isoformat(),
 }
 
-@st.cache_data
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply custom hash funcs to load_data as well
 def load_data():
     PARQUET_FILE_PATH = os.path.join(DATA_DIR, "AB_WS_R_stations.parquet")
     try:
@@ -134,6 +136,15 @@ def load_data():
     
     geo_data_df['time_series'] = geo_data_df['time_series'].apply(parse_time_series_string)
 
+    # *** CRITICAL CHANGE HERE ***
+    # Convert shapely geometry objects to WKT strings early
+    if 'geometry' in geo_data_df.columns and isinstance(geo_data_df, gpd.GeoDataFrame):
+        # Convert geometry to WKT strings. If it's already WKT, this does nothing harmful.
+        # This makes the geometry column itself hashable.
+        geo_data_df['geometry'] = geo_data_df['geometry'].apply(lambda geom: geom.wkt if geom else None)
+
+    # Now, make_df_hashable will process other object columns.
+    # The 'geometry' column will now contain strings, which are hashable.
     geo_data_df = make_df_hashable(geo_data_df)
 
     return geo_data_df
