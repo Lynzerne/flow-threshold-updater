@@ -49,6 +49,17 @@ def load_data():
 
     properties_list = [feature['properties'] for feature in geo_json_raw['features']]
     geo_data_df = pd.DataFrame(properties_list)
+     # --- ADD THIS SECTION ---
+    st.write("DEBUG: Original columns in geo_data_df (from GeoJSON properties):", geo_data_df.columns.tolist())
+    # Ensure 'station_no' from GeoJSON properties is renamed to 'WSC'
+    if 'station_no' in geo_data_df.columns:
+        geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'})
+        st.write("DEBUG: Renamed 'station_no' to 'WSC' in geo_data_df.")
+    elif 'WSC' not in geo_data_df.columns:
+        st.error("ERROR: 'WSC' or 'station_no' column not found in GeoJSON properties for geo_data_df.")
+        st.write("DEBUG: Final columns in geo_data_df before merge attempt:", geo_data_df.columns.tolist())
+        st.stop() # Stop the app to highlight the issue
+    # --- END ADDITION ---
 
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
