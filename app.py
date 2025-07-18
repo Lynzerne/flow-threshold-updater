@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
+import geopandas as gpd # We'll use this again for reading parquet
 import json
 import folium
 from folium import IFrame
@@ -20,8 +20,6 @@ DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
-# REMOVED: geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
-
 
 # --- Load data ---
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
@@ -36,29 +34,27 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data
 def load_data():
-    # Load spatial GeoJSON data
-    GEOJSON_FILE_PATH = os.path.join(DATA_DIR, "AB_WS_R_stations.geojson")
+    # Load spatial data from Parquet
+    PARQUET_FILE_PATH = os.path.join(DATA_DIR, "AB_WS_R_stations.parquet")
 
     try:
-        with open(GEOJSON_FILE_PATH, 'r') as f:
-            geo_json_raw = json.load(f)
+        geo_data_df = gpd.read_parquet(PARQUET_FILE_PATH)
+        # Ensure 'station_no' is 'WSC' from the Parquet file, as it was previously.
+        # Parquet files might sometimes retain different original column names.
+        if 'station_no' in geo_data_df.columns and 'WSC' not in geo_data_df.columns:
+            geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'})
+        elif 'WSC' not in geo_data_df.columns:
+            st.error(f"ERROR: 'WSC' or 'station_no' column not found in {PARQUET_FILE_PATH}.")
+            st.write("DEBUG: Columns in geo_data_df from Parquet:", geo_data_df.columns.tolist())
+            st.stop()
+        
     except FileNotFoundError:
-        st.error(f"Error: GeoJSON file not found at {GEOJSON_FILE_PATH}")
+        st.error(f"Error: Parquet file not found at {PARQUET_FILE_PATH}")
         return pd.DataFrame() # Return empty DataFrame on error
+    except Exception as e:
+        st.error(f"Error loading Parquet file: {e}")
+        return pd.DataFrame()
 
-    properties_list = [feature['properties'] for feature in geo_json_raw['features']]
-    geo_data_df = pd.DataFrame(properties_list)
-
-    # --- RESTORE THIS SECTION FOR geo_data_df ---
-    # Ensure 'station_no' from GeoJSON properties is renamed to 'WSC' for consistency
-    if 'station_no' in geo_data_df.columns:
-        geo_data_df = geo_data_df.rename(columns={'station_no': 'WSC'})
-        # Optionally, keep debug print: st.write("DEBUG: Renamed 'station_no' to 'WSC' in geo_data_df.")
-    elif 'WSC' not in geo_data_df.columns:
-        st.error("ERROR: 'WSC' or 'station_no' column not found in GeoJSON properties for geo_data_df. Cannot merge.")
-        # Optionally, keep debug print: st.write("DEBUG: Final columns in geo_data_df before merge attempt:", geo_data_df.columns.tolist())
-        st.stop() # Stop the app if critical column is missing
-    # --- END RESTORED SECTION FOR geo_data_df ---
 
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
@@ -66,45 +62,51 @@ def load_data():
     # Strip whitespace from all column names in station_info
     station_info.columns = station_info.columns.str.strip()
 
-    # --- RESTORE THIS SECTION FOR station_info ---
-    # Check for 'WSC' or 'station_no' in station_info (assuming 'WSC' is preferred)
+    # Check for 'WSC' or 'station_no' in station_info
     if 'WSC' in station_info.columns:
-        # Optionally, keep debug print: st.write("DEBUG: 'WSC' column found directly in station_info.")
-        pass # No action needed if 'WSC' is already there
+        pass # 'WSC' is already there
     elif 'station_no' in station_info.columns:
         station_info = station_info.rename(columns={'station_no': 'WSC'})
-        # Optionally, keep debug print: st.write("DEBUG: Renamed 'station_no' to 'WSC' in station_info.")
     else:
-        st.error(f"ERROR: Neither 'WSC' nor 'station_no' column found in AB_WS_R_StationList.csv. Cannot merge.")
-        # Optionally, keep debug print: st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
-        st.stop() # Stop the app if critical column is missing
-    # --- END RESTORED SECTION FOR station_info ---
+        st.error(f"ERROR: Neither 'WSC' nor 'station_no' column found in AB_WS_R_StationList.csv.")
+        st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
+        st.stop()
+
 
     # Merge in additional attributes
+    # Use LAT/LON from station_info as it is likely more accurate/consistent for display
     geo_data_df = geo_data_df.merge(
         station_info[['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']],
         on='WSC', how='left'
     )
 
+    # --- IMPROVED safe_parse function to handle potential NaNs more robustly ---
     def safe_parse(val):
+        if pd.isna(val): # Handle NaN values directly before trying to parse
+            return []
         if isinstance(val, str):
             try:
-                return json.loads(val)
+                parsed_val = json.loads(val)
+                # Ensure it's a list even if a single dict was parsed
+                return parsed_val if isinstance(parsed_val, list) else [parsed_val]
             except json.JSONDecodeError:
                 return []
+        # If it's already a list (or anything else that's not NaN), return as is
         return val
 
     geo_data_df['time_series'] = geo_data_df['time_series'].apply(safe_parse)
 
     # Make compatible with streamlit cache
     geo_data_df = make_df_hashable(geo_data_df)
-    # Optionally, remove these st.write prints as well if you don't need them anymore
-    #print("Columns in merged DataFrame:", geo_data_df.columns.tolist())
-    #st.write("DEBUG: Columns in merged DataFrame (from app):", geo_data_df.columns.tolist())
-    #st.write("DEBUG: Sample of time_series from app:", geo_data_df['time_series'].head(1).iloc[0])
+    
+    # Optional debug prints (remove once confirmed working)
+    # print("Columns in merged DataFrame:", geo_data_df.columns.tolist())
+    # st.write("DEBUG: Columns in merged DataFrame (from app):", geo_data_df.columns.tolist())
+    # st.write("DEBUG: Sample of time_series from app:", geo_data_df['time_series'].head(1).iloc[0])
 
 
     return geo_data_df
+
 
 # Call load_data and assign merged here
 merged = load_data()
