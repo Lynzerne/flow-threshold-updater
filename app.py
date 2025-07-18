@@ -53,25 +53,28 @@ def load_data():
     # Load station attributes from CSV (contains PolicyType, StreamSize, etc.)
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
 
-    # --- ADD THIS SECTION ---
-    # 1. Strip whitespace from column names in station_info
-    station_info.columns = station_info.columns.str.strip()
-    # 2. Check if 'WSC' exists after stripping. If not, try common alternatives.
-    if 'WSC' not in station_info.columns:
-        # Example: If your column is 'station_no' in the CSV, rename it to 'WSC'
-        if 'station_no' in station_info.columns:
-            station_info = station_info.rename(columns={'station_no': 'WSC'})
-            st.write("DEBUG: Renamed 'station_no' to 'WSC' in station_info.")
-        # Add more `elif` conditions here if you find other common misspellings/cases
-        # elif 'wsc' in station_info.columns:
-        #     station_info = station_info.rename(columns={'wsc': 'WSC'})
-        #     st.write("DEBUG: Renamed 'wsc' to 'WSC' in station_info.")
-        else:
-            st.error("Error: 'WSC' column not found in AB_WS_R_StationList.csv even after stripping whitespace or trying common renames.")
-            st.write("DEBUG: station_info columns:", station_info.columns.tolist())
-            return pd.DataFrame() # Stop execution or return empty DF if critical column is missing
-    # --- END ADDITION ---
+    # --- START CRITICAL DEBUGGING SECTION ---
+    st.write("DEBUG: Original columns in AB_WS_R_StationList.csv (station_info):", station_info.columns.tolist())
 
+    # Strip whitespace from all column names
+    station_info.columns = station_info.columns.str.strip()
+    st.write("DEBUG: Columns in station_info after stripping whitespace:", station_info.columns.tolist())
+
+    # Check for 'WSC' or 'station_no'
+    if 'WSC' in station_info.columns:
+        st.write("DEBUG: 'WSC' column found directly in station_info.")
+    elif 'station_no' in station_info.columns:
+        station_info = station_info.rename(columns={'station_no': 'WSC'})
+        st.write("DEBUG: Renamed 'station_no' to 'WSC' in station_info.")
+    else:
+        # If neither is found, explicitly list all columns and raise an error
+        st.error(f"ERROR: Neither 'WSC' nor 'station_no' column found in AB_WS_R_StationList.csv.")
+        st.write("DEBUG: Final columns in station_info before merge attempt:", station_info.columns.tolist())
+        st.stop() # Stop the app here to prevent the KeyError and show debug info
+
+    st.write("DEBUG: station_info head before merge:")
+    st.write(station_info.head())
+    # --- END CRITICAL DEBUGGING SECTION ---
 
     # Merge in additional attributes
     geo_data_df = geo_data_df.merge(
