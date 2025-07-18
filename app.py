@@ -179,7 +179,7 @@ def get_valid_dates(merged, debug=False):
         print(f"Total valid dates found: {len(dates)}")
         print(f"Skipped entries: {skipped_entries}")
 
-    return sorted(dates
+    return sorted(dates)
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
