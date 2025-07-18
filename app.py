@@ -15,7 +15,6 @@ import hashlib
 from branca.element import Element
 
 # --- IMPORTANT: Clear Streamlit's cache at the very start for fresh data on app rerun ---
-# This helps ensure new data or code changes are picked up, especially after file updates.
 st.cache_data.clear()
 
 st.set_page_config(layout="wide")
@@ -26,9 +25,8 @@ DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
 # --- Utility function to make objects recursively hashable for Streamlit caching ---
-# This function is crucial for handling complex nested data structures (like lists of dicts)
-# within your DataFrame columns, ensuring they are compatible with st.cache_data.
 def make_hashable_recursive(obj):
+    # ... (your existing make_hashable_recursive function remains unchanged) ...
     """
     Recursively converts unhashable objects (lists, dicts, numpy arrays, shapely geometries, NaNs)
     to hashable ones (tuples, frozensets, strings, None).
@@ -38,13 +36,13 @@ def make_hashable_recursive(obj):
     if isinstance(obj, dict):
         # Sort items for consistent hashing of dictionaries
         return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
-    
+
     # Handle pandas/numpy NaN explicitly to ensure consistency
-    if pd.isna(obj):
-        return None # Convert all NaN variations to hashable None
-    
-    # Handle None explicitly (already hashable, but good for consistency)
-    if obj is None:
+    # IMPORTANT: Do NOT use pd.isna here if this is the cause of the ValueError for complex types.
+    # Instead, rely on standard None/NaN checks if we're sure it's a primitive type,
+    # or handle complex types before they get here.
+    # Given the previous error, we ensure complex types are handled *before* this check.
+    if obj is None or (isinstance(obj, (float, int)) and pd.isna(obj)):
         return None
 
     # For shapely geometry objects (e.g., Point, Polygon) in GeoDataFrames
@@ -57,8 +55,7 @@ def make_hashable_recursive(obj):
     if isinstance(obj, (set, frozenset)):
         return frozenset(make_hashable_recursive(item) for item in obj)
     if hasattr(obj, 'dtype') and hasattr(obj, 'tolist'): # Catches numpy arrays
-        # If it's a scalar numpy value (e.g., np.int64, np.float64)
-        if hasattr(obj, 'shape') and obj.shape == ():
+        if hasattr(obj, 'shape') and obj.shape == (): # If it's a scalar numpy value
             return make_hashable_recursive(obj.item()) # Get the Python scalar
         return tuple(make_hashable_recursive(item) for item in obj.tolist())
 
@@ -73,7 +70,9 @@ def make_hashable_recursive(obj):
     except TypeError:
         return str(obj) # Fallback: convert to string if unhashable
 
+
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
+    # ... (your existing make_df_hashable function remains unchanged) ...
     """
     Applies make_hashable_recursive to all object columns in a DataFrame,
     and ensures numeric columns with NaNs are handled.
@@ -82,16 +81,13 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     for col in df_copy.columns:
         if df_copy[col].dtype == 'object':
             df_copy[col] = df_copy[col].apply(make_hashable_recursive)
-        # For numeric columns, ensure no non-hashable numpy types or NaNs remain if they somehow got in
         elif df_copy[col].dtype in ['float64', 'int64'] and df_copy[col].isnull().any():
-            # Convert NaNs to None for consistent hashing of numeric columns
             df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
     return df_copy
 
-# --- Function to make a DataFrame or GeoDataFrame itself hashable for st.cache_data ---
-# This tells Streamlit's caching mechanism how to create a consistent hash for DataFrames,
-# which are generally unhashable by default.
+
 def hash_dataframe(df: pd.DataFrame):
+    # ... (your existing hash_dataframe function remains unchanged) ...
     """
     Generates a hashable representation of a DataFrame or GeoDataFrame.
     Assumes 'geometry' column (if present) is already in a hashable format (e.g., WKT strings).
@@ -111,84 +107,91 @@ def hash_dataframe(df: pd.DataFrame):
     
     return (values_hash, index_hash, columns_hash)
 
-# --- Define the hash_funcs dictionary for Streamlit's cache ---
-# This dictionary maps data types to their custom hashing functions.
 PANDAS_HASH_FUNCS = {
     pd.DataFrame: hash_dataframe,
     gpd.GeoDataFrame: hash_dataframe,
-    date: lambda d: d.isoformat(), # Hash date objects by their ISO format string
-    datetime: lambda dt: dt.isoformat(), # Hash datetime objects by their ISO format string
+    date: lambda d: d.isoformat(),
+    datetime: lambda dt: dt.isoformat(),
 }
 
+
 # --- Data Loading Function ---
-# This function loads and preprocesses your station data.
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def load_data():
     # Load spatial GeoData from parquet
     geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
 
-    # Load station attributes from CSV
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
 
-    # --- FIX: Ensure 'Station Name' column is correctly handled and present ---
-    # This addresses the KeyError: 'Station Name' by ensuring the column
-    # exists and has the expected casing after all data transformations.
     if 'station_name' in geo_data.columns:
         geo_data = geo_data.rename(columns={'station_name': 'Station Name'})
     
-    # Prepare columns to merge from station_info
     cols_to_merge_from_station_info = ['WSC', 'PolicyType', 'StreamSize', 'LAT', 'LON']
     if 'Station Name' in station_info.columns:
         cols_to_merge_from_station_info.append('Station Name')
 
-    # Merge in additional attributes. Use suffixes to resolve potential column name conflicts
     geo_data = geo_data.merge(
         station_info[cols_to_merge_from_station_info],
-        on='WSC', how='left', suffixes=('_geo', '_info') 
+        on='WSC', how='left', suffixes=('_geo', '_info')  # Use suffixes to resolve potential column name conflicts
     )
     
-    # Resolve any potential duplicate 'Station Name' columns after merge
     if 'Station Name_info' in geo_data.columns and 'Station Name_geo' in geo_data.columns:
-        # Prioritize the 'Station Name' from the original geo_data, fill NaNs with info data
         geo_data['Station Name'] = geo_data['Station Name_geo'].fillna(geo_data['Station Name_info'])
         geo_data = geo_data.drop(columns=['Station Name_geo', 'Station Name_info'])
     elif 'Station Name_geo' in geo_data.columns:
         geo_data = geo_data.rename(columns={'Station Name_geo': 'Station Name'})
     elif 'Station Name_info' in geo_data.columns:
         geo_data = geo_data.rename(columns={'Station Name_info': 'Station Name'})
-    # If no 'Station Name' found from either source, consider setting a default or raising an error.
-    # For now, we assume at least one source will provide it.
 
-    # Convert geometry to WKT (Well-Known Text) for hashability if it's a GeoDataFrame.
-    # make_hashable_recursive also handles this, but explicit conversion here ensures consistency.
     if 'geometry' in geo_data.columns and isinstance(geo_data, gpd.GeoDataFrame):
         geo_data['geometry'] = geo_data['geometry'].apply(lambda g: g.wkt if g else None)
 
-    # Parse 'time_series' JSON strings and make its content fully hashable.
-    # This is crucial for the UnhashableParamError fix when time_series contains nested structures.
-    def safe_parse_and_hash(val):
+    # --- Refined safe_parse_and_hash for the time_series column ---
+    # Moved safe_parse_and_hash outside load_data as per best practice.
+    # The logic here is key to handling diverse types potentially loaded from Parquet.
+    def safe_parse_and_hash_time_series_entry(val):
+        # First, handle explicit None or NaN values that might appear directly
+        if val is None or (isinstance(val, float) and pd.isna(val)):
+            return tuple() # Return an empty tuple for missing or NaN values
+
+        # If it's a string, assume it's a JSON string and try to parse it
         if isinstance(val, str):
             try:
                 parsed_json = json.loads(val)
-                # Apply the recursive hashable conversion right after parsing
                 return make_hashable_recursive(parsed_json)
             except json.JSONDecodeError:
-                return tuple() # Return an empty tuple if JSON parsing fails
-        # If it's already not a string or is NaN, make it a hashable empty tuple for consistency
-        return tuple() if pd.isna(val) else make_hashable_recursive(val)
+                # If it's a string but not valid JSON, treat as empty data
+                return tuple()
+        
+        # If it's already a Python list/tuple/dict/frozenset (i.e., already parsed by pyarrow/pandas)
+        elif isinstance(val, (list, tuple, dict, frozenset)):
+            return make_hashable_recursive(val)
+        
+        # Fallback for any other unexpected type that isn't handled above
+        # This will catch PyArrow specific types that pd.isna might struggle with.
+        else:
+            try:
+                # Attempt to convert to string representation and then parse if needed,
+                # or directly make hashable if it's a simple, unexpected hashable type.
+                if hasattr(val, 'as_py'): # Common for pyarrow.lib.StructArray or similar
+                    py_obj = val.as_py()
+                    return make_hashable_recursive(py_obj)
+                else:
+                    return make_hashable_recursive(val)
+            except Exception as e:
+                # Log or print a warning here if needed for debugging unexpected types
+                # print(f"Warning: Could not make time_series entry hashable: {type(val)} - {val}. Error: {e}")
+                return tuple() # Default to empty tuple for unhandleable types
 
-    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse_and_hash)
+    geo_data['time_series'] = geo_data['time_series'].apply(safe_parse_and_hash_time_series_entry)
 
-    # Apply make_df_hashable to the entire DataFrame to ensure all columns (especially 'object' types)
-    # and their contents are fully hashable, which is essential for st.cache_data.
     geo_data = make_df_hashable(geo_data)
 
     print("Columns in merged DataFrame:", geo_data.columns.tolist())
 
     return geo_data
 
-# Call load_data to get the processed DataFrame
 merged = load_data()
 
 # --- Load diversion tables ---
