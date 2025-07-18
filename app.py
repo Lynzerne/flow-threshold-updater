@@ -157,23 +157,6 @@ from dateutil.parser import parse
 
 from dateutil.parser import parse
 
-# --- Sidebar ---
-with st.sidebar.expander("🚨 Note from Developer", expanded=False):
-    st.markdown("""
-    <div style='color: red'>
-        This app pre-computes charts and tables for all stations before displaying the map.  
-        That means loading can take **2-3 minutes**, depending on your date range and device.
-    </div>
-    <div style='margin-top: 8px;'>
-        We're working on making this faster and more responsive. Thanks for your patience!
-    </div>
-    """, unsafe_allow_html=True)
-
-st.sidebar.header("Date Range")
-min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
-max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
-start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
-end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
@@ -497,7 +480,7 @@ def generate_all_popups(merged_df, selected_dates_tuple):
 
     return popup_cache_no_diversion, popup_cache_diversion
 
-valid_dates = get_valid_dates(merged)
+
 # --- Sidebar ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
