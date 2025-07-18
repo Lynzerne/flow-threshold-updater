@@ -99,9 +99,9 @@ def load_data():
     # Make compatible with streamlit cache
     geo_data_df = make_df_hashable(geo_data_df)
     # Optionally, remove these st.write prints as well if you don't need them anymore
-    print("Columns in merged DataFrame:", geo_data_df.columns.tolist())
-    st.write("DEBUG: Columns in merged DataFrame (from app):", geo_data_df.columns.tolist())
-    st.write("DEBUG: Sample of time_series from app:", geo_data_df['time_series'].head(1).iloc[0])
+    #print("Columns in merged DataFrame:", geo_data_df.columns.tolist())
+    #st.write("DEBUG: Columns in merged DataFrame (from app):", geo_data_df.columns.tolist())
+    #st.write("DEBUG: Sample of time_series from app:", geo_data_df['time_series'].head(1).iloc[0])
 
 
     return geo_data_df
