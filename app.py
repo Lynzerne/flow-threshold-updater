@@ -27,19 +27,42 @@ STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 # --- Utility function to make objects recursively hashable for Streamlit caching ---
 def make_hashable_recursive(obj):
     """
-    Recursively converts unhashable objects (lists, dicts) to hashable ones (tuples, frozensets).
-    Handles GeoPandas/Shapely geometry objects by converting to WKT.
+    Recursively converts unhashable objects (lists, dicts, numpy arrays, shapely geometries, NaNs)
+    to hashable ones (tuples, frozensets, strings, None).
     """
     if isinstance(obj, list):
         return tuple(make_hashable_recursive(item) for item in obj)
     if isinstance(obj, dict):
         return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
+    
+    # Handle pandas/numpy NaN explicitly
     if pd.isna(obj):
+        return None # Convert all NaN variations to hashable None
+    
+    # Handle None explicitly (already hashable, but good for consistency)
+    if obj is None:
         return None
+
     # For shapely geometry objects (e.g., Point, Polygon)
-    if hasattr(obj, 'wkt'): # Checks if the object has a .wkt attribute (common for shapely)
+    if hasattr(obj, 'wkt'):
         return obj.wkt # Convert to Well-Known Text string, which is hashable
-    return obj
+
+    # Handle numpy arrays explicitly (convert to tuple)
+    if isinstance(obj, (pd.Series, pd.Index)): # Catch pandas Series or Index
+        return tuple(make_hashable_recursive(item) for item in obj.tolist())
+    if isinstance(obj, (set, frozenset)): # Ensure sets/frozensets contain hashable items
+        return frozenset(make_hashable_recursive(item) for item in obj)
+    if hasattr(obj, 'dtype') and hasattr(obj, 'tolist'): # Catch numpy arrays
+        return tuple(make_hashable_recursive(item) for item in obj.tolist())
+
+    # If it's still not hashable by now, try converting to a string as a last resort
+    # This catches custom objects that aren't hashable but have a __repr__ or __str__
+    try:
+        hash(obj) # Try hashing it directly
+        return obj # If hashable, return as is
+    except TypeError:
+        return str(obj) # Fallback: convert to string if unhashable
+
 
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -47,15 +70,14 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
     """
     df_copy = df.copy()
     for col in df_copy.columns:
-        # Check if the column is of object dtype and contains potentially unhashable types
         if df_copy[col].dtype == 'object':
-            # Check for lists, dicts, or shapely objects within the column
-            if not df_copy[col].empty and \
-               df_copy[col].apply(lambda x: isinstance(x, (list, dict)) or hasattr(x, 'wkt') or pd.isna(x)).any():
-                df_copy[col] = df_copy[col].apply(make_hashable_recursive)
-            elif not df_copy[col].empty and df_copy[col].isnull().any():
-                # Handle NaNs in object columns to be consistently None (hashable)
-                df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
+            # Check for lists, dicts, or shapely objects within the column, or any unhashable item
+            # The .apply() method with make_hashable_recursive will handle the details
+            df_copy[col] = df_copy[col].apply(make_hashable_recursive)
+        # For numeric columns, ensure no non-hashable numpy types or NaNs remain if they somehow got in
+        elif df_copy[col].dtype in ['float64', 'int64'] and df_copy[col].isnull().any():
+            df_copy[col] = df_copy[col].apply(lambda x: None if pd.isna(x) else x)
+
     return df_copy
 
 
@@ -69,18 +91,15 @@ def hash_dataframe(df: pd.DataFrame):
 
     # Ensure all columns are hashable before converting to values for hashing
     # make_df_hashable will handle converting geometries to WKT if they are still shapely objects
-    # or will process other unhashable types
+    # or will process other unhashable types.
     df_for_hash = make_df_hashable(df_for_hash)
 
     # Hash values (which are already made hashable by make_df_hashable)
-    values_hash = tuple(tuple(row) for row in df_for_hash.values)
-
-    # Hash index more robustly
-    index_values_as_str = tuple(str(x) for x in df_for_hash.index)
-    index_hash = hashlib.md5(str(index_values_as_str).encode()).hexdigest() # More robust hash for tuple of strings
-
-    # Hash columns
-    columns_hash = hashlib.md5(str(tuple(df_for_hash.columns)).encode()).hexdigest() # More robust hash for tuple of strings
+    values_hash = tuple(tuple(item) for item in df_for_hash.values) # Ensure inner items are hashable by calling make_hashable_recursive if needed
+    
+    # Use a more robust hashing for index and columns
+    index_hash = hashlib.md5(str(tuple(str(x) for x in df_for_hash.index)).encode()).hexdigest()
+    columns_hash = hashlib.md5(str(tuple(str(x) for x in df_for_hash.columns)).encode()).hexdigest()
     
     return (values_hash, index_hash, columns_hash)
 
@@ -92,7 +111,7 @@ PANDAS_HASH_FUNCS = {
     datetime: lambda dt: dt.isoformat(),
 }
 
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply custom hash funcs to load_data as well
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def load_data():
     PARQUET_FILE_PATH = os.path.join(DATA_DIR, "AB_WS_R_stations.parquet")
     try:
@@ -130,30 +149,28 @@ def load_data():
             return []
         try:
             parsed = json.loads(val)
-            return parsed if isinstance(parsed, list) else [parsed]
+            # Ensure all values within the parsed dictionary/list are hashable.
+            # This is a good place to recursively apply make_hashable_recursive.
+            return make_hashable_recursive(parsed) if isinstance(parsed, (list, dict)) else parsed
         except json.JSONDecodeError:
             return []
     
     geo_data_df['time_series'] = geo_data_df['time_series'].apply(parse_time_series_string)
 
-    # *** CRITICAL CHANGE HERE ***
     # Convert shapely geometry objects to WKT strings early
     if 'geometry' in geo_data_df.columns and isinstance(geo_data_df, gpd.GeoDataFrame):
-        # Convert geometry to WKT strings. If it's already WKT, this does nothing harmful.
-        # This makes the geometry column itself hashable.
         geo_data_df['geometry'] = geo_data_df['geometry'].apply(lambda geom: geom.wkt if geom else None)
 
-    # Now, make_df_hashable will process other object columns.
-    # The 'geometry' column will now contain strings, which are hashable.
+    # Apply make_df_hashable to ensure all columns (especially 'object' types) are fully hashable
     geo_data_df = make_df_hashable(geo_data_df)
 
     return geo_data_df
 
 
-merged = load_data()
+merged = load_data() # This now returns a GeoDataFrame with all elements meticulously made hashable.
 
 
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache as well
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
@@ -187,6 +204,7 @@ def load_diversion_tables():
 
             df['Date'] = df['Date'].apply(safe_replace_year)
             
+            # Ensure the diversion table itself is hashable
             diversion_tables[wsc] = make_df_hashable(df) 
 
     return diversion_tables, diversion_labels
