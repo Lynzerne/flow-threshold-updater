@@ -13,6 +13,7 @@ from dateutil.parser import parse
 import os
 import hashlib
 from branca.element import Element
+from streamlit_folium import folium_static # Re-added: Essential for displaying Folium maps in Streamlit
 
 # --- IMPORTANT: Clear Streamlit's cache at the very start for fresh data on app rerun ---
 st.cache_data.clear()
@@ -26,7 +27,6 @@ STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
 # --- Utility function to make objects recursively hashable for Streamlit caching ---
 def make_hashable_recursive(obj):
-    # ... (your existing make_hashable_recursive function remains unchanged) ...
     """
     Recursively converts unhashable objects (lists, dicts, numpy arrays, shapely geometries, NaNs)
     to hashable ones (tuples, frozensets, strings, None).
@@ -38,10 +38,6 @@ def make_hashable_recursive(obj):
         return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
 
     # Handle pandas/numpy NaN explicitly to ensure consistency
-    # IMPORTANT: Do NOT use pd.isna here if this is the cause of the ValueError for complex types.
-    # Instead, rely on standard None/NaN checks if we're sure it's a primitive type,
-    # or handle complex types before they get here.
-    # Given the previous error, we ensure complex types are handled *before* this check.
     if obj is None or (isinstance(obj, (float, int)) and pd.isna(obj)):
         return None
 
@@ -72,7 +68,6 @@ def make_hashable_recursive(obj):
 
 
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
-    # ... (your existing make_df_hashable function remains unchanged) ...
     """
     Applies make_hashable_recursive to all object columns in a DataFrame,
     and ensures numeric columns with NaNs are handled.
@@ -87,7 +82,6 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def hash_dataframe(df: pd.DataFrame):
-    # ... (your existing hash_dataframe function remains unchanged) ...
     """
     Generates a hashable representation of a DataFrame or GeoDataFrame.
     Assumes 'geometry' column (if present) is already in a hashable format (e.g., WKT strings).
@@ -118,8 +112,8 @@ PANDAS_HASH_FUNCS = {
 # --- Data Loading Function ---
 @st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def load_data():
-    # Load spatial GeoData from parquet
-    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
+    # Load spatial GeoData from GeoJSON
+    geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson")) # Changed to read GeoJSON
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
 
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
@@ -133,7 +127,7 @@ def load_data():
 
     geo_data = geo_data.merge(
         station_info[cols_to_merge_from_station_info],
-        on='WSC', how='left', suffixes=('_geo', '_info')  # Use suffixes to resolve potential column name conflicts
+        on='WSC', how='left', suffixes=('_geo', '_info')
     )
     
     if 'Station Name_info' in geo_data.columns and 'Station Name_geo' in geo_data.columns:
@@ -144,12 +138,11 @@ def load_data():
     elif 'Station Name_info' in geo_data.columns:
         geo_data = geo_data.rename(columns={'Station Name_info': 'Station Name'})
 
+    # When reading GeoJSON, 'geometry' will be Shapely objects. Convert to WKT for hashing.
     if 'geometry' in geo_data.columns and isinstance(geo_data, gpd.GeoDataFrame):
         geo_data['geometry'] = geo_data['geometry'].apply(lambda g: g.wkt if g else None)
 
     # --- Refined safe_parse_and_hash for the time_series column ---
-    # Moved safe_parse_and_hash outside load_data as per best practice.
-    # The logic here is key to handling diverse types potentially loaded from Parquet.
     def safe_parse_and_hash_time_series_entry(val):
         # First, handle explicit None or NaN values that might appear directly
         if val is None or (isinstance(val, float) and pd.isna(val)):
@@ -163,25 +156,20 @@ def load_data():
             except json.JSONDecodeError:
                 # If it's a string but not valid JSON, treat as empty data
                 return tuple()
-        
+            
         # If it's already a Python list/tuple/dict/frozenset (i.e., already parsed by pyarrow/pandas)
         elif isinstance(val, (list, tuple, dict, frozenset)):
             return make_hashable_recursive(val)
-        
+            
         # Fallback for any other unexpected type that isn't handled above
-        # This will catch PyArrow specific types that pd.isna might struggle with.
         else:
             try:
-                # Attempt to convert to string representation and then parse if needed,
-                # or directly make hashable if it's a simple, unexpected hashable type.
                 if hasattr(val, 'as_py'): # Common for pyarrow.lib.StructArray or similar
                     py_obj = val.as_py()
                     return make_hashable_recursive(py_obj)
                 else:
                     return make_hashable_recursive(val)
             except Exception as e:
-                # Log or print a warning here if needed for debugging unexpected types
-                # print(f"Warning: Could not make time_series entry hashable: {type(val)} - {val}. Error: {e}")
                 return tuple() # Default to empty tuple for unhandleable types
 
     geo_data['time_series'] = geo_data['time_series'].apply(safe_parse_and_hash_time_series_entry)
@@ -195,8 +183,7 @@ def load_data():
 merged = load_data()
 
 # --- Load diversion tables ---
-# This function loads and preprocesses diversion tables.
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def load_diversion_tables():
     diversion_tables = {}
     diversion_labels = {}
@@ -207,44 +194,35 @@ def load_diversion_tables():
             file_path = os.path.join(DIVERSION_DIR, f)
 
             df = pd.read_parquet(file_path)
-
             df.columns = df.columns.str.strip()
 
-            # Expected columns: ['Date', 'Cutback1', 'Cutback2', 'Cutback3 or Cutoff']
-            # Handle missing or renamed last column:
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
             if len(df.columns) == 4:
                 third_label = df.columns[3]
                 df.columns = standard_columns + [third_label]
                 diversion_labels[wsc] = third_label
             else:
-                diversion_labels[wsc] = "Cutback3" # Default label if not explicitly found
+                diversion_labels[wsc] = "Cutback3"
                 df.columns = standard_columns + ['Cutback3']
 
-            # Normalize and fix date format (year replaced by 1900)
             df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.normalize()
 
             def safe_replace_year(d):
                 try:
                     if isinstance(d, (pd.Timestamp, datetime)) and pd.notna(d):
-                        return d.replace(year=1900) # Replace year to 1900 for consistent seasonal comparison
+                        return d.replace(year=1900)
                 except:
-                    return pd.NaT # Return Not a Time if parsing fails
+                    return pd.NaT
                 return pd.NaT
 
             df['Date'] = df['Date'].apply(safe_replace_year)
-
-            # Ensure the diversion table itself is hashable before storing in dictionary
-            # This is important as DataFrames are stored in a dict which might be cached indirectly.
-            diversion_tables[wsc] = make_df_hashable(df) 
-
+            diversion_tables[wsc] = make_df_hashable(df)  
     return diversion_tables, diversion_labels
 
 diversion_tables, diversion_labels = load_diversion_tables()
 
 # --- Helper functions for data extraction and compliance logic ---
 def extract_daily_data(time_series_hashed, date_str):
-    # time_series_hashed is now expected to be a tuple of frozensets (thanks to make_hashable_recursive)
     for item_frozenset in time_series_hashed:
         if isinstance(item_frozenset, frozenset):
             item_dict = dict(item_frozenset)
@@ -279,11 +257,10 @@ def compliance_color_SWA(stream_size, flow, q80, q95):
         return 'red'
     return 'gray'
 
-def get_color_for_date(row, date_str): # Expects date_str
+def get_color_for_date(row, date_str):
     daily = extract_daily_data(row['time_series'], date_str)
     flow_daily = daily.get('Daily flow')
     flow_calc = daily.get('Calculated flow')
-    # Prioritize Daily flow, then Calculated flow, otherwise None
     flow = max(filter(lambda x: pd.notna(x), [flow_daily, flow_calc]), default=None)
 
     policy = row['PolicyType']
@@ -294,42 +271,35 @@ def get_color_for_date(row, date_str): # Expects date_str
     return 'gray'
 
 # --- Function to get valid dates from the loaded data ---
-# This determines the range of dates available for the date picker in the sidebar.
-@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
+@st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def get_valid_dates(data: pd.DataFrame):
     all_dates = set()
     df_for_iteration = data.copy()
     
-    # Ensure 'geometry' is dropped if it exists and is not WKT to avoid issues
-    # (though make_hashable_recursive should have converted it to WKT already)
     if 'geometry' in df_for_iteration.columns and not (df_for_iteration['geometry'].empty or isinstance(df_for_iteration['geometry'].iloc[0], str)):
         df_for_iteration = df_for_iteration.drop(columns=['geometry'])
     
     for ts_tuple in df_for_iteration['time_series']:
-        if isinstance(ts_tuple, tuple): # Confirm it's the expected hashable tuple
+        if isinstance(ts_tuple, tuple):
             for item_frozenset in ts_tuple:
-                if isinstance(item_frozenset, frozenset): # Confirm it's a frozenset
+                if isinstance(item_frozenset, frozenset):
                     item_dict = dict(item_frozenset)
                     if 'date' in item_dict and ('Daily flow' in item_dict or 'Calculated flow' in item_dict):
-                        # Ensure the flow value itself is not None/NaN before considering the date valid
                         flow_daily = item_dict.get('Daily flow')
                         flow_calc = item_dict.get('Calculated flow')
                         if (flow_daily is not None and pd.notna(flow_daily)) or \
                            (flow_calc is not None and pd.notna(flow_calc)):
                             try:
-                                # Ensure the date is parsed into a datetime.date object for consistency
-                                d = parse(item_dict['date']).date() 
+                                d = parse(item_dict['date']).date()  
                                 all_dates.add(d)
                             except (TypeError, ValueError):
                                 pass
     
     if not all_dates:
-        # If no valid dates are found, provide a sensible default range around today's date
         today = datetime.now().date()
         return sorted([today - timedelta(days=7), today + timedelta(days=7)])
 
     sorted_dates = sorted(list(all_dates))
-    # Convert dates back to string format for consistency with `selected_dates` further down
     return [d.strftime('%Y-%m-%d') for d in sorted_dates]
 
 valid_dates = get_valid_dates(merged)
