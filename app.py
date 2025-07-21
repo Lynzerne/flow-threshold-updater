@@ -694,9 +694,9 @@ def render_map_two_l(merged_df, selected_dates_tuple, current_date_str, popup_ca
     Fullscreen().add_to(m)
 
     # Add TileLayers for different map backgrounds
-    folium.TileLayer('OpenStreetMap', name='OpenStreetMap').add_to(m)
-    folium.TileLayer('CartoDB.DarkMatter', name='Dark Mode').add_to(m)
-    folium.TileLayer('Stamen Terrain', name='Terrain').add_to(m)
+    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', attr='© OpenStreetMap contributors').add_to(m)
+    folium.TileLayer('CartoDB.DarkMatter', name='Dark Mode', attr='© CartoDB').add_to(m)
+    folium.TileLayer('Stamen Terrain', name='Terrain', attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap.').add_to(m)
 
     # Add a Layer Control
     folium.LayerControl().add_to(m)
