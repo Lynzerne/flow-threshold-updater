@@ -600,6 +600,8 @@ st.sidebar.header("Date Range")
 # Ensure min_date and max_date are actual date objects from the valid_dates string list
 min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
 max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
+st.sidebar.write(f"**Calculated Min Date:** {min_date}")
+st.sidebar.write(f"**Calculated Max Date:** {max_date}")
 start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
 end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
 
