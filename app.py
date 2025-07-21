@@ -26,6 +26,7 @@ STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
 
 # --- Utility function to make objects recursively hashable for Streamlit caching ---
 def make_hashable_recursive(obj):
+    # ... (your existing make_hashable_recursive function remains unchanged) ...
     """
     Recursively converts unhashable objects (lists, dicts, numpy arrays, shapely geometries, NaNs)
     to hashable ones (tuples, frozensets, strings, None).
@@ -37,12 +38,14 @@ def make_hashable_recursive(obj):
         return frozenset((k, make_hashable_recursive(v)) for k, v in sorted(obj.items()))
 
     # Handle pandas/numpy NaN explicitly to ensure consistency
+    # IMPORTANT: Do NOT use pd.isna here if this is the cause of the ValueError for complex types.
+    # Instead, rely on standard None/NaN checks if we're sure it's a primitive type,
+    # or handle complex types before they get here.
+    # Given the previous error, we ensure complex types are handled *before* this check.
     if obj is None or (isinstance(obj, (float, int)) and pd.isna(obj)):
         return None
 
     # For shapely geometry objects (e.g., Point, Polygon) in GeoDataFrames
-    # GeoJSON reading handles geometry directly, but this is good for consistency if geometries
-    # are processed or come from other sources.
     if hasattr(obj, 'wkt'):
         return obj.wkt # Convert to Well-Known Text string, which is hashable
 
@@ -69,6 +72,7 @@ def make_hashable_recursive(obj):
 
 
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
+    # ... (your existing make_df_hashable function remains unchanged) ...
     """
     Applies make_hashable_recursive to all object columns in a DataFrame,
     and ensures numeric columns with NaNs are handled.
@@ -83,6 +87,7 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def hash_dataframe(df: pd.DataFrame):
+    # ... (your existing hash_dataframe function remains unchanged) ...
     """
     Generates a hashable representation of a DataFrame or GeoDataFrame.
     Assumes 'geometry' column (if present) is already in a hashable format (e.g., WKT strings).
@@ -113,9 +118,8 @@ PANDAS_HASH_FUNCS = {
 # --- Data Loading Function ---
 @st.cache_data(hash_funcs=PANDAS_HASH_FUNCS)
 def load_data():
-    # Load spatial GeoData from GeoJSON
-    # GeoJSON automatically handles geometry parsing into shapely objects
-    geo_data = gpd.read_file(os.path.join(DATA_DIR, "AB_WS_R_stations.geojson"))
+    # Load spatial GeoData from parquet
+    geo_data = gpd.read_parquet(os.path.join(DATA_DIR, "AB_WS_R_stations.parquet"))
     geo_data = geo_data.rename(columns={'station_no': 'WSC'})
 
     station_info = pd.read_csv(os.path.join(DATA_DIR, "AB_WS_R_StationList.csv"))
@@ -140,8 +144,6 @@ def load_data():
     elif 'Station Name_info' in geo_data.columns:
         geo_data = geo_data.rename(columns={'Station Name_info': 'Station Name'})
 
-    # Convert geometry to WKT for consistent hashing, as it's not directly hashable
-    # This step is crucial for Streamlit's caching if the GeoDataFrame itself is part of the cached output
     if 'geometry' in geo_data.columns and isinstance(geo_data, gpd.GeoDataFrame):
         geo_data['geometry'] = geo_data['geometry'].apply(lambda g: g.wkt if g else None)
 
@@ -162,11 +164,12 @@ def load_data():
                 # If it's a string but not valid JSON, treat as empty data
                 return tuple()
         
-        # If it's already a Python list/tuple/dict/frozenset (i.e., already parsed by geopandas from GeoJSON)
+        # If it's already a Python list/tuple/dict/frozenset (i.e., already parsed by pyarrow/pandas)
         elif isinstance(val, (list, tuple, dict, frozenset)):
             return make_hashable_recursive(val)
         
         # Fallback for any other unexpected type that isn't handled above
+        # This will catch PyArrow specific types that pd.isna might struggle with.
         else:
             try:
                 # Attempt to convert to string representation and then parse if needed,
@@ -181,12 +184,8 @@ def load_data():
                 # print(f"Warning: Could not make time_series entry hashable: {type(val)} - {val}. Error: {e}")
                 return tuple() # Default to empty tuple for unhandleable types
 
-    # Apply the hashable conversion to the 'time_series' column.
-    # GeoJSON will likely parse this as a Python list of dicts directly if it's stored as a JSON array.
-    # The safe_parse_and_hash_time_series_entry function will then make it hashable.
     geo_data['time_series'] = geo_data['time_series'].apply(safe_parse_and_hash_time_series_entry)
 
-    # Ensure the entire DataFrame is hashable for Streamlit's caching
     geo_data = make_df_hashable(geo_data)
 
     print("Columns in merged DataFrame:", geo_data.columns.tolist())
@@ -237,7 +236,7 @@ def load_diversion_tables():
 
             # Ensure the diversion table itself is hashable before storing in dictionary
             # This is important as DataFrames are stored in a dict which might be cached indirectly.
-            diversion_tables[wsc] = make_df_hashable(df)  
+            diversion_tables[wsc] = make_df_hashable(df) 
 
     return diversion_tables, diversion_labels
 
@@ -319,7 +318,7 @@ def get_valid_dates(data: pd.DataFrame):
                            (flow_calc is not None and pd.notna(flow_calc)):
                             try:
                                 # Ensure the date is parsed into a datetime.date object for consistency
-                                d = parse(item_dict['date']).date()  
+                                d = parse(item_dict['date']).date() 
                                 all_dates.add(d)
                             except (TypeError, ValueError):
                                 pass
@@ -450,7 +449,7 @@ def make_popup_html_with_plot(row, selected_dates_strs, show_diversion):
       /* Desktop-specific adjustments */
       @media (min-width: 501px) {{
         .leaflet-popup-content {{
-            min-width: 650px !important;  
+            min-width: 650px !important; 
             max-width: 700px !important;
             width: auto !important;
         }}
@@ -471,48 +470,48 @@ def make_popup_html_with_plot(row, selected_dates_strs, show_diversion):
 
       /* Base styles for the popup content - apply to all screen sizes first */
       .leaflet-popup-content {{
-            padding: 0 !important;
-            margin: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
       }}
       .leaflet-popup-content-wrapper {{
-            box-sizing: border-box; /* Crucial for consistent sizing */
-            padding: 4px !important;
+          box-sizing: border-box; /* Crucial for consistent sizing */
+          padding: 4px !important;
       }}
       .leaflet-popup-content > div {{
-            background: #fff; /* Ensure white background */
-            border-radius: 12px;
-            width: 100% !important; /* Ensure direct child takes full width */
+          background: #fff; /* Ensure white background */
+          border-radius: 12px;
+          width: 100% !important; /* Ensure direct child takes full width */
       }}
       .popup-wrapper {{
-            height: auto; /* Let content dictate height */
-            box-sizing: border-box;
-            padding: 5px; /* Add some internal padding */
+          height: auto; /* Let content dictate height */
+          box-sizing: border-box;
+          padding: 5px; /* Add some internal padding */
       }}
       .popup-wrapper h4 {{
-            font-size: {font_size};
-            margin-top: 0; /* Remove default margin */
-            margin-bottom: 10px;
-            text-align: center; /* Center the title */
+          font-size: {font_size};
+          margin-top: 0; /* Remove default margin */
+          margin-bottom: 10px;
+          text-align: center; /* Center the title */
       }}
       .popup-wrapper table {{
-            border-collapse: collapse;
-            border: {border};
-            font-size: {font_size};
-            width: 100% !important; /* Table must take full width of its container */
-            word-wrap: break-word;
+          border-collapse: collapse;
+          border: {border};
+          font-size: {font_size};
+          width: 100% !important; /* Table must take full width of its container */
+          word-wrap: break-word;
       }}
       .popup-wrapper th, .popup-wrapper td {{
-            padding: {padding};
-            border: {border};
-            text-align: center; /* Center text in cells */
-            vertical-align: middle;
+          padding: {padding};
+          border: {border};
+          text-align: center; /* Center text in cells */
+          vertical-align: middle;
       }}
       .popup-wrapper th {{
-            background-color: #f2f2f2; /* Light grey background for headers */
+          background-color: #f2f2f2; /* Light grey background for headers */
       }}
       .popup-wrapper img {{
-            display: block !important;
-            margin: 0 auto !important;
+          display: block !important;
+          margin: 0 auto !important;
       }}
     </style>
     
@@ -569,7 +568,7 @@ def make_popup_html_with_plot(row, selected_dates_strs, show_diversion):
         if all(pd.isna(threshold_vals)):
             continue
         ax.plot(plot_dates_dt, threshold_vals, linestyle='--', label=label, # Use datetime objects for plotting
-                         color=threshold_colors.get(label, 'gray'), linewidth=2)
+                     color=threshold_colors.get(label, 'gray'), linewidth=2)
 
     ax.set_ylabel('Flow')
     ax.legend(fontsize=8)
@@ -597,7 +596,7 @@ def get_date_hash(dates):
 @st.cache_data(show_spinner=True, hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
 def generate_all_popups(merged_df, selected_dates_tuple):
     # Convert tuple back to list of strings for processing within the function
-    selected_dates_strs = list(selected_dates_tuple)  
+    selected_dates_strs = list(selected_dates_tuple) 
 
     popup_cache_no_diversion = {}
     popup_cache_diversion = {}
@@ -652,7 +651,7 @@ with st.sidebar.expander("ℹ️ About this App"):
 
     **📏 Threshold Definitions:** - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
-    - **IFN (Instream Flow Need)::** Ecological flow requirement for sensitive systems  
+    - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
     - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow".  
     - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
     - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
@@ -687,87 +686,133 @@ def get_most_recent_valid_date(row, dates):
     return None
 
 @st.cache_data(show_spinner=True, hash_funcs=PANDAS_HASH_FUNCS) # Apply hash_funcs to this cache
-def render_map_two_l(merged_df, selected_dates_tuple, current_date_str, popup_cache_no_diversion, popup_cache_diversion):
-    selected_dates_strs = list(selected_dates_tuple) # Convert tuple back to list for use
+def render_map_two_layers():
+    m = folium.Map(
+        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        zoom_start=6,
+        width='100%',
+        height='1200px'
+    )
 
-    m = folium.Map(location=[54.5, -115], zoom_start=6, tiles="CartoDB.Positron", control_scale=True)
-    Fullscreen().add_to(m)
-
-    # Add TileLayers for different map backgrounds
-    folium.TileLayer('OpenStreetMap', name='OpenStreetMap', attr='© OpenStreetMap contributors').add_to(m)
-    folium.TileLayer('CartoDB.DarkMatter', name='Dark Mode', attr='© CartoDB').add_to(m)
-    folium.TileLayer('Stamen Terrain', name='Terrain', attr='Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap.').add_to(m)
-
-    # Add a Layer Control
-    folium.LayerControl().add_to(m)
-
-    # Streamlit components for map layers
-    st.sidebar.markdown("---")
-    st.sidebar.header("Map Display Options")
-    show_diversion_checkbox = st.sidebar.checkbox("Show Diversion Table Thresholds", value=True, help="Toggle to show/hide diversion table specific thresholds in popups for applicable stations.")
-    show_all_stations = st.sidebar.checkbox("Show All Stations (regardless of flow data)", value=False, help="Display all stations from the dataset, even if they lack flow data for the selected date(s).")
-    
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("""
-    **Note:** The map markers update their color based on the **most recent date** within your selected date range that has available flow data for that station. Popups, however, show data for **all selected dates.**
+    # Add responsive popup size script (ensures popups adapt to screen size)
+    popup_resize_script = Element("""
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const resizePopups = () => {
+            const popups = document.querySelectorAll('.leaflet-popup-content');
+            popups.forEach(p => {
+                p.style.maxHeight = window.innerWidth < 500 ? '90vh' : '600px';
+                p.style.overflow = 'auto';
+            });
+        };
+        const observer = new MutationObserver(resizePopups);
+        observer.observe(document.body, { childList: true, subtree: true });
+        resizePopups(); // Initial call
+    });
+    </script>
     """)
+    m.get_root().html.add_child(popup_resize_script)
 
-    # Filter stations based on selected date range and show_all_stations setting
-    stations_to_display = []
-    for idx, row in merged_df.iterrows():
-        most_recent_valid = get_most_recent_valid_date(row, selected_dates_strs)
-        if show_all_stations or most_recent_valid:
-            stations_to_display.append((row, most_recent_valid))
+    # Enable touch actions for map interactions on mobile
+    m.get_root().html.add_child(folium.Element("""
+        <style>
+            body {
+                touch-action: pan-x pan-y pinch-zoom !important;
+            }
+        </style>
+    """))
+    Fullscreen().add_to(m) # Add fullscreen button
 
-    for row, most_recent_valid_date_for_station in stations_to_display:
-        station_has_diversion_table = (row['WSC'] in diversion_tables)
+    # FeatureGroups for two map layers (All Stations and Diversion Stations)
+    fg_all = folium.FeatureGroup(name='All Stations')
+    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
-        color = 'gray' # Default color for stations with no recent valid flow data
-        if most_recent_valid_date_for_station:
-            # Use the most recent valid date for the marker color
-            color = get_color_for_date(row, most_recent_valid_date_for_station)
+    for _, row in merged.iterrows():
+        coords = [row['LAT'], row['LON']]
 
-        # Determine which popup content to use based on the checkbox
-        popup_content = popup_cache_diversion[row['WSC']] if show_diversion_checkbox else popup_cache_no_diversion[row['WSC']]
-        
-        iframe = IFrame(popup_content, width=700, height=550)
-        popup = folium.Popup(iframe, max_width=700)
-        
-        # Add a blue border to the marker if a diversion table exists for the station
-        icon_options = {
-            "color": color,
-            "fill": True,
-            "fill_color": color,
-            "fill_opacity": 0.7,
-            "radius": 8
-        }
-        if station_has_diversion_table:
-            icon_options.update({
-                "weight": 3,
-                "opacity": 1,
-                "color": 'blue' # Blue border
-            })
+        date = get_most_recent_valid_date(row, selected_dates)
+        if not date:
+            continue # Skip stations with no valid flow data in the selected range
 
-        # Add the circle marker to the map
+        color = get_color_for_date(row, date)
+
+        wsc = row['WSC']
+        # Retrieve pre-generated popup HTML from session state caches
+        popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
+        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
+
+        # Define IFrame and Popup with general dimensions, letting internal CSS handle responsiveness
+        iframe_width = 700 
+        iframe_height = 550 
+
+        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=iframe_width, height=iframe_height)
+        popup_no_diversion = folium.Popup(iframe_no_diversion, max_width=iframe_width + 50) 
+
+        iframe_diversion = IFrame(html=popup_html_diversion, width=iframe_width, height=iframe_height)
+        popup_diversion = folium.Popup(iframe_diversion, max_width=iframe_width + 50)
+
+
+        # Marker for ALL stations (shows no diversion popup by default)
         folium.CircleMarker(
-            location=[row['LAT'], row['LON']],
-            popup=popup,
-            tooltip=f"{row['Station Name']} ({row['WSC']})",
-            **icon_options
-        ).add_to(m)
+            location=coords,
+            radius=7,
+            color='black',
+            weight=3,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7,
+            popup=popup_no_diversion,
+            tooltip=row['Station Name'] 
+        ).add_to(fg_all)
+
+        # Marker for diversion stations only (shows diversion popup)
+        if wsc in diversion_tables:
+            folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue', # Blue border indicates diversion table available
+                weight=3,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.7,
+                popup=popup_diversion,
+                tooltip=row['Station Name']
+            ).add_to(fg_diversion)
+
+    # Add both layers to map and enable layer control
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=False).add_to(m)
 
     return m
 
-# Convert selected_dates list to a tuple for caching purposes
-selected_dates_tuple = tuple(selected_dates)
-current_date_str_for_map = selected_dates[-1] if selected_dates else None
+# --- Main Application Display ---
+st.title("Alberta Flow Threshold Viewer")
 
-# Generate all popups once and cache them
-popup_cache_no_diversion, popup_cache_diversion = generate_all_popups(merged, selected_dates_tuple)
+with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
+    # Always compute the current date hash based on selected_dates
+    current_dates_hash = get_date_hash(selected_dates)
 
-# Render the map
-st_map = render_map_two_l(merged, selected_dates_tuple, current_date_str_for_map, popup_cache_no_diversion, popup_cache_diversion)
+    # Check session state for cached popups using the date hash.
+    # If caches don't exist, or the date range has changed (hash mismatch), re-generate popups.
+    if ('popup_cache_no_diversion' not in st.session_state or
+        'popup_cache_diversion' not in st.session_state or
+        st.session_state.get('cached_dates_hash', '') != current_dates_hash):
 
-# Display the map in Streamlit
-st.title("Alberta Water Station Flow & Compliance")
-folium_static(st_map)
+        no_diversion_cache, diversion_cache = generate_all_popups(merged, tuple(selected_dates))
+        st.session_state.popup_cache_no_diversion = no_diversion_cache
+        st.session_state.popup_cache_diversion = diversion_cache
+        st.session_state.cached_dates_hash = current_dates_hash
+    
+    # Render and display the map
+    m = render_map_two_layers()
+    map_html = m.get_root().render()
+
+    # Inject mobile-friendly viewport settings into <head> for proper scaling
+    map_html = map_html.replace(
+        "<head>",
+        "<head><meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1'>"
+    )
+
+    # Display map using Streamlit's components.v1.html
+    st.components.v1.html(map_html, height=1200, scrolling=True)
