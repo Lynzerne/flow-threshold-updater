@@ -170,6 +170,7 @@ def load_data():
                 else:
                     return make_hashable_recursive(val)
             except Exception as e:
+                print(f"Error parsing time_series data: {ts_data} - Error: {e}")
                 return tuple() # Default to empty tuple for unhandleable types
 
     geo_data['time_series'] = geo_data['time_series'].apply(safe_parse_and_hash_time_series_entry)
