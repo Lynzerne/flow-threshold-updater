@@ -31,7 +31,6 @@ def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
         if df_copy[col].apply(lambda x: isinstance(x, list)).any():
             df_copy[col] = df_copy[col].apply(lambda x: tuple(x) if isinstance(x, list) else x)
     return df_copy
-@st.cache_data
 
 @st.cache_data
 def load_data():
@@ -188,8 +187,7 @@ st.sidebar.header("Date Range")
 # Ensure min_date and max_date are actual date objects from the valid_dates string list
 min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
 max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
-st.sidebar.write(f"**Calculated Min Date:** {min_date}")
-st.sidebar.write(f"**Calculated Max Date:** {max_date}")
+st.sidebar.write(f"Current data collection range: {min_date} to {max_date}")
 start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
 end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
 
