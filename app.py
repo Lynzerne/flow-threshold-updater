@@ -56,6 +56,25 @@ def load_data():
 # Call load_data and assign merged here
 merged = load_data()
 
+def get_valid_dates(merged):
+    dates = set()
+    for ts in merged['time_series']:
+        for item in ts:
+            if 'date' in item and 'Daily flow' in item:
+                try:
+                    d = parse(item['date']).strftime('%Y-%m-%d')
+                    if item['Daily flow'] is not None:
+                        dates.add(d)
+                except:
+                    pass
+    return sorted(dates)
+
+valid_dates = get_valid_dates(merged)
+
+if not valid_dates:
+    st.error("No valid flow data found. Please check your data files.")
+    st.stop()
+
 
 
 # --- Load diversion tables ---
@@ -217,20 +236,7 @@ with st.sidebar.expander("ℹ️ Who Cares?"):
 
     """)
 
-def get_valid_dates(merged):
-    dates = set()
-    for ts in merged['time_series']:
-        for item in ts:
-            if 'date' in item and 'Daily flow' in item:
-                try:
-                    d = parse(item['date']).strftime('%Y-%m-%d')
-                    if item['Daily flow'] is not None:
-                        dates.add(d)
-                except:
-                    pass
-    return sorted(dates)
 
-valid_dates = get_valid_dates(merged)
 
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
