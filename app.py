@@ -406,20 +406,6 @@ def generate_all_popups(merged_df, selected_dates):
     return popup_cache_no_diversion, popup_cache_diversion
 
 
-# --- Sidebar ---
-st.sidebar.header("Date Range")
-min_date = datetime.strptime(valid_dates[0], "%Y-%m-%d").date()
-max_date = datetime.strptime(valid_dates[-1], "%Y-%m-%d").date()
-start_date = st.sidebar.date_input("Start", value=max_date - timedelta(days=7), min_value=min_date, max_value=max_date)
-end_date = st.sidebar.date_input("End", value=max_date, min_value=min_date, max_value=max_date)
-
-if start_date > end_date:
-    st.sidebar.error("Start date must be before end date.")
-    st.stop()
-
-selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d <= end_date.strftime('%Y-%m-%d')]
-
-
 # Pre-generate both popup caches upfront
 
 def get_most_recent_valid_date(row, dates):
