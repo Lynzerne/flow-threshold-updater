@@ -21,14 +21,31 @@ def load_data():
     if 'station_no' in geo_data.columns:
         geo_data = geo_data.rename(columns={'station_no': 'WSC'})
     
-    # Check station_list columns to pick merge key
+    # Debug: print columns for verification
     st.write("station_list columns:", station_list.columns.tolist())
     st.write("geo_data columns:", geo_data.columns.tolist())
 
-    # Make sure 'WSC' exists in both for merge
+    # Check station_list columns to pick merge key
     if 'WSC' not in station_list.columns:
         st.error("station_list missing 'WSC' column for merge")
         st.stop()
+
+    # Debug: Check raw dates in geojson before merge
+    all_dates_geojson = set()
+    for ts_str in geo_data['time_series']:
+        try:
+            ts = json.loads(ts_str) if isinstance(ts_str, str) else ts_str
+            for item in ts:
+                if 'date' in item:
+                    d = parse(item['date']).date()
+                    all_dates_geojson.add(d)
+        except Exception as e:
+            st.write(f"Error parsing time_series item in geojson: {e}")
+    if all_dates_geojson:
+        st.write(f"Earliest date in geojson time_series: {min(all_dates_geojson)}")
+        st.write(f"Latest date in geojson time_series: {max(all_dates_geojson)}")
+    else:
+        st.write("No valid dates found in geojson time_series")
 
     # Merge on 'WSC'
     merged = pd.merge(station_list, geo_data, on='WSC', how='inner')
@@ -37,12 +54,30 @@ def load_data():
     def safe_parse(val):
         if isinstance(val, str):
             try:
-                return json.loads(val)
-            except:
+                parsed = json.loads(val)
+                if not parsed:
+                    st.write("Empty time_series JSON string found:", val)
+                return parsed
+            except Exception as e:
+                st.write(f"JSON parse error in time_series: {e}, val: {val[:100]}")
                 return []
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
+
+    # Debug: print sample dates per station after parsing
+    for idx, ts in enumerate(merged['time_series']):
+        if not isinstance(ts, list):
+            continue
+        dates = []
+        for item in ts:
+            try:
+                if 'date' in item:
+                    dates.append(parse(item['date']).date())
+            except Exception as e:
+                st.write(f"Error parsing date in station time_series: {e}")
+        if dates:
+            st.write(f"Station {merged.iloc[idx]['WSC']} sample dates: {sorted(dates)[:5]} ... total dates: {len(dates)}")
 
     return merged
 
