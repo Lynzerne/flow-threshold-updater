@@ -510,7 +510,8 @@ else:
             st.session_state.popup_cache_diversion = diversion_cache
             st.session_state.cached_dates_hash = current_dates_hash
 
-
+st.sidebar.write(f"Total stations: {len(merged)}")
+st.sidebar.write(f"Diversion stations: {len([wsc for wsc in merged['WSC'] if wsc in diversion_tables])}")
 # Render and display the two-layer map (with both popup caches)
 m = render_map_two_layers()
 map_html = m.get_root().render()
