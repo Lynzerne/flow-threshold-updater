@@ -485,7 +485,6 @@ def render_map_two_layers():
     return m
 
 # --- Display ---
-st.title("Alberta Flow Threshold Viewer")
 
 # Always compute the current hash
 current_dates_hash = get_date_hash(selected_dates)
