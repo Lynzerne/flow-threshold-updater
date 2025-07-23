@@ -173,6 +173,9 @@ def get_color_for_date(row, date):
     elif policy == 'WMP':
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
+    
+st.sidebar.header("Debug Info")
+debug_messages = []
 
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
@@ -457,68 +460,47 @@ def render_map_two_layers():
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-        # Normalize WSC key
-        wsc = str(row['WSC']).strip().upper()
+    coords = [row['LAT'], row['LON']]
+    wsc = row['WSC']
 
-        # Fix coordinate names
-        if 'lat' in row and 'lon' in row:
-            coords = [row['lat'], row['lon']]
-        elif 'LAT' in row and 'LON' in row:
-            coords = [row['LAT'], row['LON']]
-        elif hasattr(row, 'geometry'):
-            coords = [row.geometry.y, row.geometry.x]
-        else:
-            print(f"Warning: Coordinates missing for station {wsc}")
-            continue
+    date = get_most_recent_valid_date(row, selected_dates)
+    if not date:
+        debug_messages.append(f"Skipping station {wsc}: no recent valid date")
+        continue
 
-        date = get_most_recent_valid_date(row, selected_dates)
-        if not date:
-            # print(f"No valid date for station {wsc}")
-            continue
+    color = get_color_for_date(row, date)
 
-        color = get_color_for_date(row, date)
+    debug_messages.append(f"Adding ALL station marker: {wsc}, coords: {coords}, color: {color}")
 
-        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
-        popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
+    # Marker for ALL stations
+    folium.CircleMarker(
+        location=coords,
+        radius=7,
+        color='black',
+        weight=3,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.7,
+        popup=folium.Popup(IFrame(html=st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
+        tooltip=row['station_name']
+    ).add_to(fg_all)
 
-        iframe_diversion = IFrame(html=popup_html_diversion, width=700, height=600)
-        popup_diversion = folium.Popup(iframe_diversion)
-
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=700, height=600)
-        popup_no_diversion = folium.Popup(iframe_no_diversion)
-
-        # Debug prints to track station info
-        print(f"Adding ALL station marker: {wsc}, coords: {coords}, color: {color}")
-
+    if wsc in diversion_tables:
+        debug_messages.append(f"Adding DIVERSION station marker: {wsc} (blue border)")
         folium.CircleMarker(
             location=coords,
             radius=7,
-            color='black',
+            color='blue',
             weight=3,
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
-            popup=popup_no_diversion,
+            popup=folium.Popup(IFrame(html=st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
             tooltip=row['station_name']
-        ).add_to(fg_all)
-
-        if wsc in diversion_tables:
-            print(f"Adding DIVERSION station marker: {wsc} (blue border)")
-            folium.CircleMarker(
-                location=coords,
-                radius=7,
-                color='blue',
-                weight=3,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.7,
-                popup=popup_diversion,
-                tooltip=row['station_name']
-            ).add_to(fg_diversion)
-        else:
-            # Uncomment to debug why stations might not be detected as diversion stations
-            # print(f"Station {wsc} not in diversion tables.")
-            pass
+        ).add_to(fg_diversion)
+    else:
+        debug_messages.append(f"Station {wsc} not in diversion tables.")
+            
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
