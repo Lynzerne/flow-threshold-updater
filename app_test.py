@@ -177,11 +177,14 @@ def get_color_for_date(row, date):
 st.sidebar.header("Debug Info")
 debug_messages = []
 
+st.write("Diversion directory path:", DIVERSION_DIR)
+st.write("Files in diversion directory:", os.listdir(DIVERSION_DIR))
 st.write("Sample WSC codes from merged dataframe:")
 st.write(merged['WSC'].head(10).tolist())
 
 st.write("Diversion table keys loaded:")
 st.write(list(diversion_tables.keys())[:10])
+
 
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
