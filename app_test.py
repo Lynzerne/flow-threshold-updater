@@ -238,7 +238,12 @@ with st.sidebar.expander("ℹ️ Who Cares?"):
     """)
 
 
+import hashlib
 
+def make_dates_hash(selected_dates):
+    return hashlib.md5(str(selected_dates).encode()).hexdigest()
+
+current_dates_hash = make_dates_hash(selected_dates)
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
@@ -508,7 +513,7 @@ def render_map_two_layers():
 # --- Display ---
 
 # Always compute the current hash
-current_dates_hash = get_date_hash(selected_dates)
+
 
 st.title("Alberta Flow Threshold Viewer")
 
