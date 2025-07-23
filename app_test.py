@@ -460,8 +460,6 @@ def render_map_two_layers():
         wsc = row['WSC'].strip().upper() 
 
         date = get_most_recent_valid_date(row, selected_dates)
-        if not date:
-            debug_messages.append(f"Skipping station {wsc}: no recent valid date")
             continue
 
         color = get_color_for_date(row, date)
