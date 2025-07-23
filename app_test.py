@@ -412,6 +412,24 @@ def get_most_recent_valid_date(row, dates):
         if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
             return d
     return None
+if ('popup_cache_no_diversion' not in st.session_state or
+    'popup_cache_diversion' not in st.session_state or
+    st.session_state.get('cached_dates_hash', '') != current_dates_hash):
+
+    with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
+        no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+        st.session_state.popup_cache_no_diversion = no_diversion_cache
+        st.session_state.popup_cache_diversion = diversion_cache
+        st.session_state.cached_dates_hash = current_dates_hash
+
+else:
+    cached_dates_hash = st.session_state.get('cached_dates_hash', '')
+    if cached_dates_hash != current_dates_hash:
+        with st.spinner("Updating popup caches for new date range..."):
+            no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+            st.session_state.popup_cache_no_diversion = no_diversion_cache
+            st.session_state.popup_cache_diversion = diversion_cache
+            st.session_state.cached_dates_hash = current_dates_hash
 
 @st.cache_data(show_spinner=True)
 def render_map_two_layers():
@@ -491,24 +509,7 @@ current_dates_hash = get_date_hash(selected_dates)
 
 st.title("Alberta Flow Threshold Viewer")
 
-if ('popup_cache_no_diversion' not in st.session_state or
-    'popup_cache_diversion' not in st.session_state or
-    st.session_state.get('cached_dates_hash', '') != current_dates_hash):
 
-    with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
-        no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
-        st.session_state.popup_cache_no_diversion = no_diversion_cache
-        st.session_state.popup_cache_diversion = diversion_cache
-        st.session_state.cached_dates_hash = current_dates_hash
-
-else:
-    cached_dates_hash = st.session_state.get('cached_dates_hash', '')
-    if cached_dates_hash != current_dates_hash:
-        with st.spinner("Updating popup caches for new date range..."):
-            no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
-            st.session_state.popup_cache_no_diversion = no_diversion_cache
-            st.session_state.popup_cache_diversion = diversion_cache
-            st.session_state.cached_dates_hash = current_dates_hash
 
 st.sidebar.write(f"Total stations: {len(merged)}")
 st.sidebar.write(f"Diversion stations: {len([wsc for wsc in merged['WSC'] if wsc in diversion_tables])}")
