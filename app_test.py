@@ -441,30 +441,43 @@ else:
 
 @st.cache_data(show_spinner=True)
 def render_map_two_layers():
+    # Use correct coordinate columns (try lowercase 'lat', 'lon')
+    mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
+    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
+
     m = folium.Map(
-        location=[merged['LAT'].mean(), merged['LON'].mean()],
+        location=[mean_lat, mean_lon],
         zoom_start=6,
         width='100%',
         height='1200px'
     )
     Fullscreen().add_to(m)
 
-    # FeatureGroups for two modes
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
+        # Normalize WSC key
+        wsc = str(row['WSC']).strip().upper()
+
+        # Fix coordinate names
+        if 'lat' in row and 'lon' in row:
+            coords = [row['lat'], row['lon']]
+        elif 'LAT' in row and 'LON' in row:
+            coords = [row['LAT'], row['LON']]
+        elif hasattr(row, 'geometry'):
+            coords = [row.geometry.y, row.geometry.x]
+        else:
+            print(f"Warning: Coordinates missing for station {wsc}")
+            continue
 
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
+            # print(f"No valid date for station {wsc}")
             continue
 
         color = get_color_for_date(row, date)
 
-        # Use diversion popup cache if available
-        wsc = row['WSC']
-        # fallback to no diversion popup if diversion cache missing
         popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
         popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
 
@@ -474,7 +487,9 @@ def render_map_two_layers():
         iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=700, height=600)
         popup_no_diversion = folium.Popup(iframe_no_diversion)
 
-        # Marker for ALL stations (show no diversion popup)
+        # Debug prints to track station info
+        print(f"Adding ALL station marker: {wsc}, coords: {coords}, color: {color}")
+
         folium.CircleMarker(
             location=coords,
             radius=7,
@@ -487,8 +502,8 @@ def render_map_two_layers():
             tooltip=row['station_name']
         ).add_to(fg_all)
 
-        # Marker for diversion stations only (show diversion popup)
         if wsc in diversion_tables:
+            print(f"Adding DIVERSION station marker: {wsc} (blue border)")
             folium.CircleMarker(
                 location=coords,
                 radius=7,
@@ -500,16 +515,17 @@ def render_map_two_layers():
                 popup=popup_diversion,
                 tooltip=row['station_name']
             ).add_to(fg_diversion)
+        else:
+            # Uncomment to debug why stations might not be detected as diversion stations
+            # print(f"Station {wsc} not in diversion tables.")
+            pass
 
-    # Add both layers to map
     fg_all.add_to(m)
     fg_diversion.add_to(m)
 
-    # Add layer control to toggle between groups
     folium.LayerControl(collapsed=False).add_to(m)
 
     return m
-
 # --- Display ---
 
 # Always compute the current hash
