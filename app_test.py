@@ -171,17 +171,6 @@ def get_color_for_date(row, date):
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
     
-st.sidebar.header("Debug Info")
-debug_messages = []
-
-st.write("Diversion directory path:", DIVERSION_DIR)
-st.write("Files in diversion directory:", os.listdir(DIVERSION_DIR))
-st.write("Sample WSC codes from merged dataframe:")
-st.write(merged['WSC'].head(10).tolist())
-
-st.write("Diversion table keys loaded:")
-st.write(list(diversion_tables.keys())[:10])
-
 
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
@@ -477,7 +466,7 @@ def render_map_two_layers():
 
         color = get_color_for_date(row, date)
 
-        debug_messages.append(f"Adding ALL station marker: {wsc}, coords: {coords}, color: {color}")
+
 
         # Marker for ALL stations
         folium.CircleMarker(
@@ -493,7 +482,6 @@ def render_map_two_layers():
         ).add_to(fg_all)
 
         if wsc in diversion_tables:
-            debug_messages.append(f"Adding DIVERSION station marker: {wsc} (blue border)")
             folium.CircleMarker(
                 location=coords,
                 radius=7,
@@ -505,8 +493,7 @@ def render_map_two_layers():
                 popup=folium.Popup(IFrame(html=st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
                 tooltip=row['station_name']
             ).add_to(fg_diversion)
-        else:
-            debug_messages.append(f"Station {wsc} not in diversion tables.")
+
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
@@ -523,12 +510,8 @@ st.title("Alberta Flow Threshold Viewer")
 
 
 
-st.sidebar.write(f"Total stations: {len(merged)}")
-st.sidebar.write(f"Diversion stations: {len([wsc for wsc in merged['WSC'] if wsc in diversion_tables])}")
 # Render and display the two-layer map (with both popup caches)
 m = render_map_two_layers()
 map_html = m.get_root().render()
 st.components.v1.html(map_html, height=1000, scrolling=True)
 
-for msg in debug_messages:
-    st.sidebar.write(msg)
