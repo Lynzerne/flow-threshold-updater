@@ -83,13 +83,10 @@ def load_diversion_tables():
     diversion_labels = {}
 
     for f in os.listdir(DIVERSION_DIR):
-        if f.endswith(".xlsx"):
+        if f.endswith(".parquet"):
             wsc = f.split("_")[0]
             file_path = os.path.join(DIVERSION_DIR, f)
-
-            # Read columns B to E: [Date, Cutback1, Cutback2, Cutback3 or Cutoff]
-            df = pd.read_excel(file_path, usecols="B:E")
-            df.columns = df.columns.str.strip()
+            df = pd.read_parquet(file_path)
 
             # Rename the first three columns
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
