@@ -440,6 +440,7 @@ else:
 @st.cache_data(show_spinner=True)
 
 def render_map_two_layers():
+
     # Use correct coordinate columns (try lowercase 'lat', 'lon')
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
@@ -451,6 +452,18 @@ def render_map_two_layers():
         height='1000px'
     )
     Fullscreen().add_to(m)
+    with open("data/alberta_boundary.geojson", "r") as f:
+        alberta_geojson = json.load(f)
+    
+    folium.GeoJson(
+        alberta_geojson,
+           name="Alberta Border",
+           style_function=lambda feature: {
+               "color": "black",
+               "weight": 2,
+               "fillOpacity": 0  # Set to 0 to avoid blocking other features
+            }
+    ).add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
@@ -498,18 +511,6 @@ def render_map_two_layers():
 
     folium.LayerControl(collapsed=False).add_to(m)
         
-    with open("data/alberta_boundary.geojson", "r") as f:
-            alberta_geojson = json.load(f)
-        
-        folium.GeoJson(
-            alberta_geojson,
-            name="Alberta Border",
-            style_function=lambda feature: {
-                "color": "black",
-                "weight": 2,
-                "fillOpacity": 0  # Set to 0 to avoid blocking other features
-            }
-        ).add_to(m)
 
     return m
 # --- Display ---
