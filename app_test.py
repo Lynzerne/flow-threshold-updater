@@ -177,6 +177,12 @@ def get_color_for_date(row, date):
 st.sidebar.header("Debug Info")
 debug_messages = []
 
+st.write("Sample WSC codes from merged dataframe:")
+st.write(merged['WSC'].head(10).tolist())
+
+st.write("Diversion table keys loaded:")
+st.write(list(diversion_tables.keys())[:10])
+
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
@@ -462,7 +468,7 @@ def render_map_two_layers():
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
-        wsc = row['WSC']
+        wsc = row['WSC'].strip().upper() 
 
         date = get_most_recent_valid_date(row, selected_dates)
         if not date:
