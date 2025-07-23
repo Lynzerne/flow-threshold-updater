@@ -461,54 +461,53 @@ def render_map_two_layers():
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-    coords = [row['LAT'], row['LON']]
-    wsc = row['WSC']
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC']
 
-    date = get_most_recent_valid_date(row, selected_dates)
-    if not date:
-        debug_messages.append(f"Skipping station {wsc}: no recent valid date")
-        continue
+        date = get_most_recent_valid_date(row, selected_dates)
+        if not date:
+            debug_messages.append(f"Skipping station {wsc}: no recent valid date")
+            continue
 
-    color = get_color_for_date(row, date)
+        color = get_color_for_date(row, date)
 
-    debug_messages.append(f"Adding ALL station marker: {wsc}, coords: {coords}, color: {color}")
+        debug_messages.append(f"Adding ALL station marker: {wsc}, coords: {coords}, color: {color}")
 
-    # Marker for ALL stations
-    folium.CircleMarker(
-        location=coords,
-        radius=7,
-        color='black',
-        weight=3,
-        fill=True,
-        fill_color=color,
-        fill_opacity=0.7,
-        popup=folium.Popup(IFrame(html=st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
-        tooltip=row['station_name']
-    ).add_to(fg_all)
-
-    if wsc in diversion_tables:
-        debug_messages.append(f"Adding DIVERSION station marker: {wsc} (blue border)")
+        # Marker for ALL stations
         folium.CircleMarker(
             location=coords,
             radius=7,
-            color='blue',
+            color='black',
             weight=3,
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
-            popup=folium.Popup(IFrame(html=st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
+            popup=folium.Popup(IFrame(html=st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
             tooltip=row['station_name']
-        ).add_to(fg_diversion)
-    else:
-        debug_messages.append(f"Station {wsc} not in diversion tables.")
-            
+        ).add_to(fg_all)
+
+        if wsc in diversion_tables:
+            debug_messages.append(f"Adding DIVERSION station marker: {wsc} (blue border)")
+            folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.7,
+                popup=folium.Popup(IFrame(html=st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
+                tooltip=row['station_name']
+            ).add_to(fg_diversion)
+        else:
+            debug_messages.append(f"Station {wsc} not in diversion tables.")
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
 
     folium.LayerControl(collapsed=False).add_to(m)
 
-return m
+    return m
 # --- Display ---
 
 # Always compute the current hash
@@ -524,3 +523,6 @@ st.sidebar.write(f"Diversion stations: {len([wsc for wsc in merged['WSC'] if wsc
 m = render_map_two_layers()
 map_html = m.get_root().render()
 st.components.v1.html(map_html, height=1000, scrolling=True)
+
+for msg in debug_messages:
+    st.sidebar.write(msg)
