@@ -497,6 +497,19 @@ def render_map_two_layers():
     fg_diversion.add_to(m)
 
     folium.LayerControl(collapsed=False).add_to(m)
+        
+    with open("data/alberta_boundary.geojson", "r") as f:
+            alberta_geojson = json.load(f)
+        
+        folium.GeoJson(
+            alberta_geojson,
+            name="Alberta Border",
+            style_function=lambda feature: {
+                "color": "black",
+                "weight": 2,
+                "fillOpacity": 0  # Set to 0 to avoid blocking other features
+            }
+        ).add_to(m)
 
     return m
 # --- Display ---
