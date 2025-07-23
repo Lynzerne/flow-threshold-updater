@@ -309,7 +309,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
 
     html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
     html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
-    html += "<tr><th style='padding:{0}; border:{1};'>Metric</th>{2}</tr>".format(
+    html += "<tr><th style='padding:{0}; border:{1};'>Metric (m³/s)</th>{2}</tr>".format(
         padding, border,
         ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
     )
@@ -346,7 +346,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
     ax.set_axisbelow(True)
     if any(pd.notna(val) for val in calc_flows):
-        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow', color='tab:green', linewidth=2)
+        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow (m³/s)', color='tab:green', linewidth=2)
 
     threshold_colors = {
         'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
@@ -361,7 +361,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         ax.plot(plot_dates, threshold_vals, linestyle='--', label=label,
                 color=threshold_colors.get(label, 'gray'), linewidth=2)
 
-    ax.set_ylabel('Flow')
+    ax.set_ylabel('Flow (m³/s)')
     ax.legend(fontsize=8)
     ax.set_title('Flow and Thresholds Over Time')
     ax.tick_params(axis='x', rotation=45)
