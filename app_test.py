@@ -118,6 +118,9 @@ def load_diversion_tables():
             df['Date'] = df['Date'].apply(safe_replace_year)
 
             diversion_tables[wsc] = df
+        # ✅ Normalize keys
+    diversion_tables = {k.strip().upper(): v for k, v in diversion_tables.items()}
+    diversion_labels = {k.strip().upper(): v for k, v in diversion_labels.items()}
 
     return diversion_tables, diversion_labels
 
