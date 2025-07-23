@@ -83,13 +83,10 @@ def load_diversion_tables():
     diversion_labels = {}
 
     for f in os.listdir(DIVERSION_DIR):
-        if f.endswith(".xlsx"):
+        if f.endswith(".parquet"):
             wsc = f.split("_")[0]
             file_path = os.path.join(DIVERSION_DIR, f)
-
-            # Read columns B to E: [Date, Cutback1, Cutback2, Cutback3 or Cutoff]
-            df = pd.read_excel(file_path, usecols="B:E")
-            df.columns = df.columns.str.strip()
+            df = pd.read_parquet(file_path)
 
             # Rename the first three columns
             standard_columns = ['Date', 'Cutback1', 'Cutback2']
@@ -118,6 +115,9 @@ def load_diversion_tables():
             df['Date'] = df['Date'].apply(safe_replace_year)
 
             diversion_tables[wsc] = df
+        # ✅ Normalize keys
+    diversion_tables = {k.strip().upper(): v for k, v in diversion_tables.items()}
+    diversion_labels = {k.strip().upper(): v for k, v in diversion_labels.items()}
 
     return diversion_tables, diversion_labels
 
@@ -170,6 +170,7 @@ def get_color_for_date(row, date):
     elif policy == 'WMP':
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
+    
 
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
@@ -235,7 +236,12 @@ with st.sidebar.expander("ℹ️ Who Cares?"):
     """)
 
 
+import hashlib
 
+def make_dates_hash(selected_dates):
+    return hashlib.md5(str(selected_dates).encode()).hexdigest()
+
+current_dates_hash = make_dates_hash(selected_dates)
 
 def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
@@ -412,85 +418,6 @@ def get_most_recent_valid_date(row, dates):
         if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
             return d
     return None
-
-@st.cache_data(show_spinner=True)
-def render_map_two_layers():
-    m = folium.Map(
-        location=[merged['LAT'].mean(), merged['LON'].mean()],
-        zoom_start=6,
-        width='100%',
-        height='1200px'
-    )
-    Fullscreen().add_to(m)
-
-    # FeatureGroups for two modes
-    fg_all = folium.FeatureGroup(name='All Stations')
-    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
-
-    for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-
-        date = get_most_recent_valid_date(row, selected_dates)
-        if not date:
-            continue
-
-        color = get_color_for_date(row, date)
-
-        # Use diversion popup cache if available
-        wsc = row['WSC']
-        # fallback to no diversion popup if diversion cache missing
-        popup_html_diversion = st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>")
-        popup_html_no_diversion = st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>")
-
-        iframe_diversion = IFrame(html=popup_html_diversion, width=700, height=600)
-        popup_diversion = folium.Popup(iframe_diversion)
-
-        iframe_no_diversion = IFrame(html=popup_html_no_diversion, width=700, height=600)
-        popup_no_diversion = folium.Popup(iframe_no_diversion)
-
-        # Marker for ALL stations (show no diversion popup)
-        folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color='black',
-            weight=3,
-            fill=True,
-            fill_color=color,
-            fill_opacity=0.7,
-            popup=popup_no_diversion,
-            tooltip=row['station_name']
-        ).add_to(fg_all)
-
-        # Marker for diversion stations only (show diversion popup)
-        if wsc in diversion_tables:
-            folium.CircleMarker(
-                location=coords,
-                radius=7,
-                color='blue',
-                weight=3,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.7,
-                popup=popup_diversion,
-                tooltip=row['station_name']
-            ).add_to(fg_diversion)
-
-    # Add both layers to map
-    fg_all.add_to(m)
-    fg_diversion.add_to(m)
-
-    # Add layer control to toggle between groups
-    folium.LayerControl(collapsed=False).add_to(m)
-
-    return m
-
-# --- Display ---
-
-# Always compute the current hash
-current_dates_hash = get_date_hash(selected_dates)
-
-st.title("Alberta Flow Threshold Viewer")
-
 if ('popup_cache_no_diversion' not in st.session_state or
     'popup_cache_diversion' not in st.session_state or
     st.session_state.get('cached_dates_hash', '') != current_dates_hash):
@@ -510,9 +437,81 @@ else:
             st.session_state.popup_cache_diversion = diversion_cache
             st.session_state.cached_dates_hash = current_dates_hash
 
-st.sidebar.write(f"Total stations: {len(merged)}")
-st.sidebar.write(f"Diversion stations: {len([wsc for wsc in merged['WSC'] if wsc in diversion_tables])}")
+@st.cache_data(show_spinner=True)
+
+def render_map_two_layers():
+
+    # Use correct coordinate columns (try lowercase 'lat', 'lon')
+    mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
+    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
+
+    m = folium.Map(
+        location=[mean_lat, mean_lon],
+        zoom_start=6,
+        width='100%',
+        height='1000px'
+    )
+    Fullscreen().add_to(m)
+
+    fg_all = folium.FeatureGroup(name='All Stations')
+    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
+
+    for _, row in merged.iterrows():
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC'].strip().upper() 
+
+        date = get_most_recent_valid_date(row, selected_dates)
+           
+
+        color = get_color_for_date(row, date)
+
+
+
+        # Marker for ALL stations
+        folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color='black',
+            weight=3,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7,
+            popup=folium.Popup(IFrame(html=st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
+            tooltip=row['station_name']
+        ).add_to(fg_all)
+
+        if wsc in diversion_tables:
+            folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.7,
+                popup=folium.Popup(IFrame(html=st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
+                tooltip=row['station_name']
+            ).add_to(fg_diversion)
+
+
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+
+    folium.LayerControl(collapsed=False).add_to(m)
+        
+
+    return m
+# --- Display ---
+
+# Always compute the current hash
+
+
+st.title("Alberta Flow Threshold Viewer")
+
+
+
 # Render and display the two-layer map (with both popup caches)
 m = render_map_two_layers()
 map_html = m.get_root().render()
 st.components.v1.html(map_html, height=1000, scrolling=True)
+
