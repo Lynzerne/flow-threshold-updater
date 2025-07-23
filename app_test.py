@@ -448,7 +448,7 @@ def render_map_two_layers():
         location=[mean_lat, mean_lon],
         zoom_start=6,
         width='100%',
-        height='1200px'
+        height='1000px'
     )
     Fullscreen().add_to(m)
 
@@ -511,5 +511,5 @@ st.title("Alberta Flow Threshold Viewer")
 # Render and display the two-layer map (with both popup caches)
 m = render_map_two_layers()
 map_html = m.get_root().render()
-st.components.v1.html(map_html, height=1000, scrolling=True)
+st.components.v1.html(map_html, height=1200, scrolling=True)
 
