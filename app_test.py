@@ -443,6 +443,7 @@ else:
             st.session_state.cached_dates_hash = current_dates_hash
 
 @st.cache_data(show_spinner=True)
+
 def render_map_two_layers():
     # Use correct coordinate columns (try lowercase 'lat', 'lon')
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
@@ -507,7 +508,7 @@ def render_map_two_layers():
 
     folium.LayerControl(collapsed=False).add_to(m)
 
-    return m
+return m
 # --- Display ---
 
 # Always compute the current hash
