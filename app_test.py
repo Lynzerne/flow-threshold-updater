@@ -578,6 +578,24 @@ with col1:
         use_container_width=True  # Will still try to fill the container width
     )
 
+# Inject CSS to make sidebar sticky
+st.markdown(
+    """
+    <style>
+    /* Make sidebar sticky with some top offset */
+    [data-testid="stSidebar"] > div:first-child {
+        position: sticky;
+        top: 10px;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding-right: 10px;
+        z-index: 9999;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 with col2:
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
@@ -613,8 +631,6 @@ with col2:
             st.write("Station data not found.")
     else:
         st.write("Click a station on the map to see its flow chart and data table here.")
-
-
 
 
 
