@@ -420,11 +420,13 @@ def render_map_clickable(merged, selected_dates):
         date = get_most_recent_valid_date(row, selected_dates)
         color = get_color_for_date(row, date)
 
-        # Marker for all stations
+        # Determine border color based on diversion presence
+        border_color = 'blue' if wsc in diversion_tables else 'black'
+    
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
-            color='black',
+            color=border_color,
             weight=3,
             fill=True,
             fill_color=color,
@@ -432,8 +434,8 @@ def render_map_clickable(merged, selected_dates):
             tooltip=row['station_name']
         )
         marker.add_to(fg_all)
-
-        # Add JS to update URL query param on click with the station WSC
+    
+        # JS for updating URL query param on click
         marker.add_child(folium.Element(f"""
             <script>
             var marker = {marker.get_name()};
@@ -442,7 +444,6 @@ def render_map_clickable(merged, selected_dates):
                 const url = new URL(window.location);
                 url.searchParams.set('station', wsc);
                 window.history.pushState({{}}, '', url);
-                // Dispatch popstate event so Streamlit knows URL changed
                 window.dispatchEvent(new Event('popstate'));
             }});
             </script>
