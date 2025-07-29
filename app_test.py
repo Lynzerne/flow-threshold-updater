@@ -414,50 +414,51 @@ def render_map_clickable(merged, selected_dates):
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-    coords = [row['LAT'], row['LON']]
-    wsc = row['WSC'].strip().upper()
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC'].strip().upper()
 
-    date = get_most_recent_valid_date(row, selected_dates)
-    compliance_color = get_color_for_date(row, date)
-    popup_html = st.session_state.popup_cache_no_diversion.get(wsc, f"<b>{row['station_name']}</b>")
+        date = get_most_recent_valid_date(row, selected_dates)
+        compliance_color = get_color_for_date(row, date)
+        popup_html = st.session_state.popup_cache_no_diversion.get(wsc, f"<b>{row['station_name']}</b>")
 
-    iframe = IFrame(html=popup_html, width=400, height=300)
-    popup = folium.Popup(iframe, max_width=450)
+        iframe = IFrame(html=popup_html, width=400, height=300)
+        popup = folium.Popup(iframe, max_width=450)
 
-    border_color = 'blue' if wsc in diversion_tables else 'black'
+        border_color = 'blue' if wsc in diversion_tables else 'black'
 
-    marker = folium.CircleMarker(
-        location=coords,
-        radius=7,
-        color=border_color,
-        weight=3,
-        fill=True,
-        fill_color=compliance_color,
-        fill_opacity=0.7,
-        tooltip=row['station_name'],
-        popup=popup
-    )
-    marker.add_to(fg_all)
+        marker = folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color=border_color,
+            weight=3,
+            fill=True,
+            fill_color=compliance_color,
+            fill_opacity=0.7,
+            tooltip=row['station_name'],
+            popup=popup
+        )
+        marker.add_to(fg_all)
 
-        # (Remove the JS you had for click; let Streamlit/follium handle clicks)
+        # Add diversion marker if applicable
+        if wsc in diversion_tables:
+            iframe_diversion = IFrame(
+                html=st.session_state.popup_cache_diversion.get(wsc, f"<b>{row['station_name']}</b>"),
+                width=400, height=300
+            )
+            popup_diversion = folium.Popup(iframe_diversion, max_width=450)
 
-if wsc in diversion_tables:
-    iframe_diversion = IFrame(html=st.session_state.popup_cache_diversion.get(wsc, f"<b>{row['station_name']}</b>"),
-                             width=400, height=300)
-    popup_diversion = folium.Popup(iframe_diversion, max_width=450)
-
-    marker2 = folium.CircleMarker(
-        location=coords,
-        radius=7,
-        color='blue',
-        weight=3,
-        fill=True,
-        fill_color=compliance_color,
-        fill_opacity=0.7,
-        tooltip=row['station_name'],
-        popup=popup_diversion
-    )
-    marker2.add_to(fg_diversion)
+            marker2 = folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=compliance_color,
+                fill_opacity=0.7,
+                tooltip=row['station_name'],
+                popup=popup_diversion
+            )
+            marker2.add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
