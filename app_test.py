@@ -604,12 +604,7 @@ def plot_station_chart(wsc, merged, selected_dates):
                 line=dict(color=color)
             ))
 
-    fig.update_layout(
-        title=f"Flow Data and Thresholds for {row['station_name']}",
-        xaxis_title='Date',
-        yaxis_title='Flow (m³/s)',
-        height=400
-    )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
