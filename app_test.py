@@ -675,8 +675,7 @@ with col1:
     )
 
 with col2:
-    selected_wsc = None
-    if clicked_data and 'last_object_clicked_tooltip' in clicked_data:
+    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
             st.session_state.selected_station = selected_wsc.strip().upper()
@@ -686,7 +685,12 @@ with col2:
         row = merged[merged['WSC'].str.strip().str.upper() == station_code]
         if not row.empty:
             row = row.iloc[0]
-            render_station_table(row, selected_dates, show_diversion=False)
+            
+            # Render the compliance table HTML and display it
+            html_table = render_station_table(row, selected_dates, show_diversion=False)
+            st.markdown(html_table, unsafe_allow_html=True)
+            
+            # Then plot the chart below
             plot_station_chart(station_code, merged, selected_dates)
         else:
             st.write("Station data not found.")
