@@ -352,6 +352,22 @@ def make_popup_html(row, selected_dates, show_diversion):
 
 import hashlib
 
+def generate_all_popups(merged_df, selected_dates):
+    popup_cache_no_diversion = {}
+    popup_cache_diversion = {}
+
+    for _, row in merged_df.iterrows():
+        wsc = row['WSC']
+        try:
+            popup_cache_no_diversion[wsc] = make_popup_html(row, selected_dates, show_diversion=False)
+            popup_cache_diversion[wsc] = make_popup_html(row, selected_dates, show_diversion=True)
+        except Exception as e:
+            st.exception(e)
+            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
+            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
+
+    return popup_cache_no_diversion, popup_cache_diversion
+
 def get_date_hash(dates):
     """Create a short unique hash string for a list of dates."""
     date_str = ",".join(sorted(dates))
