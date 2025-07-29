@@ -419,13 +419,10 @@ def render_map_clickable(merged, selected_dates):
 
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
-        popup_html = st.session_state.popup_cache_no_diversion.get(wsc, f"<b>{row['station_name']}</b>")
-
-        iframe = IFrame(html=popup_html, width=400, height=300)
-        popup = folium.Popup(iframe, max_width=450)
 
         border_color = 'blue' if wsc in diversion_tables else 'black'
 
+        # Marker with tooltip only (station code) — NO popup here
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
@@ -434,19 +431,11 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=row['station_name'],
-            popup=popup
+            tooltip=wsc
         )
         marker.add_to(fg_all)
 
-        # Add diversion marker if applicable
         if wsc in diversion_tables:
-            iframe_diversion = IFrame(
-                html=st.session_state.popup_cache_diversion.get(wsc, f"<b>{row['station_name']}</b>"),
-                width=400, height=300
-            )
-            popup_diversion = folium.Popup(iframe_diversion, max_width=450)
-
             marker2 = folium.CircleMarker(
                 location=coords,
                 radius=7,
@@ -455,8 +444,7 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=row['station_name'],
-                popup=popup_diversion
+                tooltip=wsc
             )
             marker2.add_to(fg_diversion)
 
@@ -496,6 +484,11 @@ def plot_station_chart(wsc, merged, selected_dates):
 
 st.title("Alberta Flow Threshold Viewer")
 
+def render_station_table(row, selected_dates, show_diversion=False):
+    html = make_popup_html(row, selected_dates, show_diversion)
+    st.markdown(html, unsafe_allow_html=True)
+
+
 col1, col2 = st.columns([2, 1])
 
 with col1:
@@ -509,9 +502,16 @@ with col2:
             st.session_state.selected_station = selected_wsc.strip().upper()
 
     if st.session_state.get('selected_station'):
-        plot_station_chart(st.session_state.selected_station, merged, selected_dates)
+        station_code = st.session_state.selected_station
+        row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+        if not row.empty:
+            row = row.iloc[0]
+            render_station_table(row, selected_dates, show_diversion=False)  # show table here
+            plot_station_chart(station_code, merged, selected_dates)         # show plot below
+        else:
+            st.write("Station data not found.")
     else:
-        st.write("Click a station on the map to see its flow chart here.")
+        st.write("Click a station on the map to see its flow chart and data table here.")
 # Always compute the current hash
 
 
