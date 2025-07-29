@@ -555,46 +555,76 @@ def render_station_table(row, selected_dates, show_diversion=False):
     policy = row.get('PolicyType', '')
     stream_size = row.get('StreamSize', '')  # if needed for SWA
 
-    html = "<h4>Daily Flow Compliance</h4><table style='border-collapse: collapse; width: 100%;'>"
-    html += "<tr><th style='padding: 4px; border: 1px solid #ccc;'>Date</th>"
-    html += "<th style='padding: 4px; border: 1px solid #ccc;'>Flow (m³/s)</th>"
-    html += "<th style='padding: 4px; border: 1px solid #ccc;'>Compliance Status</th></tr>"
+    flows, calc_flows = [], []
+    daily_colors, calc_colors = [], []
+    threshold_sets = []
+    threshold_labels = set()
+
+    selected_dates = sorted(selected_dates, key=pd.to_datetime)
 
     for d in selected_dates:
         daily = extract_daily_data(row['time_series'], d)
-        flow = daily.get('Daily flow')
-        flow_type = 'Daily flow'
-        if flow is None or pd.isna(flow):
-            flow = daily.get('Calculated flow')
-            flow_type = 'Calculated flow'
+        df = daily.get('Daily flow')
+        cf = daily.get('Calculated flow')
 
-        # Determine compliance color based on policy
+        flows.append(df)
+        calc_flows.append(cf)
+
         if policy == 'WMP':
             thresholds = extract_thresholds(daily)
-            color = compliance_color_WMP(flow, thresholds)
         elif policy == 'SWA':
-            q80 = daily.get('Q80')
-            q95 = daily.get('Q95')
-            color = compliance_color_SWA(stream_size, flow, q80, q95)
+            thresholds = {k: daily.get(k) for k in ['Q80', 'Q90', 'Q95']}
         else:
-            color = 'gray'
+            thresholds = {}
 
-        status_text = color.capitalize() if color in ['red', 'green', 'yellow'] else 'No data'
+        threshold_sets.append(thresholds)
+        threshold_labels.update(thresholds.keys())
 
-        # Safe flow display
-        flow_display = f"{flow:.2f}" if flow is not None and not pd.isna(flow) else '—'
+        # Determine compliance color for Daily flow
+        daily_colors.append(
+            compliance_color_SWA(stream_size, df, daily.get('Q80'), daily.get('Q95'))
+            if policy == 'SWA' else compliance_color_WMP(df, thresholds)
+        )
+        # Determine compliance color for Calculated flow
+        calc_colors.append(
+            compliance_color_SWA(stream_size, cf, daily.get('Q80'), daily.get('Q95'))
+            if policy == 'SWA' else compliance_color_WMP(cf, thresholds)
+        )
 
-        html += f"<tr>"
-        html += f"<td style='padding: 4px; border: 1px solid #ccc;'>{d}</td>"
+    threshold_labels = sorted(threshold_labels)
 
-        # Color ONLY the flow cell
-        html += f"<td style='padding: 4px; border: 1px solid #ccc; background-color: {color}; color: white; text-align: center;'>{flow_display}</td>"
+    html = f"<h4>{row['station_name']}</h4>"
+    html += "<table style='border-collapse: collapse; width: 100%; border: 1px solid black;'>"
+    # Header row with dates
+    html += "<tr><th style='padding: 6px; border: 1px solid black;'>Metric (m³/s)</th>"
+    html += ''.join([f"<th style='padding: 6px; border: 1px solid black;'>{d}</th>" for d in selected_dates])
+    html += "</tr>"
 
-        # Threshold cells remain plain
-        html += f"<td style='padding: 4px; border: 1px solid #ccc; text-align: center;'>{status_text}</td>"
+    # Daily Flow row with colored cells
+    html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Daily Flow</td>"
+    for val, color in zip(flows, daily_colors):
+        display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+        html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
+    html += "</tr>"
+
+    # Calculated Flow row with colored cells
+    html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Calculated Flow</td>"
+    for val, color in zip(calc_flows, calc_colors):
+        display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+        html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
+    html += "</tr>"
+
+    # Threshold rows without background color
+    for label in threshold_labels:
+        html += f"<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>{label}</td>"
+        for thresholds in threshold_sets:
+            val = thresholds.get(label) if thresholds else None
+            display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+            html += f"<td style='padding: 6px; border: 1px solid black; text-align: center;'>{display_val}</td>"
         html += "</tr>"
 
     html += "</table>"
+
     return html
     st.markdown(html, unsafe_allow_html=True)
 
