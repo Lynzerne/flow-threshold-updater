@@ -401,7 +401,7 @@ else:
             st.session_state.popup_cache_diversion = diversion_cache
             st.session_state.cached_dates_hash = current_dates_hash
 
-@st.cache_data(show_spinner=True)
+
 
 def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
