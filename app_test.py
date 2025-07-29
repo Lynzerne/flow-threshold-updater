@@ -581,19 +581,10 @@ with col1:
 
 
 with col2:
-    st.markdown("""
-    <style>
-    /* Make the entire sidebar sticky/fixed */
-    .sticky-sidebar {
-        position: sticky;
-        top: 80px;  /* adjust based on your header height */
-        max-height: calc(100vh - 80px);
-        overflow-y: auto;
-        padding-right: 10px;
-    }
-    </style>
-    <div class="sticky-sidebar">
-    """, unsafe_allow_html=True)
+    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        selected_wsc = clicked_data['last_object_clicked_tooltip']
+        if selected_wsc:
+            st.session_state.selected_station = selected_wsc.strip().upper()
 
     if st.session_state.get('selected_station'):
         station_code = st.session_state.selected_station
@@ -601,9 +592,12 @@ with col2:
         if not row.empty:
             row = row.iloc[0]
 
-            # Show diversion toggle if available
+            # Check if diversion data is available for this station
             has_div = station_code in diversion_tables
+
+            # Show toggle if diversion data exists
             if has_div:
+                # Use session_state to preserve toggle across reruns
                 toggle_key = f"show_diversion_{station_code}"
                 if toggle_key not in st.session_state:
                     st.session_state[toggle_key] = False
@@ -611,18 +605,16 @@ with col2:
             else:
                 show_diversion = False
 
-            # Show table
+            # Render the compliance table HTML and display it
             html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
             st.markdown(html_table, unsafe_allow_html=True)
 
-            # Show plot
+            # Then plot the chart below
             plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
         else:
             st.write("Station data not found.")
     else:
         st.write("Click a station on the map to see its flow chart and data table here.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 
