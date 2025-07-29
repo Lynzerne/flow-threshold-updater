@@ -581,41 +581,19 @@ with col1:
 
 
 with col2:
-    st.markdown(
-        """
-        <style>
-        .fixed-toggle {
-            position: fixed;
-            top: 80px;  /* Adjust to your app header height */
-            right: 20px; /* Adjust to your layout */
-            width: 200px;
-            background-color: white;
-            border: 1px solid #ddd;
-            padding: 10px;
-            z-index: 1000;
-            box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
-        }
-        </style>
-        <div class="fixed-toggle">
-        """
-        , unsafe_allow_html=True
-    )
-
-    # Render checkbox inside fixed div
-    st.checkbox("Sticky Toggle", key="fixed_toggle")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Then normal right column content below (optional)
-    for i in range(30):
-        st.write(f"Right sidebar line {i}")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-        selected_wsc = clicked_data['last_object_clicked_tooltip']
-        if selected_wsc:
-            st.session_state.selected_station = selected_wsc.strip().upper()
+    st.markdown("""
+    <style>
+    /* Make the entire sidebar sticky/fixed */
+    .sticky-sidebar {
+        position: sticky;
+        top: 80px;  /* adjust based on your header height */
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+        padding-right: 10px;
+    }
+    </style>
+    <div class="sticky-sidebar">
+    """, unsafe_allow_html=True)
 
     if st.session_state.get('selected_station'):
         station_code = st.session_state.selected_station
@@ -623,8 +601,8 @@ with col2:
         if not row.empty:
             row = row.iloc[0]
 
+            # Show diversion toggle if available
             has_div = station_code in diversion_tables
-
             if has_div:
                 toggle_key = f"show_diversion_{station_code}"
                 if toggle_key not in st.session_state:
@@ -633,9 +611,11 @@ with col2:
             else:
                 show_diversion = False
 
+            # Show table
             html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
             st.markdown(html_table, unsafe_allow_html=True)
 
+            # Show plot
             plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
         else:
             st.write("Station data not found.")
