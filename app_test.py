@@ -416,26 +416,28 @@ def render_map_clickable(merged, selected_dates):
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
         wsc = row['WSC'].strip().upper()
-
+    
+        # Pick most recent valid date
         date = get_most_recent_valid_date(row, selected_dates)
-        color = get_color_for_date(row, date)
-
-        # Determine border color based on diversion presence
+        compliance_color = get_color_for_date(row, date)
+    
+        # Diversion border color
         border_color = 'blue' if wsc in diversion_tables else 'black'
     
+        # Create marker
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
             color=border_color,
             weight=3,
             fill=True,
-            fill_color=color,
+            fill_color=compliance_color,
             fill_opacity=0.7,
             tooltip=row['station_name']
         )
         marker.add_to(fg_all)
     
-        # JS for updating URL query param on click
+        # JS to update query param and trigger popstate event
         marker.add_child(folium.Element(f"""
             <script>
             var marker = {marker.get_name()};
@@ -448,6 +450,7 @@ def render_map_clickable(merged, selected_dates):
             }});
             </script>
         """))
+
 
         # Marker for diversion stations (blue border)
         if wsc in diversion_tables:
