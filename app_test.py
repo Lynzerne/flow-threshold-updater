@@ -354,7 +354,7 @@ if 'clicked_station' in st.session_state:
     #if has_diversion(wsc):
     #    show_div = st.toggle("Show diversion thresholds", value=False)
    # else:
-        show_div = False
+      #  show_div = False
 
     if has_diversion(wsc):
         st.write(f"Diversion data available for {wsc}")
