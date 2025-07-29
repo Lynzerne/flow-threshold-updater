@@ -518,26 +518,7 @@ st.title("Alberta Flow Threshold Viewer")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    # Create your folium map like before
-    mean_lat = merged['LAT'].mean()
-    mean_lon = merged['LON'].mean()
-    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
-
-    for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper()
-        folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color='black',
-            fill=True,
-            fill_color='blue',
-            fill_opacity=0.7,
-            tooltip=row['station_name'],
-            popup=wsc  # Use the WSC as popup to identify station
-        ).add_to(m)
-
-    # Render the map and capture click info
+    m = render_map_clickable(merged, selected_dates)
     clicked_data = st_folium(m, height=600)
 
 with col2:
