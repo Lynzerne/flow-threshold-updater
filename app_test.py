@@ -143,6 +143,7 @@ def load_diversion_tables():
     diversion_labels = {k.strip().upper(): v for k, v in diversion_labels.items()}
 
     return diversion_tables, diversion_labels
+    stations_with_diversion = set(diversion_tables.keys())
 
 with st.spinner("Loading... this may take a few minutes"):
     diversion_tables, diversion_labels = load_diversion_tables()
@@ -266,169 +267,9 @@ def make_dates_hash(selected_dates):
 
 current_dates_hash = make_dates_hash(selected_dates)
 
-##def make_popup_html_with_plot(row, selected_dates, show_diversion):
-  #  font_size = '16px'
-   # padding = '6px'
-    #border = '2px solid black'
-
-    #def get_text_color(bg_color):
-        # Use black text for yellow/gold backgrounds, white otherwise
-     #   if bg_color in ['yellow', 'gold']:
-      #      return 'black'
-       # return 'white'
-
-  #  flows, calc_flows = [], []
-   # threshold_sets = []
-    #threshold_labels = set()
-    #show_daily_flow = show_calc_flow = False
-
-    #selected_dates = sorted(selected_dates, key=pd.to_datetime)
-
-    #for d in selected_dates:
-     #   daily = extract_daily_data(row['time_series'], d)
-      #  df = daily.get('Daily flow', float('nan'))
-    #    cf = daily.get('Calculated flow', float('nan'))
-     #   flows.append(df)
-      #  calc_flows.append(cf)
-
-        #if pd.notna(df): show_daily_flow = True
-       # if pd.notna(cf): show_calc_flow = True
-
-        #if show_diversion and row['WSC'] in diversion_tables:
-         #   diversion_df = diversion_tables[row['WSC']]
-          #  target_day = pd.to_datetime(d).replace(year=1900).normalize()
-           # div_row = diversion_df[diversion_df['Date'] == target_day]
-            #if not div_row.empty:
-             #   div = div_row.iloc[0]
-              #  third_label = diversion_labels.get(row['WSC'], 'Cutback3')
-               # thresholds = {
-                #    'Cutback1': div.get('Cutback1', float('nan')),
-                 #   'Cutback2': div.get('Cutback2', float('nan')),
-                  #  third_label: div.get(third_label, float('nan'))
-                #}
-               # threshold_sets.append(thresholds)
-                #threshold_labels.update(thresholds.keys())
-                #continue
-
-        #if row['PolicyType'] == 'WMP':
-         #   thresholds = extract_thresholds(daily)
-        #elif row['PolicyType'] == 'SWA':
-         #   thresholds = {k: daily.get(k, float('nan')) for k in ['Q80', 'Q90', 'Q95']}
-        #else:
-         #   thresholds = {}
-
-        #threshold_sets.append(thresholds)
-        #threshold_labels.update(thresholds.keys())
-
-    #threshold_labels = sorted(threshold_labels)
-    #plot_dates = pd.to_datetime(selected_dates)
-
-    #daily_colors, calc_colors = [], []
-    #for d in selected_dates:
-     #   daily = extract_daily_data(row['time_series'], d)
-      #  flow_daily = daily.get('Daily flow')
-       # flow_calc = daily.get('Calculated flow')
-        #thresholds = extract_thresholds(daily) if row['PolicyType'] == 'WMP' else {}
-        #q80 = daily.get('Q80')
-        #q95 = daily.get('Q95')
-
-        #daily_colors.append(
-         #   compliance_color_SWA(row.get('StreamSize'), flow_daily, q80, q95)
-          #  if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_daily, thresholds)
-        #)
-
-        #calc_colors.append(
-         #   compliance_color_SWA(row.get('StreamSize'), flow_calc, q80, q95)
-          #  if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
-        #)
-
-    #html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
-    #html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
-    #html += "<tr><th style='padding:{0}; border:{1};'>Metric (m³/s)</th>{2}</tr>".format(
-     #   padding, border,
-      #  ''.join([f"<th style='padding:{padding}; border:{border};'>{d}</th>" for d in selected_dates])
-    #)
-
-    #if show_daily_flow:
-     #   html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
-      #  for val, color in zip(flows, daily_colors):
-       #     display_val = f"{val:.2f}" if pd.notna(val) else "NA"
-        #    text_color = get_text_color(color)
-         #   html += f"<td style='padding:{padding}; border:{border}; background-color:{color}; color:{text_color}; text-align:center;'>{display_val}</td>"
-        #html += "</tr>"
-
-    #if show_calc_flow and any(pd.notna(val) for val in calc_flows):
-     #   html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
-      #  for val, color in zip(calc_flows, calc_colors):
-       #     display_val = f"{val:.2f}" if pd.notna(val) else "NA"
-        #    text_color = get_text_color(color)
-         #   html += f"<td style='padding:{padding}; border:{border}; background-color:{color}; color:{text_color}; text-align:center;'>{display_val}</td>"
-        #html += "</tr>"
-
-    #for label in threshold_labels:
-     #   html += f"<tr><td style='padding:{padding}; border:{border}; font-weight:bold;'>{label}</td>"
-      #  html += ''.join([
-       #     f"<td style='padding:{padding}; border:{border};'>" + (f"{t.get(label):.2f}" if pd.notna(t.get(label)) else "NA") + "</td>"
-        #    for t in threshold_sets
-        #])
-        #html += "</tr>"
-
-    #html += "</table><br>"
-
-    # Plot with fixed image encoding
-    #fig, ax = plt.subplots(figsize=(7.6, 3.5))
-    #ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
-    #ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
-    #ax.set_axisbelow(True)
-    #if any(pd.notna(val) for val in calc_flows):
-     #   ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow (m³/s)', color='tab:green', linewidth=2)
-
-    #threshold_colors = {
-     #   'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
-      #  'IO': 'orange', 'WCO': 'crimson', 'Q80': 'green', 'Q90': 'yellow',
-       # 'Q95': 'orange', 'Minimum flow': 'red', 'IFN': 'red'
-    #}
-
-    #for label in threshold_labels:
-     #   threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
-      #  if all(pd.isna(threshold_vals)):
-       #     continue
-        #ax.plot(plot_dates, threshold_vals, linestyle='--', label=label,
-         #       color=threshold_colors.get(label, 'gray'), linewidth=2)
-
-    #ax.set_ylabel('Flow (m³/s)')
-    #ax.legend(fontsize=8)
-    #ax.set_title('Flow and Thresholds Over Time')
-    #ax.tick_params(axis='x', rotation=45)
-    #fig.tight_layout()
-
-   # buf = BytesIO()
-    #fig.savefig(buf, format="png", bbox_inches='tight')
-    #buf.seek(0)
-    #img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    #plt.close(fig)
-
-    #html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
-    #html += "</div>"
-
-    #return html
 import hashlib
 
-#def generate_all_popups(merged_df, selected_dates):
- #   popup_cache_no_diversion = {}
-  #  popup_cache_diversion = {}
 
-   # for _, row in merged_df.iterrows():
-    #    wsc = row['WSC']
-     #   try:
-      #      popup_cache_no_diversion[wsc] = make_popup_html(row, selected_dates, show_diversion=False)
-       #     popup_cache_diversion[wsc] = make_popup_html(row, selected_dates, show_diversion=True)
-        #except Exception as e:
-         #   st.exception(e)
-         #   popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
-          #  popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
-
-    #return popup_cache_no_diversion, popup_cache_diversion
 
 def get_date_hash(dates):
     """Create a short unique hash string for a list of dates."""
@@ -443,24 +284,7 @@ def get_most_recent_valid_date(row, dates):
         if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
             return d
     return None
-#if ('popup_cache_no_diversion' not in st.session_state or
- #   'popup_cache_diversion' not in st.session_state or
-  #  st.session_state.get('cached_dates_hash', '') != current_dates_hash):
 
-   # with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
-    #    no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
-     #   st.session_state.popup_cache_no_diversion = no_diversion_cache
-      #  st.session_state.popup_cache_diversion = diversion_cache
-       # st.session_state.cached_dates_hash = current_dates_hash
-
-#else:
- #   cached_dates_hash = st.session_state.get('cached_dates_hash', '')
-  #  if cached_dates_hash != current_dates_hash:
-   #     with st.spinner("Updating popup caches for new date range..."):
-    #        no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
-     #       st.session_state.popup_cache_no_diversion = no_diversion_cache
-      #      st.session_state.popup_cache_diversion = diversion_cache
-       #     st.session_state.cached_dates_hash = current_dates_hash
 
 
 
@@ -516,7 +340,25 @@ def render_map_clickable(merged, selected_dates):
 
 # --- Plotly chart function for selected station ---
 
-def plot_station_chart(wsc, merged, selected_dates):
+@st.cache_data
+def has_diversion(wsc):
+    return wsc.strip().upper() in diversion_tables  # or use stations_with_diversion if precomputed
+
+if 'clicked_station' in st.session_state:
+    row = st.session_state['clicked_station']
+    wsc = row['WSC'].strip().upper()
+
+    st.subheader(row.get('station_name', wsc))
+
+    if has_diversion(wsc):
+        show_div = st.toggle("Show diversion thresholds", value=False)
+    else:
+        show_div = False
+
+    st.markdown(render_station_table(row, selected_dates, show_diversion=show_div), unsafe_allow_html=True)
+    plot_station_chart(wsc, merged, selected_dates, show_diversion=show_div)
+
+def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
     row = merged[merged['WSC'].str.strip().str.upper() == wsc]
     if row.empty:
         st.write("Station not found.")
@@ -536,7 +378,7 @@ def plot_station_chart(wsc, merged, selected_dates):
         flows.append(flow)
 
         # Extract thresholds for this date depending on policy
-        if wsc in diversion_tables:
+        if show_diversion and wsc in diversion_tables:
             diversion_df = diversion_tables[wsc]
             target_day = pd.to_datetime(d).replace(year=1900).normalize()
             div_row = diversion_df[diversion_df['Date'] == target_day]
@@ -634,7 +476,22 @@ def render_station_table(row, selected_dates, show_diversion=False):
         flows.append(df)
         calc_flows.append(cf)
 
-        if policy == 'WMP':
+        wsc = row.get("WSC", "").strip().upper()
+        if show_diversion and wsc in diversion_tables:
+            diversion_df = diversion_tables[wsc]
+            target_day = pd.to_datetime(d).replace(year=1900).normalize()
+            div_row = diversion_df[diversion_df['Date'] == target_day]
+            if not div_row.empty:
+                div = div_row.iloc[0]
+                third_label = diversion_labels.get(wsc, 'Cutback3')
+                thresholds = {
+                    'Cutback1': div.get('Cutback1', None),
+                    'Cutback2': div.get('Cutback2', None),
+                    third_label: div.get(third_label, None)
+                }
+            else:
+                thresholds = {}
+        elif policy == 'WMP':
             thresholds = extract_thresholds(daily)
         elif policy == 'SWA':
             thresholds = {k: daily.get(k) for k in ['Q80', 'Q90', 'Q95']}
