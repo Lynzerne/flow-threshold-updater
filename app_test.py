@@ -611,6 +611,12 @@ def plot_station_chart(wsc, merged, selected_dates):
 # --- Layout ---
 
 st.title("Alberta Flow Threshold Viewer")
+def get_text_color(bg_color):
+    c = str(bg_color).lower()
+    light_colors = ['yellow', 'gold', '#ffff00', '#ffd700', 'lightyellow']
+    if c in light_colors or c.startswith('#ff'):
+        return 'black'
+    return 'white'
 
 def render_station_table(row, selected_dates, show_diversion=False):
     policy = row.get('PolicyType', '')
