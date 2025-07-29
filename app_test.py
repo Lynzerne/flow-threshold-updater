@@ -416,15 +416,17 @@ def render_map_clickable(merged, selected_dates):
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
         wsc = row['WSC'].strip().upper()
-    
+
         # Pick most recent valid date
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
-    
+        popup_html = st.session_state.popup_cache_no_diversion.get(wsc, f"<b>{row['station_name']}</b>")
+        popup = folium.Popup(popup_html, max_width=500)
+
         # Diversion border color
         border_color = 'blue' if wsc in diversion_tables else 'black'
-    
-        # Create marker
+
+        # Create marker with popup!
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
@@ -433,26 +435,13 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=row['station_name']
+            tooltip=row['station_name'],
+            popup=popup
         )
         marker.add_to(fg_all)
-    
-        # JS to update query param and trigger popstate event
-        marker.add_child(folium.Element(f"""
-            <script>
-            var marker = {marker.get_name()};
-            marker.on('click', function(e) {{
-                const wsc = '{wsc}';
-                const url = new URL(window.location);
-                url.searchParams.set('station', wsc);
-                window.history.pushState({{}}, '', url);
-                window.dispatchEvent(new Event('popstate'));
-            }});
-            </script>
-        """))
 
+        # (Remove the JS you had for click; let Streamlit/follium handle clicks)
 
-        # Marker for diversion stations (blue border)
         if wsc in diversion_tables:
             marker2 = folium.CircleMarker(
                 location=coords,
@@ -462,22 +451,10 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=row['station_name']
+                tooltip=row['station_name'],
+                popup=popup
             )
             marker2.add_to(fg_diversion)
-
-            marker2.add_child(folium.Element(f"""
-                <script>
-                var marker = {marker2.get_name()};
-                marker.on('click', function(e) {{
-                    const wsc = '{wsc}';
-                    const url = new URL(window.location);
-                    url.searchParams.set('station', wsc);
-                    window.history.pushState({{}}, '', url);
-                    window.dispatchEvent(new Event('popstate'));
-                }});
-                </script>
-            """))
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
@@ -522,11 +499,17 @@ with col1:
     clicked_data = st_folium(m, height=600)
 
 with col2:
-    # Handle clicks and display charts here
     if clicked_data and clicked_data.get('last_object_clicked'):
         selected_wsc = clicked_data['last_object_clicked'].get('popup')
         if selected_wsc:
-            st.session_state.selected_station = selected_wsc
+            # popup content is HTML, so it might not be just the WSC code.
+            # If your popup_html contains HTML, consider storing the WSC in 'tooltip' or parse the string here.
+
+            # For now, try extracting the station code from tooltip instead:
+            selected_wsc = clicked_data['last_object_clicked'].get('tooltip')
+            if selected_wsc:
+                st.session_state.selected_station = selected_wsc.strip().upper()
+
     if st.session_state.get('selected_station'):
         plot_station_chart(st.session_state.selected_station, merged, selected_dates)
     else:
