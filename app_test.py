@@ -600,19 +600,21 @@ def render_station_table(row, selected_dates, show_diversion=False):
     html += ''.join([f"<th style='padding: 6px; border: 1px solid black;'>{d}</th>" for d in selected_dates])
     html += "</tr>"
 
-    # Daily Flow row with colored cells
-    html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Daily Flow</td>"
-    for val, color in zip(flows, daily_colors):
-        display_val = f"{val:.2f}" if pd.notna(val) else "NA"
-        html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
-    html += "</tr>"
+    # Show Daily Flow row only if there is at least one non-NA daily flow value
+    if any(pd.notna(v) for v in flows):
+        html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Daily Flow</td>"
+        for val, color in zip(flows, daily_colors):
+            display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+            html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
+        html += "</tr>"
 
-    # Calculated Flow row with colored cells
-    html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Calculated Flow</td>"
-    for val, color in zip(calc_flows, calc_colors):
-        display_val = f"{val:.2f}" if pd.notna(val) else "NA"
-        html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
-    html += "</tr>"
+    # Show Calculated Flow row only if there is at least one non-NA calculated flow value
+    if any(pd.notna(v) for v in calc_flows):
+        html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Calculated Flow</td>"
+        for val, color in zip(calc_flows, calc_colors):
+            display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+            html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
+        html += "</tr>"
 
     # Threshold rows without background color
     for label in threshold_labels:
