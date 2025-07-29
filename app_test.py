@@ -601,7 +601,7 @@ with col2:
                 toggle_key = f"show_diversion_{station_code}"
                 if toggle_key not in st.session_state:
                     st.session_state[toggle_key] = False
-                show_diversion = st.checkbox("Show diversion thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
             else:
                 show_diversion = False
 
