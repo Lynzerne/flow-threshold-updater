@@ -504,7 +504,7 @@ def plot_station_chart(wsc, merged, selected_dates):
         'Cutback1': 'yellow',
         'Cutback2': 'orange',
         'Cutback3': 'red',
-        'Cutoff': 'red'.
+        'Cutoff': 'red',
         'IO': 'red',
         'WCO': 'orange',
         'Q80': 'green',
