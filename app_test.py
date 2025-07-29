@@ -581,21 +581,24 @@ with col1:
 
 
 with col2:
-    st.markdown(
-        """
-        <div style="
-            position: sticky;
-            top: 10px;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding-right: 10px;
-            background: white;  /* or transparent depending on your theme */
-            z-index: 9999;
+    st.markdown("""
+    <div style="
+        position: sticky;
+        top: 10px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background-color: white;
+        border: 1px solid #ddd;
+        padding: 10px;
         ">
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
 
+    st.checkbox("Sticky Toggle", key="sticky_test_toggle")
+    for i in range(30):
+        st.write(f"Right sidebar line {i}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
