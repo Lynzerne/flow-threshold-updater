@@ -552,9 +552,44 @@ def plot_station_chart(wsc, merged, selected_dates):
 st.title("Alberta Flow Threshold Viewer")
 
 def render_station_table(row, selected_dates, show_diversion=False):
-    html = make_popup_html(row, selected_dates, show_diversion)
-    st.markdown(html, unsafe_allow_html=True)
+    policy = row.get('PolicyType', '')
+    stream_size = row.get('StreamSize', '')  # if needed for SWA
 
+    html = "<h4>Daily Flow Compliance</h4><table style='border-collapse: collapse; width: 100%;'>"
+    html += "<tr><th style='padding: 4px; border: 1px solid #ccc;'>Date</th>"
+    html += "<th style='padding: 4px; border: 1px solid #ccc;'>Flow (m³/s)</th>"
+    html += "<th style='padding: 4px; border: 1px solid #ccc;'>Compliance Status</th></tr>"
+
+    for d in selected_dates:
+        daily = extract_daily_data(row['time_series'], d)
+        flow = daily.get('Daily flow')
+        if flow is None or pd.isna(flow):
+            flow = daily.get('Calculated flow')
+
+        # Determine compliance color based on policy
+        if policy == 'WMP':
+            thresholds = extract_thresholds(daily)
+            color = compliance_color_WMP(flow, thresholds)
+        elif policy == 'SWA':
+            q80 = daily.get('Q80')
+            q95 = daily.get('Q95')
+            color = compliance_color_SWA(stream_size, flow, q80, q95)
+        else:
+            color = 'gray'
+
+        status_text = color.capitalize() if color in ['red', 'green', 'yellow'] else 'No data'
+
+        # Safe flow display
+        flow_display = f"{flow:.2f}" if flow is not None and not pd.isna(flow) else '—'
+
+        html += f"<tr>"
+        html += f"<td style='padding: 4px; border: 1px solid #ccc;'>{d}</td>"
+        html += f"<td style='padding: 4px; border: 1px solid #ccc;'>{flow_display}</td>"
+        html += f"<td style='padding: 4px; border: 1px solid #ccc; background-color: {color}; color: white; text-align: center;'>{status_text}</td>"
+        html += "</tr>"
+
+    html += "</table>"
+    st.markdown(html, unsafe_allow_html=True)
 
 col1, col2 = st.columns([5, 2])
 
