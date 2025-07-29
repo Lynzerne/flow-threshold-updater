@@ -673,7 +673,8 @@ def render_station_table(row, selected_dates, show_diversion=False):
         html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Daily Flow</td>"
         for val, color in zip(flows, daily_colors):
             display_val = f"{val:.2f}" if pd.notna(val) else "NA"
-            html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
+            text_color = get_text_color(color)
+            html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: {text_color}; text-align: center;'>{display_val}</td>"
         html += "</tr>"
 
     # Show Calculated Flow row only if there is at least one non-NA calculated flow value
@@ -681,7 +682,8 @@ def render_station_table(row, selected_dates, show_diversion=False):
         html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Calculated Flow</td>"
         for val, color in zip(calc_flows, calc_colors):
             display_val = f"{val:.2f}" if pd.notna(val) else "NA"
-            html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: white; text-align: center;'>{display_val}</td>"
+            text_color = get_text_color(color)
+            html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: {text_color}; text-align: center;'>{display_val}</td>"
         html += "</tr>"
 
     # Threshold rows without background color
