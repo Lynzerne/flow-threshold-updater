@@ -500,6 +500,22 @@ def plot_station_chart(wsc, merged, selected_dates):
 
         thresholds_list.append(thresholds)
 
+        threshold_colors = {
+        'Cutback1': 'yellow',
+        'Cutback2': 'orange',
+        'Cutback3': 'red',
+        'Cutoff': 'red'.
+        'IO': 'red',
+        'WCO': 'orange',
+        'Q80': 'green',
+        'Q90': 'yellow',
+        'Q95': 'red',
+        'Minimum flow': 'red',
+        'Industrial IO': 'yellow',
+        'Non-industrial IO': 'orange',
+        'IFN': 'orange',
+    }
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=flows, mode='lines+markers', name='Flow'))
 
