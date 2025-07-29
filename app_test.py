@@ -579,6 +579,11 @@ def plot_station_chart(wsc, merged, selected_dates):
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=flows, mode='lines+markers', name='Flow'))
+    fig.update_layout(
+    plot_bgcolor='#f0f0f0',
+    paper_bgcolor='#f0f0f0',
+    
+    )
 
     # Gather all unique threshold labels across dates
     all_threshold_labels = set()
