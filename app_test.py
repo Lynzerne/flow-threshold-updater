@@ -494,6 +494,7 @@ col1, col2 = st.columns([2, 1])
 with col1:
     m = render_map_clickable(merged, selected_dates)
     clicked_data = st_folium(m, height=600)
+    st.write("Clicked data:", clicked_data)
 
 with col2:
     if clicked_data and clicked_data.get('last_object_clicked'):
