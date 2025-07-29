@@ -447,11 +447,11 @@ if ('popup_cache_no_diversion' not in st.session_state or
     'popup_cache_diversion' not in st.session_state or
     st.session_state.get('cached_dates_hash', '') != current_dates_hash):
 
-    with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
-        no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
-        st.session_state.popup_cache_no_diversion = no_diversion_cache
-        st.session_state.popup_cache_diversion = diversion_cache
-        st.session_state.cached_dates_hash = current_dates_hash
+   # with st.spinner("🚧 App is loading... Grab a coffee while we fire it up ☕"):
+    #    no_diversion_cache, diversion_cache = generate_all_popups(merged, selected_dates)
+     #   st.session_state.popup_cache_no_diversion = no_diversion_cache
+      #  st.session_state.popup_cache_diversion = diversion_cache
+       # st.session_state.cached_dates_hash = current_dates_hash
 
 else:
     cached_dates_hash = st.session_state.get('cached_dates_hash', '')
