@@ -534,7 +534,7 @@ with col2:
 # Always compute the current hash
 
 
-st.title("Alberta Flow Threshold Viewer")
+
 
 
 
