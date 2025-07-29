@@ -616,21 +616,59 @@ def get_text_color(bg_color):
     return 'white'
 
 def render_station_table(row, selected_dates, show_diversion=False):
-    ...
+    policy = row.get('PolicyType', '')
+    stream_size = row.get('StreamSize', '')
+
+    flows, calc_flows = [], []
+    daily_colors, calc_colors = [], []
+    threshold_sets = []
+    threshold_labels = set()
+
+    selected_dates = sorted(selected_dates, key=pd.to_datetime)
+
+    for d in selected_dates:
+        daily = extract_daily_data(row['time_series'], d)
+        df = daily.get('Daily flow')
+        cf = daily.get('Calculated flow')
+
+        flows.append(df)
+        calc_flows.append(cf)
+
+        if policy == 'WMP':
+            thresholds = extract_thresholds(daily)
+        elif policy == 'SWA':
+            thresholds = {k: daily.get(k) for k in ['Q80', 'Q90', 'Q95']}
+        else:
+            thresholds = {}
+
+        threshold_sets.append(thresholds)
+        threshold_labels.update(thresholds.keys())
+
+        daily_colors.append(
+            compliance_color_SWA(stream_size, df, daily.get('Q80'), daily.get('Q95'))
+            if policy == 'SWA' else compliance_color_WMP(df, thresholds)
+        )
+        calc_colors.append(
+            compliance_color_SWA(stream_size, cf, daily.get('Q80'), daily.get('Q95'))
+            if policy == 'SWA' else compliance_color_WMP(cf, thresholds)
+        )
+
+    threshold_labels = sorted(threshold_labels)
+
     html = f"<h4>{row['station_name']}</h4>"
 
-    # Add scrollable container
+    # Add scrollable container for wide tables
     html += """
     <div style="overflow-x: auto; max-width: 100%;">
       <table style='border-collapse: collapse; width: max-content; border: 1px solid black;'>
     """
 
-    # Header row
+    # Header row with dates
     html += "<tr><th style='padding: 6px; border: 1px solid black;'>Metric (m³/s)</th>"
     html += ''.join([f"<th style='padding: 6px; border: 1px solid black;'>{d}</th>" for d in selected_dates])
     html += "</tr>"
 
-    # Rows...
+    # Daily Flow row
     if any(pd.notna(v) for v in flows):
         html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Daily Flow</td>"
         for val, color in zip(flows, daily_colors):
@@ -639,6 +677,7 @@ def render_station_table(row, selected_dates, show_diversion=False):
             html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: {text_color}; text-align: center;'>{display_val}</td>"
         html += "</tr>"
 
+    # Calculated Flow row
     if any(pd.notna(v) for v in calc_flows):
         html += "<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>Calculated Flow</td>"
         for val, color in zip(calc_flows, calc_colors):
@@ -647,6 +686,7 @@ def render_station_table(row, selected_dates, show_diversion=False):
             html += f"<td style='padding: 6px; border: 1px solid black; background-color: {color}; color: {text_color}; text-align: center;'>{display_val}</td>"
         html += "</tr>"
 
+    # Threshold rows (no color)
     for label in threshold_labels:
         html += f"<tr><td style='padding: 6px; border: 1px solid black; font-weight: bold;'>{label}</td>"
         for thresholds in threshold_sets:
@@ -655,7 +695,6 @@ def render_station_table(row, selected_dates, show_diversion=False):
             html += f"<td style='padding: 6px; border: 1px solid black; text-align: center;'>{display_val}</td>"
         html += "</tr>"
 
-    # Close table and scroll div
     html += "</table></div>"
 
     return html
