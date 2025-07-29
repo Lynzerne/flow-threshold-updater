@@ -504,15 +504,9 @@ with col1:
 
 with col2:
     if clicked_data and clicked_data.get('last_object_clicked'):
-        selected_wsc = clicked_data['last_object_clicked'].get('popup')
+        selected_wsc = clicked_data['last_object_clicked'].get('tooltip')
         if selected_wsc:
-            # popup content is HTML, so it might not be just the WSC code.
-            # If your popup_html contains HTML, consider storing the WSC in 'tooltip' or parse the string here.
-
-            # For now, try extracting the station code from tooltip instead:
-            selected_wsc = clicked_data['last_object_clicked'].get('tooltip')
-            if selected_wsc:
-                st.session_state.selected_station = selected_wsc.strip().upper()
+            st.session_state.selected_station = selected_wsc.strip().upper()
 
     if st.session_state.get('selected_station'):
         plot_station_chart(st.session_state.selected_station, merged, selected_dates)
