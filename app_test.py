@@ -554,7 +554,12 @@ col1, col2 = st.columns([5, 2])
 
 with col1:
     m = render_map_clickable(merged, selected_dates)
-    clicked_data = st_folium(m, height=1000, use_container_width=True)
+    clicked_data = st_folium(
+        m,
+        height=1200,           # Adjust height here
+        width=1000,            # Add a fixed width if you want — optional if you're using columns
+        use_container_width=True  # Will still try to fill the container width
+    )
 
 with col2:
     selected_wsc = None
