@@ -460,7 +460,7 @@ def render_map_clickable(merged, selected_dates):
                 color='blue',
                 weight=3,
                 fill=True,
-                fill_color=color,
+                fill_color=compliance_color,
                 fill_opacity=0.7,
                 tooltip=row['station_name']
             )
