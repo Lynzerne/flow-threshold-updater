@@ -581,19 +581,32 @@ with col1:
 
 
 with col2:
-    st.markdown("""
-    <div style="
-        position: sticky;
-        top: 10px;
-        max-height: 90vh;
-        overflow-y: auto;
-        background-color: white;
-        border: 1px solid #ddd;
-        padding: 10px;
-        ">
-    """, unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        .fixed-toggle {
+            position: fixed;
+            top: 80px;  /* Adjust to your app header height */
+            right: 20px; /* Adjust to your layout */
+            width: 200px;
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            z-index: 1000;
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
+        }
+        </style>
+        <div class="fixed-toggle">
+        """
+        , unsafe_allow_html=True
+    )
 
-    st.checkbox("Sticky Toggle", key="sticky_test_toggle")
+    # Render checkbox inside fixed div
+    st.checkbox("Sticky Toggle", key="fixed_toggle")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # Then normal right column content below (optional)
     for i in range(30):
         st.write(f"Right sidebar line {i}")
 
