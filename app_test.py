@@ -578,25 +578,24 @@ with col1:
         use_container_width=True  # Will still try to fill the container width
     )
 
-# Inject CSS to make sidebar sticky
-st.markdown(
-    """
-    <style>
-    /* Make sidebar sticky with some top offset */
-    [data-testid="stSidebar"] > div:first-child {
-        position: sticky;
-        top: 10px;
-        max-height: 90vh;
-        overflow-y: auto;
-        padding-right: 10px;
-        z-index: 9999;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+
 
 with col2:
+    st.markdown(
+        """
+        <div style="
+            position: sticky;
+            top: 10px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding-right: 10px;
+            background: white;  /* or transparent depending on your theme */
+            z-index: 9999;
+        ">
+        """,
+        unsafe_allow_html=True,
+    )
+
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
@@ -608,12 +607,9 @@ with col2:
         if not row.empty:
             row = row.iloc[0]
 
-            # Check if diversion data is available for this station
             has_div = station_code in diversion_tables
 
-            # Show toggle if diversion data exists
             if has_div:
-                # Use session_state to preserve toggle across reruns
                 toggle_key = f"show_diversion_{station_code}"
                 if toggle_key not in st.session_state:
                     st.session_state[toggle_key] = False
@@ -621,17 +617,16 @@ with col2:
             else:
                 show_diversion = False
 
-            # Render the compliance table HTML and display it
             html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
             st.markdown(html_table, unsafe_allow_html=True)
 
-            # Then plot the chart below
             plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
         else:
             st.write("Station data not found.")
     else:
         st.write("Click a station on the map to see its flow chart and data table here.")
 
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 
