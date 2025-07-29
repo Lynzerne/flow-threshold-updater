@@ -527,10 +527,16 @@ def plot_station_chart(wsc, merged, selected_dates):
 
     # For each threshold, plot a line with values across dates
     for label in all_threshold_labels:
-        vals = [thres.get(label, None) if thres else None for thres in thresholds_list]
-        # Only plot if at least one value exists
-        if any(v is not None and not pd.isna(v) for v in vals):
-            fig.add_trace(go.Scatter(x=dates, y=vals, mode='lines+markers', name=label))
+    vals = [thres.get(label, None) if thres else None for thres in thresholds_list]
+    if any(v is not None and not pd.isna(v) for v in vals):
+        color = threshold_colors.get(label, 'gray')  # default to gray if unknown
+        fig.add_trace(go.Scatter(
+            x=dates,
+            y=vals,
+            mode='lines+markers',
+            name=label,
+            line=dict(color=color)
+        ))
 
     fig.update_layout(
         title=f"Flow Data and Thresholds for {row['station_name']}",
