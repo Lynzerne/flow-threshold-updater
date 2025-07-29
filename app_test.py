@@ -561,7 +561,7 @@ with col2:
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
-            
+            st.session_state.selected_station = selected_wsc.strip().upper()
 
     if st.session_state.get('selected_station'):
         station_code = st.session_state.selected_station
@@ -574,7 +574,6 @@ with col2:
             st.write("Station data not found.")
     else:
         st.write("Click a station on the map to see its flow chart and data table here.")
-# Always compute the current hash
 
 
 
