@@ -407,7 +407,7 @@ def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, width='100%', height='1000px')
+    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, width='100%', height='1200px')
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -559,7 +559,7 @@ with col1:
 
 with col2:
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-    selected_wsc = clicked_data['last_object_clicked_tooltip']
+        selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
             st.session_state.selected_station = selected_wsc.strip().upper()
 
@@ -568,8 +568,8 @@ with col2:
         row = merged[merged['WSC'].str.strip().str.upper() == station_code]
         if not row.empty:
             row = row.iloc[0]
-            render_station_table(row, selected_dates, show_diversion=False)  # show table here
-            plot_station_chart(station_code, merged, selected_dates)         # show plot below
+            render_station_table(row, selected_dates, show_diversion=False)  # show table
+            plot_station_chart(station_code, merged, selected_dates)         # show plot
         else:
             st.write("Station data not found.")
     else:
