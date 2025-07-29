@@ -534,7 +534,7 @@ with col1:
         ).add_to(m)
 
     # Render the map and capture click info
-    clicked_data = st_folium.st_folium(m, height=600)
+    clicked_data = st_folium(m, height=600)
 
 with col2:
     # Handle clicks and display charts here
