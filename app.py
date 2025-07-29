@@ -200,11 +200,11 @@ def get_color_for_date(row, date):
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
     <div style='color: red'>
-        This app pre-computes charts and tables for all stations before displaying the map.  
-        That means loading can take **2-3 minutes**, depending on your date range and device.
+        Under construction!
+        This app dynamically loads in station data and renders color for the markers as you scroll around. You may experience some loading and re-loading as you are viewing it. 
     </div>
     <div style='margin-top: 8px;'>
-        We're working on making this faster and more responsive. Thanks for your patience!
+        We're working on making this less disruptive and more responsive. Thanks for your patience!
     </div>
     """, unsafe_allow_html=True)
 
