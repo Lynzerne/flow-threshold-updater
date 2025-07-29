@@ -550,10 +550,11 @@ def render_station_table(row, selected_dates, show_diversion=False):
     st.markdown(html, unsafe_allow_html=True)
 
 
-col1, col2 = st.columns([2, 1])
+col1, col2 = st.columns([5, 2])
 
 with col1:
     m = render_map_clickable(merged, selected_dates)
+    st_folium(m, height=1000, use_container_width=True)
     clicked_data = st_folium(m, height=600)
     
 
