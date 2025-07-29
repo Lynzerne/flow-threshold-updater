@@ -18,7 +18,7 @@ st.cache_data.clear()
 st.set_page_config(layout="wide")
 
 # Get station selection from URL query params
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 selected_station = query_params.get('station', [None])[0]
 
 if selected_station:
@@ -356,25 +356,6 @@ def get_date_hash(dates):
     """Create a short unique hash string for a list of dates."""
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
-
-@st.cache_data(show_spinner=True)
-def generate_all_popups(merged_df, selected_dates):
-    """Pre-generate both popup caches (with and without diversion) for the selected dates."""
-    popup_cache_no_diversion = {}
-    popup_cache_diversion = {}
-
-    for _, row in merged_df.iterrows():
-        wsc = row['WSC']
-        try:
-            popup_cache_no_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=False)
-            popup_cache_diversion[wsc] = make_popup_html_with_plot(row, selected_dates, show_diversion=True)
-        except Exception as e:
-            st.exception(e)
-            popup_cache_no_diversion[wsc] = "<p>Error generating popup</p>"
-            popup_cache_diversion[wsc] = "<p>Error generating popup</p>"
-
-    return popup_cache_no_diversion, popup_cache_diversion
-
 
 # Pre-generate both popup caches upfront
 
