@@ -350,13 +350,16 @@ if 'clicked_station' in st.session_state:
 
     st.subheader(row.get('station_name', wsc))
 
+    # Show toggle ONLY if diversion data exists for this station
     if has_diversion(wsc):
         show_div = st.toggle("Show diversion thresholds", value=False)
     else:
         show_div = False
 
+    # Render table and chart, passing show_div to control diversion display
     st.markdown(render_station_table(row, selected_dates, show_diversion=show_div), unsafe_allow_html=True)
     plot_station_chart(wsc, merged, selected_dates, show_diversion=show_div)
+
 
 def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
     row = merged[merged['WSC'].str.strip().str.upper() == wsc]
