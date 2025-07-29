@@ -28,7 +28,7 @@ else:
         st.session_state.selected_station = None
 
 def sync_url_to_session():
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params  # <-- changed here
     station_from_url = query_params.get('station', [None])[0]
     if station_from_url:
         if st.session_state.selected_station != station_from_url.strip().upper():
