@@ -554,12 +554,11 @@ col1, col2 = st.columns([5, 2])
 
 with col1:
     m = render_map_clickable(merged, selected_dates)
-    st_folium(m, height=1000, use_container_width=True)
-
-    
+    clicked_data = st_folium(m, height=1000, use_container_width=True)
 
 with col2:
-    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+    selected_wsc = None
+    if clicked_data and 'last_object_clicked_tooltip' in clicked_data:
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
             st.session_state.selected_station = selected_wsc.strip().upper()
@@ -569,8 +568,8 @@ with col2:
         row = merged[merged['WSC'].str.strip().str.upper() == station_code]
         if not row.empty:
             row = row.iloc[0]
-            render_station_table(row, selected_dates, show_diversion=False)  # show table
-            plot_station_chart(station_code, merged, selected_dates)         # show plot
+            render_station_table(row, selected_dates, show_diversion=False)
+            plot_station_chart(station_code, merged, selected_dates)
         else:
             st.write("Station data not found.")
     else:
