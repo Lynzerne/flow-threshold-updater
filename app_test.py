@@ -464,20 +464,65 @@ def plot_station_chart(wsc, merged, selected_dates):
 
     dates = pd.to_datetime(selected_dates)
     flows = []
-    calc_flows = []
+    thresholds_list = []
+
     for d in selected_dates:
         daily = extract_daily_data(row['time_series'], d)
-        flows.append(daily.get('Daily flow', None))
-        calc_flows.append(daily.get('Calculated flow', None))
+        # Use daily flow if present else calculated flow
+        flow = daily.get('Daily flow')
+        if flow is None or pd.isna(flow):
+            flow = daily.get('Calculated flow')
+        flows.append(flow)
+
+        # Extract thresholds for this date depending on policy
+        if wsc in diversion_tables:
+            diversion_df = diversion_tables[wsc]
+            target_day = pd.to_datetime(d).replace(year=1900).normalize()
+            div_row = diversion_df[diversion_df['Date'] == target_day]
+            if not div_row.empty:
+                div = div_row.iloc[0]
+                third_label = diversion_labels.get(wsc, 'Cutback3')
+                thresholds = {
+                    'Cutback1': div.get('Cutback1', None),
+                    'Cutback2': div.get('Cutback2', None),
+                    third_label: div.get(third_label, None)
+                }
+            else:
+                thresholds = {}
+        else:
+            # For non-diversion stations, fallback thresholds by policy
+            if row['PolicyType'] == 'WMP':
+                thresholds = extract_thresholds(daily)
+            elif row['PolicyType'] == 'SWA':
+                thresholds = {k: daily.get(k) for k in ['Q80', 'Q90', 'Q95']}
+            else:
+                thresholds = {}
+
+        thresholds_list.append(thresholds)
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=dates, y=flows, mode='lines+markers', name='Daily Flow'))
-    fig.add_trace(go.Scatter(x=dates, y=calc_flows, mode='lines+markers', name='Calculated Flow'))
+    fig.add_trace(go.Scatter(x=dates, y=flows, mode='lines+markers', name='Flow'))
 
-    fig.update_layout(title=f"Flow Data for {row['station_name']}",
-                      xaxis_title='Date',
-                      yaxis_title='Flow (m³/s)',
-                      height=400)
+    # Gather all unique threshold labels across dates
+    all_threshold_labels = set()
+    for thres in thresholds_list:
+        all_threshold_labels.update(thres.keys())
+    all_threshold_labels = sorted(all_threshold_labels)
+
+    # For each threshold, plot a line with values across dates
+    for label in all_threshold_labels:
+        vals = [thres.get(label, None) if thres else None for thres in thresholds_list]
+        # Only plot if at least one value exists
+        if any(v is not None and not pd.isna(v) for v in vals):
+            fig.add_trace(go.Scatter(x=dates, y=vals, mode='lines+markers', name=label))
+
+    fig.update_layout(
+        title=f"Flow Data and Thresholds for {row['station_name']}",
+        xaxis_title='Date',
+        yaxis_title='Flow (m³/s)',
+        height=400
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
 # --- Layout ---
