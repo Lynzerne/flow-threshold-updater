@@ -468,7 +468,7 @@ def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    m = folium.Map(location=[45.5, -114], zoom_start=6, width='100%', height='1200px')
+    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height='1200px')
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
