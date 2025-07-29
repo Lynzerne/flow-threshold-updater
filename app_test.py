@@ -13,6 +13,7 @@ from dateutil.parser import parse
 import os
 from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
+from streamlit_folium import st_folium
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -513,13 +514,35 @@ st.title("Alberta Flow Threshold Viewer")
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    # Render map
-    m = render_map_clickable(merged, selected_dates)
-    map_html = m.get_root().render()
-    st.components.v1.html(map_html, height=1000, scrolling=True)
+    # Create your folium map like before
+    mean_lat = merged['LAT'].mean()
+    mean_lon = merged['LON'].mean()
+    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
+
+    for _, row in merged.iterrows():
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC'].strip().upper()
+        folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color='black',
+            fill=True,
+            fill_color='blue',
+            fill_opacity=0.7,
+            tooltip=row['station_name'],
+            popup=wsc  # Use the WSC as popup to identify station
+        ).add_to(m)
+
+    # Render the map and capture click info
+    clicked_data = st_folium.st_folium(m, height=600)
 
 with col2:
-    if st.session_state.selected_station:
+    # Handle clicks and display charts here
+    if clicked_data and clicked_data.get('last_object_clicked'):
+        selected_wsc = clicked_data['last_object_clicked'].get('popup')
+        if selected_wsc:
+            st.session_state.selected_station = selected_wsc
+    if st.session_state.get('selected_station'):
         plot_station_chart(st.session_state.selected_station, merged, selected_dates)
     else:
         st.write("Click a station on the map to see its flow chart here.")
