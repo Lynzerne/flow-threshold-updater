@@ -266,10 +266,16 @@ def make_dates_hash(selected_dates):
 
 current_dates_hash = make_dates_hash(selected_dates)
 
-def make_popup_html(row, selected_dates, show_diversion):
+def make_popup_html_with_plot(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
     border = '2px solid black'
+
+    def get_text_color(bg_color):
+        # Use black text for yellow/gold backgrounds, white otherwise
+        if bg_color in ['yellow', 'gold']:
+            return 'black'
+        return 'white'
 
     flows, calc_flows = [], []
     threshold_sets = []
@@ -315,6 +321,26 @@ def make_popup_html(row, selected_dates, show_diversion):
         threshold_labels.update(thresholds.keys())
 
     threshold_labels = sorted(threshold_labels)
+    plot_dates = pd.to_datetime(selected_dates)
+
+    daily_colors, calc_colors = [], []
+    for d in selected_dates:
+        daily = extract_daily_data(row['time_series'], d)
+        flow_daily = daily.get('Daily flow')
+        flow_calc = daily.get('Calculated flow')
+        thresholds = extract_thresholds(daily) if row['PolicyType'] == 'WMP' else {}
+        q80 = daily.get('Q80')
+        q95 = daily.get('Q95')
+
+        daily_colors.append(
+            compliance_color_SWA(row.get('StreamSize'), flow_daily, q80, q95)
+            if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_daily, thresholds)
+        )
+
+        calc_colors.append(
+            compliance_color_SWA(row.get('StreamSize'), flow_calc, q80, q95)
+            if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
+        )
 
     html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
     html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
@@ -325,18 +351,18 @@ def make_popup_html(row, selected_dates, show_diversion):
 
     if show_daily_flow:
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
-        html += ''.join([
-            f"<td style='padding:{padding}; border:{border};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
-            for v in flows
-        ])
+        for val, color in zip(flows, daily_colors):
+            display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+            text_color = get_text_color(color)
+            html += f"<td style='padding:{padding}; border:{border}; background-color:{color}; color:{text_color}; text-align:center;'>{display_val}</td>"
         html += "</tr>"
 
     if show_calc_flow and any(pd.notna(val) for val in calc_flows):
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
-        html += ''.join([
-            f"<td style='padding:{padding}; border:{border};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
-            for v in calc_flows
-        ])
+        for val, color in zip(calc_flows, calc_colors):
+            display_val = f"{val:.2f}" if pd.notna(val) else "NA"
+            text_color = get_text_color(color)
+            html += f"<td style='padding:{padding}; border:{border}; background-color:{color}; color:{text_color}; text-align:center;'>{display_val}</td>"
         html += "</tr>"
 
     for label in threshold_labels:
@@ -347,10 +373,45 @@ def make_popup_html(row, selected_dates, show_diversion):
         ])
         html += "</tr>"
 
-    html += "</table></div>"
+    html += "</table><br>"
+
+    # Plot with fixed image encoding
+    fig, ax = plt.subplots(figsize=(7.6, 3.5))
+    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
+    ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
+    ax.set_axisbelow(True)
+    if any(pd.notna(val) for val in calc_flows):
+        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow (m³/s)', color='tab:green', linewidth=2)
+
+    threshold_colors = {
+        'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
+        'IO': 'orange', 'WCO': 'crimson', 'Q80': 'green', 'Q90': 'yellow',
+        'Q95': 'orange', 'Minimum flow': 'red', 'IFN': 'red'
+    }
+
+    for label in threshold_labels:
+        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
+        if all(pd.isna(threshold_vals)):
+            continue
+        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label,
+                color=threshold_colors.get(label, 'gray'), linewidth=2)
+
+    ax.set_ylabel('Flow (m³/s)')
+    ax.legend(fontsize=8)
+    ax.set_title('Flow and Thresholds Over Time')
+    ax.tick_params(axis='x', rotation=45)
+    fig.tight_layout()
+
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches='tight')
+    buf.seek(0)
+    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+    plt.close(fig)
+
+    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
+    html += "</div>"
 
     return html
-
 import hashlib
 
 def generate_all_popups(merged_df, selected_dates):
