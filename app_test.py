@@ -589,13 +589,26 @@ with col2:
         row = merged[merged['WSC'].str.strip().str.upper() == station_code]
         if not row.empty:
             row = row.iloc[0]
-            
+
+            # Check if diversion data is available for this station
+            has_div = station_code in diversion_tables
+
+            # Show toggle if diversion data exists
+            if has_div:
+                # Use session_state to preserve toggle across reruns
+                toggle_key = f"show_diversion_{station_code}"
+                if toggle_key not in st.session_state:
+                    st.session_state[toggle_key] = False
+                show_diversion = st.checkbox("Show diversion thresholds", value=st.session_state[toggle_key], key=toggle_key)
+            else:
+                show_diversion = False
+
             # Render the compliance table HTML and display it
-            html_table = render_station_table(row, selected_dates, show_diversion=False)
+            html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
             st.markdown(html_table, unsafe_allow_html=True)
-            
+
             # Then plot the chart below
-            plot_station_chart(station_code, merged, selected_dates)
+            plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
         else:
             st.write("Station data not found.")
     else:
