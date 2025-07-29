@@ -11,9 +11,31 @@ import base64
 from io import BytesIO
 from dateutil.parser import parse
 import os
+from streamlit_js_eval import streamlit_js_eval
+import plotly.graph_objects as go
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
+
+# Get station selection from URL query params
+query_params = st.experimental_get_query_params()
+selected_station = query_params.get('station', [None])[0]
+
+if selected_station:
+    st.session_state.selected_station = selected_station.strip().upper()
+else:
+    if 'selected_station' not in st.session_state:
+        st.session_state.selected_station = None
+
+def sync_url_to_session():
+    query_params = st.experimental_get_query_params()
+    station_from_url = query_params.get('station', [None])[0]
+    if station_from_url:
+        if st.session_state.selected_station != station_from_url.strip().upper():
+            st.session_state.selected_station = station_from_url.strip().upper()
+            st.experimental_rerun()
+
+sync_url_to_session()
 
 # --- Paths ---
 DATA_DIR = "data"
@@ -243,7 +265,7 @@ def make_dates_hash(selected_dates):
 
 current_dates_hash = make_dates_hash(selected_dates)
 
-def make_popup_html_with_plot(row, selected_dates, show_diversion):
+def make_popup_html(row, selected_dates, show_diversion):
     font_size = '16px'
     padding = '6px'
     border = '2px solid black'
@@ -292,26 +314,6 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         threshold_labels.update(thresholds.keys())
 
     threshold_labels = sorted(threshold_labels)
-    plot_dates = pd.to_datetime(selected_dates)
-
-    daily_colors, calc_colors = [], []
-    for d in selected_dates:
-        daily = extract_daily_data(row['time_series'], d)
-        flow_daily = daily.get('Daily flow')
-        flow_calc = daily.get('Calculated flow')
-        thresholds = extract_thresholds(daily) if row['PolicyType'] == 'WMP' else {}
-        q80 = daily.get('Q80')
-        q95 = daily.get('Q95')
-
-        daily_colors.append(
-            compliance_color_SWA(row.get('StreamSize'), flow_daily, q80, q95)
-            if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_daily, thresholds)
-        )
-
-        calc_colors.append(
-            compliance_color_SWA(row.get('StreamSize'), flow_calc, q80, q95)
-            if row['PolicyType'] == 'SWA' else compliance_color_WMP(flow_calc, thresholds)
-        )
 
     html = f"<div style='max-width: 100%;'><h4 style='font-size:{font_size};'>{row['station_name']}</h4>"
     html += f"<table style='border-collapse: collapse; border: {border}; font-size:{font_size};'>"
@@ -323,16 +325,16 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
     if show_daily_flow:
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Daily Flow</td>".format(padding, border)
         html += ''.join([
-            f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
-            for v, c in zip(flows, daily_colors)
+            f"<td style='padding:{padding}; border:{border};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
+            for v in flows
         ])
         html += "</tr>"
 
     if show_calc_flow and any(pd.notna(val) for val in calc_flows):
         html += "<tr><td style='padding:{0}; border:{1}; font-weight:bold;'>Calculated Flow</td>".format(padding, border)
         html += ''.join([
-            f"<td style='padding:{padding}; border:{border}; background-color:{c};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
-            for v, c in zip(calc_flows, calc_colors)
+            f"<td style='padding:{padding}; border:{border};'>{f'{v:.2f}' if pd.notna(v) else 'NA'}</td>"
+            for v in calc_flows
         ])
         html += "</tr>"
 
@@ -344,43 +346,7 @@ def make_popup_html_with_plot(row, selected_dates, show_diversion):
         ])
         html += "</tr>"
 
-    html += "</table><br>"
-
-    # Plot with fixed image encoding
-    fig, ax = plt.subplots(figsize=(7.6, 3.5))
-    ax.plot(plot_dates, flows, 'o-', label='Daily Flow', color='tab:blue', linewidth=2)
-    ax.yaxis.grid(True, which='major', linestyle='-', linewidth=0.4, color='lightgrey')
-    ax.set_axisbelow(True)
-    if any(pd.notna(val) for val in calc_flows):
-        ax.plot(plot_dates, calc_flows, 's--', label='Calculated Flow (m³/s)', color='tab:green', linewidth=2)
-
-    threshold_colors = {
-        'Cutback1': 'gold', 'Cutback2': 'orange', 'Cutback3': 'purple', 'Cutoff': 'red',
-        'IO': 'orange', 'WCO': 'crimson', 'Q80': 'green', 'Q90': 'yellow',
-        'Q95': 'orange', 'Minimum flow': 'red', 'IFN': 'red'
-    }
-
-    for label in threshold_labels:
-        threshold_vals = [t.get(label, float('nan')) for t in threshold_sets]
-        if all(pd.isna(threshold_vals)):
-            continue
-        ax.plot(plot_dates, threshold_vals, linestyle='--', label=label,
-                color=threshold_colors.get(label, 'gray'), linewidth=2)
-
-    ax.set_ylabel('Flow (m³/s)')
-    ax.legend(fontsize=8)
-    ax.set_title('Flow and Thresholds Over Time')
-    ax.tick_params(axis='x', rotation=45)
-    fig.tight_layout()
-
-    buf = BytesIO()
-    fig.savefig(buf, format="png", bbox_inches='tight')
-    buf.seek(0)
-    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
-    plt.close(fig)
-
-    html += f"<img src='data:image/png;base64,{img_base64}' style='max-width:100%; height:auto;'>"
-    html += "</div>"
+    html += "</table></div>"
 
     return html
 
@@ -439,18 +405,11 @@ else:
 
 @st.cache_data(show_spinner=True)
 
-def render_map_two_layers():
-
-    # Use correct coordinate columns (try lowercase 'lat', 'lon')
+def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    m = folium.Map(
-        location=[mean_lat, mean_lon],
-        zoom_start=6,
-        width='100%',
-        height='1000px'
-    )
+    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, width='100%', height='1000px')
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -458,17 +417,13 @@ def render_map_two_layers():
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper() 
+        wsc = row['WSC'].strip().upper()
 
         date = get_most_recent_valid_date(row, selected_dates)
-           
-
         color = get_color_for_date(row, date)
 
-
-
-        # Marker for ALL stations
-        folium.CircleMarker(
+        # Marker for all stations
+        marker = folium.CircleMarker(
             location=coords,
             radius=7,
             color='black',
@@ -476,12 +431,28 @@ def render_map_two_layers():
             fill=True,
             fill_color=color,
             fill_opacity=0.7,
-            popup=folium.Popup(IFrame(html=st.session_state.popup_cache_no_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
             tooltip=row['station_name']
-        ).add_to(fg_all)
+        )
+        marker.add_to(fg_all)
 
+        # Add JS to update URL query param on click with the station WSC
+        marker.add_child(folium.Element(f"""
+            <script>
+            var marker = {marker.get_name()};
+            marker.on('click', function(e) {{
+                const wsc = '{wsc}';
+                const url = new URL(window.location);
+                url.searchParams.set('station', wsc);
+                window.history.pushState({{}}, '', url);
+                // Dispatch popstate event so Streamlit knows URL changed
+                window.dispatchEvent(new Event('popstate'));
+            }});
+            </script>
+        """))
+
+        # Marker for diversion stations (blue border)
         if wsc in diversion_tables:
-            folium.CircleMarker(
+            marker2 = folium.CircleMarker(
                 location=coords,
                 radius=7,
                 color='blue',
@@ -489,20 +460,72 @@ def render_map_two_layers():
                 fill=True,
                 fill_color=color,
                 fill_opacity=0.7,
-                popup=folium.Popup(IFrame(html=st.session_state.popup_cache_diversion.get(wsc, "<p>No data</p>"), width=700, height=600)),
                 tooltip=row['station_name']
-            ).add_to(fg_diversion)
+            )
+            marker2.add_to(fg_diversion)
 
+            marker2.add_child(folium.Element(f"""
+                <script>
+                var marker = {marker2.get_name()};
+                marker.on('click', function(e) {{
+                    const wsc = '{wsc}';
+                    const url = new URL(window.location);
+                    url.searchParams.set('station', wsc);
+                    window.history.pushState({{}}, '', url);
+                    window.dispatchEvent(new Event('popstate'));
+                }});
+                </script>
+            """))
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-
     folium.LayerControl(collapsed=False).add_to(m)
-        
-
     return m
-# --- Display ---
 
+# --- Plotly chart function for selected station ---
+
+def plot_station_chart(wsc, merged, selected_dates):
+    row = merged[merged['WSC'].str.strip().str.upper() == wsc]
+    if row.empty:
+        st.write("Station not found.")
+        return
+    row = row.iloc[0]
+
+    dates = pd.to_datetime(selected_dates)
+    flows = []
+    calc_flows = []
+    for d in selected_dates:
+        daily = extract_daily_data(row['time_series'], d)
+        flows.append(daily.get('Daily flow', None))
+        calc_flows.append(daily.get('Calculated flow', None))
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=dates, y=flows, mode='lines+markers', name='Daily Flow'))
+    fig.add_trace(go.Scatter(x=dates, y=calc_flows, mode='lines+markers', name='Calculated Flow'))
+
+    fig.update_layout(title=f"Flow Data for {row['station_name']}",
+                      xaxis_title='Date',
+                      yaxis_title='Flow (m³/s)',
+                      height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+# --- Layout ---
+
+st.title("Alberta Flow Threshold Viewer")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    # Render map
+    m = render_map_clickable(merged, selected_dates)
+    map_html = m.get_root().render()
+    st.components.v1.html(map_html, height=1000, scrolling=True)
+
+with col2:
+    if st.session_state.selected_station:
+        plot_station_chart(st.session_state.selected_station, merged, selected_dates)
+    else:
+        st.write("Click a station on the map to see its flow chart here.")
 # Always compute the current hash
 
 
@@ -510,8 +533,4 @@ st.title("Alberta Flow Threshold Viewer")
 
 
 
-# Render and display the two-layer map (with both popup caches)
-m = render_map_two_layers()
-map_html = m.get_root().render()
-st.components.v1.html(map_html, height=1000, scrolling=True)
 
