@@ -315,8 +315,6 @@ def render_map_clickable(merged, selected_dates):
     st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
     Fullscreen().add_to(m)
 
-    fg_all = folium.FeatureGroup(name='All Stations')
-    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
