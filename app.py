@@ -236,9 +236,9 @@ with st.sidebar.expander("ℹ️ About this App"):
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
     - **Q80/Q95:** Statistical low flows based on historical comparisons;
-    -     Q80: Flow is exceeded 80% of the time historically - often used as a benchmark for the low end of "typical flow".  
-    -     Q90: The flow value exceeded 90% of the time. This means the river flow historically is above this level 90% of the time—representing a more extreme low flow than Q80.
-    -     Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
+    - Q80: Flow is exceeded 80% of the time historically - often used as a benchmark for the low end of "typical flow".  
+    - Q90: The flow value exceeded 90% of the time. This means the river flow historically is above this level 90% of the time—representing a more extreme low flow than Q80.
+    - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
     - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion per second, daily limits or complete cutoff of diversion
 
     **🟢 Color Codes in Map:** - 🟢 Flow meets all thresholds  
