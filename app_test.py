@@ -594,20 +594,18 @@ if is_mobile:
 
     with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
         # --- NEW DEBUG INFO INSIDE EXPANDER START ---
-        st.write(f"DEBUG (Expander): Inside expander. Selected station from state: {st.session_state.get('selected_station')}")
-        
+               
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
             
-            st.write(f"DEBUG (Expander): Is row empty for {station_code}? {row.empty}") # CRITICAL CHECK
-            
+                        
             if not row.empty:
-                st.write(f"DEBUG (Expander): Station data found for {station_code}. Proceeding to render content.") # NEW DEBUG
+                
                 row = row.iloc[0]
 
                 has_div = station_code in diversion_tables
-                st.write(f"DEBUG (Expander): Has diversion data for {station_code}? {has_div}") # NEW DEBUG
+                
 
                 if has_div:
                     toggle_key = f"show_diversion_{station_code}_mobile"
