@@ -609,10 +609,9 @@ if is_mobile:
     st.markdown("---") # Separator for visual clarity on mobile
 
     with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
-        # Now, inside this expander block, you would remove the debug st.write() calls
-        # as per the previous instructions, leaving only the functional parts.
 
-        # Example of the cleaned expander content (no debug st.write calls):
+
+
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
@@ -636,17 +635,8 @@ if is_mobile:
                 st.write("Station data not found for selected station. Check data loading/filtering.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
-        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
-
-    # Set mobile map height here
-    # You already had map_height_pixels = 100 in render_map_clickable.
-    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
-    # and use that value directly in st_folium.
 
 
-
-
-    # Station details appear below the map, inside an expander
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
@@ -660,7 +650,7 @@ if is_mobile:
 
     st.markdown("---") # Separator for visual clarity on mobile
 
-    with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
+    with st.expander("Station Details - Select a station then V to see more info", expanded=st.session_state.show_station_details_expander):
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
