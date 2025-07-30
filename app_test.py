@@ -589,8 +589,22 @@ def render_station_table(row, selected_dates, show_diversion=False):
 
 if is_mobile:
     # --- Mobile Layout ---
-    # Map takes full width
+    if is_mobile:
+    # --- Mobile Layout ---
     st.header("Interactive Map")
+    # --- DEBUG INFO START ---
+    st.write(f"DEBUG: App thinks it's mobile: {is_mobile} (Screen Width Threshold: < 768px)")
+    st.write(f"DEBUG: Selected Station: {st.session_state.get('selected_station')}")
+    st.write(f"DEBUG: Show Expander State: {st.session_state.get('show_station_details_expander')}")
+    # --- DEBUG INFO END ---
+    m = render_map_clickable(merged, selected_dates)
+    clicked_data = st_folium(
+        m,
+        height=st.session_state.map_height_pixels, # Use the dynamically set height
+        use_container_width=True,
+        key="mobile_folium_map" # Unique key for mobile map
+    # Map takes full width
+   
     m = render_map_clickable(merged, selected_dates)
     clicked_data = st_folium(
         m,
