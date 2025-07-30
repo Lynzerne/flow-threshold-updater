@@ -15,7 +15,6 @@ from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
 
-
 st.cache_data.clear()
 st.set_page_config(layout="wide")
 
@@ -23,33 +22,21 @@ st.set_page_config(layout="wide")
 query_params = st.query_params
 selected_station = query_params.get('station', [None])[0]
 
-# --- Initializing session state variables early ---
-if 'map_height_pixels' not in st.session_state:
-    st.session_state.map_height_pixels = 1200 # Default to desktop height
+# --- Mobile Detection ---
+# Get screen width using JavaScript evaluation for responsive layout
+# Only run once at the start, or on specific events to avoid constant re-evaluation
+if 'is_mobile' not in st.session_state:
+    try:
+        screen_width = streamlit_js_eval(js_expressions="window.innerWidth", key="width_eval")
+        if screen_width is not None:
+            st.session_state.is_mobile = screen_width < 768  # Common breakpoint for mobile
+        else:
+            st.session_state.is_mobile = False # Default to false if JS eval fails
+    except Exception:
+        st.session_state.is_mobile = False # Default to false if an error occurs
 
-if 'selected_station' not in st.session_state:
-    st.session_state.selected_station = None
-
-if 'show_station_details_expander' not in st.session_state:
-    st.session_state.show_station_details_expander = False
-
-# --- Get screen width using streamlit_js_eval ---
-# Do this early so is_mobile is determined before layout decisions
-# Add a key to streamlit_js_eval for stability
-browser_width = streamlit_js_eval(js_expressions='screen.width', want_output=True, key='browser_width_eval')
-
-# Set is_mobile based on the returned width, or default to False if None (initial load)
-if browser_width is not None:
-    is_mobile = browser_width < 768
-else:
-    is_mobile = False # Default to desktop layout if width is not yet available
-
-# --- DEBUG INFO START (placed at the top, outside major if/else branches) ---
-st.write(f"DEBUG (Global): Raw browser width from JS: {browser_width}")
-st.write(f"DEBUG (Global): App thinks it's mobile: {is_mobile}")
-st.write(f"DEBUG (Global): Selected Station: {st.session_state.get('selected_station')}")
-st.write(f"DEBUG (Global): Show Expander State: {st.session_state.get('show_station_details_expander')}")
-# --- DEBUG INFO END ---
+is_mobile = st.session_state.is_mobile
+# --- End Mobile Detection ---
 
 if selected_station:
     st.session_state.selected_station = selected_station.strip().upper()
@@ -223,7 +210,7 @@ def get_color_for_date(row, date):
     elif policy == 'WMP':
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
-    
+
 
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
@@ -598,7 +585,7 @@ def render_station_table(row, selected_dates, show_diversion=False):
     html += "</table></div>"
 
     return html
-    
+    st.markdown(html, unsafe_allow_html=True)
 
 if is_mobile:
     # --- Mobile Layout ---
@@ -615,7 +602,7 @@ if is_mobile:
         use_container_width=True,
         key="mobile_folium_map" # Unique key for mobile map
     )
-   
+
     m = render_map_clickable(merged, selected_dates)
     clicked_data = st_folium(
         m,
@@ -704,7 +691,6 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
-
 
 
 
