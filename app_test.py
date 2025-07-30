@@ -355,7 +355,8 @@ def render_map_clickable(merged, selected_dates):
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=False).add_to(m)
+    layer_control_collapsed = True if is_mobile else False
+    folium.LayerControl(collapsed=layer_control_collapsed).add_to(m)
     return m
 
 # --- Plotly chart function for selected station ---
