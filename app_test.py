@@ -679,13 +679,13 @@ else:
     col1, col2 = st.columns([5, 2])
 
     with col1:
-        st.header("Interactive Map") # Add header for consistency
-        m = render_map_clickable(merged, selected_dates)
+        st.header("Interactive Map")
+        m = render_map_clickable(merged, selected_dates, is_mobile) 
         clicked_data = st_folium(
             m,
             height=1200,
             use_container_width=True,
-            key="desktop_folium_map" # Unique key for desktop map
+            key="desktop_folium_map"
         )
 
     with col2:
