@@ -680,7 +680,7 @@ if is_mobile:
     st.markdown("---") # Separator for visual clarity on mobile
 
     with st.expander("Station Details - Select a station then V to see more info", expanded=st.session_state.show_station_details_expander):
-    with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
+
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
@@ -711,14 +711,12 @@ else:
     with col1:
         st.header("Interactive Map")
         m = render_map_clickable(merged, selected_dates, is_mobile) 
-        st.header("Interactive Map") # Add header for consistency
-        m = render_map_clickable(merged, selected_dates)
+       
         clicked_data = st_folium(
             m,
             height=1200,
             use_container_width=True,
             key="desktop_folium_map"
-            key="desktop_folium_map" # Unique key for desktop map
         )
 
     with col2:
