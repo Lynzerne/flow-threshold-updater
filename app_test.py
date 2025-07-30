@@ -18,6 +18,11 @@ from streamlit_folium import st_folium
 st.cache_data.clear()
 st.set_page_config(layout="wide")
 
+# --- Detect screen width for responsive layout ---
+# Use a default value if not running in a browser or during initial load
+screen_width = streamlit_js_eval(js_expressions='window.innerWidth', key='width_eval')
+IS_MOBILE = screen_width is not None and screen_width < 768 # Common breakpoint for mobile devices
+
 # Get station selection from URL query params
 query_params = st.query_params
 selected_station = query_params.get('station', [None])[0]
@@ -29,7 +34,7 @@ else:
         st.session_state.selected_station = None
 
 def sync_url_to_session():
-    query_params = st.query_params  # <-- changed here
+    query_params = st.query_params
     station_from_url = query_params.get('station', [None])[0]
     if station_from_url:
         if st.session_state.selected_station != station_from_url.strip().upper():
@@ -42,7 +47,9 @@ sync_url_to_session()
 DATA_DIR = "data"
 DIVERSION_DIR = os.path.join(DATA_DIR, "DiversionTables")
 STREAM_CLASS_FILE = os.path.join(DATA_DIR, "StreamSizeClassification.csv")
-CSV_FILE = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(".csv")], reverse=True)[0]
+# Ensure CSV_FILE points to an existing file, adding a check here for robustness
+csv_files = sorted([f for f in os.listdir(DATA_DIR) if f.endswith(".csv")], reverse=True)
+CSV_FILE = csv_files[0] if csv_files else None
 
 # --- Load data ---
 def make_df_hashable(df: pd.DataFrame) -> pd.DataFrame:
@@ -71,8 +78,7 @@ def load_data():
         return val
 
     merged['time_series'] = merged['time_series'].apply(safe_parse)
-    merged = make_df_hashable(merged)  # <-- Add this line here
-    merged = make_df_hashable(merged)  # <-- call here
+    merged = make_df_hashable(merged)
     return merged
 
 # Call load_data and assign merged here
@@ -96,8 +102,6 @@ valid_dates = get_valid_dates(merged)
 if not valid_dates:
     st.error("No valid flow data found. Please check your data files.")
     st.stop()
-
-
 
 # --- Load diversion tables ---
 @st.cache_data
@@ -138,12 +142,10 @@ def load_diversion_tables():
             df['Date'] = df['Date'].apply(safe_replace_year)
 
             diversion_tables[wsc] = df
-        # ✅ Normalize keys
     diversion_tables = {k.strip().upper(): v for k, v in diversion_tables.items()}
     diversion_labels = {k.strip().upper(): v for k, v in diversion_labels.items()}
 
     return diversion_tables, diversion_labels
-    stations_with_diversion = set(diversion_tables.keys())
 
 with st.spinner("Loading... this may take a few minutes"):
     diversion_tables, diversion_labels = load_diversion_tables()
@@ -231,8 +233,7 @@ with st.sidebar.expander("ℹ️ About this App"):
     - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
     - **Diversion Tables** data from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations, toggle will appear above charts with diversion table data to swap between cutbacks and quartiles.
 
-    ** Threshold Definitions:** 
-    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
+    ** Threshold Definitions:** - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
     - **Q80/Q95:** Statistical low flows based on historical comparisons;
@@ -248,10 +249,10 @@ with st.sidebar.expander("ℹ️ About this App"):
     - 🔵 **Blue border**: Station has a Diversion Table (click toggle on right above data table for additional thresholds)
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕ - Lyndsay Greenwood_
-    """)
+    """, unsafe_allow_html=True)
 with st.sidebar.expander("ℹ️ Who Cares?"):
     st.markdown("""
-    **❓ Why does this matter?** Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.  
+    **❓ Why does this matter?** Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.   
     However, water supply is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
     
     In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
@@ -268,16 +269,10 @@ def make_dates_hash(selected_dates):
 
 current_dates_hash = make_dates_hash(selected_dates)
 
-import hashlib
-
-
-
 def get_date_hash(dates):
     """Create a short unique hash string for a list of dates."""
     date_str = ",".join(sorted(dates))
     return hashlib.md5(date_str.encode()).hexdigest()
-
-# Pre-generate both popup caches upfront
 
 def get_most_recent_valid_date(row, dates):
     for d in sorted(dates, reverse=True):
@@ -286,14 +281,13 @@ def get_most_recent_valid_date(row, dates):
             return d
     return None
 
+def render_map_clickable(merged, selected_dates, is_mobile):
+    # Adjust zoom level for mobile to show a wider area initially
+    initial_zoom = 6
+    if is_mobile:
+        initial_zoom = 5 # Slightly zoomed out for mobile
 
-
-
-def render_map_clickable(merged, selected_dates):
-    mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
-    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
-
-    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height='1200px')
+    m = folium.Map(location=[50.5, -114], zoom_start=initial_zoom)
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -308,7 +302,6 @@ def render_map_clickable(merged, selected_dates):
 
         border_color = 'blue' if wsc in diversion_tables else 'black'
 
-        # Marker with tooltip only (station code) — NO popup here
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
@@ -340,34 +333,9 @@ def render_map_clickable(merged, selected_dates):
     return m
 
 # --- Plotly chart function for selected station ---
-
 @st.cache_data
 def has_diversion(wsc):
-    return wsc.strip().upper() in diversion_tables  # or use stations_with_diversion if precomputed
-
-if 'clicked_station' in st.session_state:
-    row = st.session_state['clicked_station']
-    wsc = row['WSC'].strip().upper()
-
-    st.subheader(row.get('station_name', wsc))
-
-    # Show toggle ONLY if diversion data exists for this station
-    #if has_diversion(wsc):
-    #    show_div = st.toggle("Show diversion thresholds", value=False)
-   # else:
-      #  show_div = False
-
-    if has_diversion(wsc):
-        st.write(f"Diversion data available for {wsc}")
-        show_div = st.toggle("Show diversion thresholds", value=False)
-    else:
-        st.write(f"No diversion data for {wsc}")
-        show_div = False
-
-    # Render table and chart, passing show_div to control diversion display
-    st.markdown(render_station_table(row, selected_dates, show_diversion=show_div), unsafe_allow_html=True)
-    plot_station_chart(wsc, merged, selected_dates, show_diversion=show_div)
-
+    return wsc.strip().upper() in diversion_tables
 
 def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
     row = merged[merged['WSC'].str.strip().str.upper() == wsc]
@@ -414,7 +382,7 @@ def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
 
         thresholds_list.append(thresholds)
 
-        threshold_colors = {
+    threshold_colors = {
         'Cutback1': 'yellow',
         'Cutback2': 'orange',
         'Cutback3': 'red',
@@ -433,7 +401,6 @@ def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=dates, y=flows, mode='lines+markers', name='Flow'))
 
-
     # Gather all unique threshold labels across dates
     all_threshold_labels = set()
     for thres in thresholds_list:
@@ -444,7 +411,7 @@ def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
     for label in all_threshold_labels:
         vals = [thres.get(label, None) if thres else None for thres in thresholds_list]
         if any(v is not None and not pd.isna(v) for v in vals):
-            color = threshold_colors.get(label, 'gray')  # default to gray if unknown
+            color = threshold_colors.get(label, 'gray') # default to gray if unknown
             fig.add_trace(go.Scatter(
                 x=dates,
                 y=vals,
@@ -453,13 +420,11 @@ def plot_station_chart(wsc, merged, selected_dates, show_diversion=False):
                 line=dict(color=color)
             ))
 
-
-
     st.plotly_chart(fig, use_container_width=True)
 
 # --- Layout ---
-
 st.title("Alberta Flow Threshold Viewer")
+
 def get_text_color(bg_color):
     c = str(bg_color).lower()
     # Define which backgrounds should have black text for contrast
@@ -566,22 +531,18 @@ def render_station_table(row, selected_dates, show_diversion=False):
     html += "</table></div>"
 
     return html
-    st.markdown(html, unsafe_allow_html=True)
 
-col1, col2 = st.columns([5, 2])
-
-with col1:
-    m = render_map_clickable(merged, selected_dates)
+# --- Main Layout based on screen width ---
+if IS_MOBILE:
+    # On mobile, stack elements vertically
+    map_height = 500 # Shorter map for mobile
+    m = render_map_clickable(merged, selected_dates, IS_MOBILE)
     clicked_data = st_folium(
         m,
-        height=1200,           # Adjust height here
-        width=1000,            # Add a fixed width if you want — optional if you're using columns
-        use_container_width=True  # Will still try to fill the container width
+        height=map_height,
+        use_container_width=True # Ensure it takes full width
     )
 
-
-
-with col2:
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
@@ -593,12 +554,8 @@ with col2:
         if not row.empty:
             row = row.iloc[0]
 
-            # Check if diversion data is available for this station
             has_div = station_code in diversion_tables
-
-            # Show toggle if diversion data exists
             if has_div:
-                # Use session_state to preserve toggle across reruns
                 toggle_key = f"show_diversion_{station_code}"
                 if toggle_key not in st.session_state:
                     st.session_state[toggle_key] = False
@@ -606,17 +563,55 @@ with col2:
             else:
                 show_diversion = False
 
-            # Render the compliance table HTML and display it
             html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
             st.markdown(html_table, unsafe_allow_html=True)
-
-            # Then plot the chart below
             plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
         else:
             st.write("Station data not found.")
     else:
         st.write("Click a station on the map to see its flow chart and data table here.")
 
+else:
+    # On desktop, use columns as before
+    col1, col2 = st.columns([5, 2])
+
+    with col1:
+        map_height = 1200 # Tall map for desktop
+        m = render_map_clickable(merged, selected_dates, IS_MOBILE)
+        clicked_data = st_folium(
+            m,
+            height=map_height,
+            use_container_width=True
+        )
+
+    with col2:
+        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+            selected_wsc = clicked_data['last_object_clicked_tooltip']
+            if selected_wsc:
+                st.session_state.selected_station = selected_wsc.strip().upper()
+
+        if st.session_state.get('selected_station'):
+            station_code = st.session_state.selected_station
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+            if not row.empty:
+                row = row.iloc[0]
+
+                has_div = station_code in diversion_tables
+                if has_div:
+                    toggle_key = f"show_diversion_{station_code}"
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                else:
+                    show_diversion = False
+
+                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+                st.markdown(html_table, unsafe_allow_html=True)
+                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+            else:
+                st.write("Station data not found.")
+        else:
+            st.write("Click a station on the map to see its flow chart and data table here.")
 
 
 
