@@ -15,12 +15,6 @@ from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
 
-# Detect mobile devices using user agent
-if "is_mobile" not in st.session_state:
-    from streamlit_js_eval import streamlit_js_eval
-    user_agent = streamlit_js_eval(js_expressions="navigator.userAgent", key="user_agent")
-    st.session_state["is_mobile"] = "Mobile" in user_agent if user_agent else False
-
 st.cache_data.clear()
 st.set_page_config(layout="wide")
 
@@ -206,11 +200,11 @@ def get_color_for_date(row, date):
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
     <div style='color: red'>
-        This app pre-computes charts and tables for all stations before displaying the map.  
-        That means loading can take **2-3 minutes**, depending on your date range and device.
+        Under construction!
+        This app dynamically loads in station data and renders color for the markers as you scroll around. You may experience some loading and re-loading as you are viewing it. 
     </div>
     <div style='margin-top: 8px;'>
-        We're working on making this faster and more responsive. Thanks for your patience!
+        We're working on making this less disruptive and more responsive. Thanks for your patience!
     </div>
     """, unsafe_allow_html=True)
 
@@ -231,26 +225,27 @@ selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d
 
 with st.sidebar.expander("ℹ️ About this App"):
     st.markdown("""
-    **🔍 What is this?** This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
+    **What is this?** This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
 
-    **📊 Data Sources:** - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
+    **Data Sources:** - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
     - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
-    - **Diversion Tables** from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations.
-    - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions (Water Management Plans)
+    - **Diversion Tables** data from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations, toggle will appear above charts with diversion table data to swap between cutbacks and quartiles.
 
-    **📏 Threshold Definitions:** - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
+    ** Threshold Definitions:** 
+    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
-    - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow".  
-    - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
+    - **Q80/Q95:** Statistical low flows based on historical comparisons;
+    - Q80: Flow is exceeded 80% of the time historically - often used as a benchmark for the low end of "typical flow".  
+    - Q90: The flow value exceeded 90% of the time. This means the river flow historically is above this level 90% of the time—representing a more extreme low flow than Q80.
     - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
-    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion or daily limits
+    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion per second, daily limits or complete cutoff of diversion
 
     **🟢 Color Codes in Map:** - 🟢 Flow meets all thresholds  
     - 🔴 Flow below one or more thresholds  
     - 🟡 Intermediate (depends on stream size & Q-values)  
     - ⚪ Missing or insufficient data
-    - 🔵 **Blue border**: Station has a Diversion Table (click layer on right for additional thresholds)
+    - 🔵 **Blue border**: Station has a Diversion Table (click toggle on right above data table for additional thresholds)
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕ - Lyndsay Greenwood_
     """)
@@ -261,7 +256,7 @@ with st.sidebar.expander("ℹ️ Who Cares?"):
     
     In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
     
-    While water conservation is a personal responsibility we all share, ensuring that diversion limits exist—and are respected—is a vital tool in protecting Alberta’s water systems and ecosystems for generations to come.
+    While water conservation is a responsibility we all share, ensuring that diversion limits exist—and are respected—is a vital tool in protecting Alberta’s water systems and ecosystems for generations to come.
 
     """)
 
@@ -290,8 +285,6 @@ def get_most_recent_valid_date(row, dates):
         if any(pd.notna(daily.get(k)) for k in ['Daily flow', 'Calculated flow']):
             return d
     return None
-
-# Set map height based on device
 
 
 
@@ -575,85 +568,57 @@ def render_station_table(row, selected_dates, show_diversion=False):
     return html
     st.markdown(html, unsafe_allow_html=True)
 
+col1, col2 = st.columns([5, 2])
+
+with col1:
+    m = render_map_clickable(merged, selected_dates)
+    clicked_data = st_folium(
+        m,
+        height=1200,           # Adjust height here
+        width=1000,            # Add a fixed width if you want — optional if you're using columns
+        use_container_width=True  # Will still try to fill the container width
+    )
 
 
-# Inject responsive CSS
-st.markdown(
-    """
-    <style>
-    @media (max-width: 768px) {
-        .responsive-wrapper {
-            display: flex;
-            flex-direction: column;
-        }
-        .map-container, .chart-container {
-            width: 100% !important;
-        }
-    }
-    @media (min-width: 769px) {
-        .responsive-wrapper {
-            display: flex;
-            flex-direction: row;
-        }
-        .map-container {
-            flex: 5;
-            padding-right: 1rem;
-        }
-        .chart-container {
-            flex: 2;
-        }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
-# Start layout container
-st.markdown('<div class="responsive-wrapper">', unsafe_allow_html=True)
+with col2:
+    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        selected_wsc = clicked_data['last_object_clicked_tooltip']
+        if selected_wsc:
+            st.session_state.selected_station = selected_wsc.strip().upper()
 
-# Map column
-st.markdown('<div class="map-container">', unsafe_allow_html=True)
-m = render_map_clickable(merged, selected_dates)
-clicked_data = st_folium(
-    m,
-    height=1200,
-    use_container_width=True
-)
-st.markdown('</div>', unsafe_allow_html=True)
+    if st.session_state.get('selected_station'):
+        station_code = st.session_state.selected_station
+        row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+        if not row.empty:
+            row = row.iloc[0]
 
-# Right panel column (chart/table)
-st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            # Check if diversion data is available for this station
+            has_div = station_code in diversion_tables
 
-if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-    selected_wsc = clicked_data['last_object_clicked_tooltip']
-    if selected_wsc:
-        st.session_state.selected_station = selected_wsc.strip().upper()
+            # Show toggle if diversion data exists
+            if has_div:
+                # Use session_state to preserve toggle across reruns
+                toggle_key = f"show_diversion_{station_code}"
+                if toggle_key not in st.session_state:
+                    st.session_state[toggle_key] = False
+                show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+            else:
+                show_diversion = False
 
-if st.session_state.get('selected_station'):
-    station_code = st.session_state.selected_station
-    row = merged[merged['WSC'].str.strip().str.upper() == station_code]
-    if not row.empty:
-        row = row.iloc[0]
-        has_div = station_code in diversion_tables
-        toggle_key = f"show_diversion_{station_code}"
-        if toggle_key not in st.session_state:
-            st.session_state[toggle_key] = False
-        show_diversion = st.checkbox(
-            "Show diversion table thresholds",
-            value=st.session_state[toggle_key],
-            key=toggle_key
-        ) if has_div else False
+            # Render the compliance table HTML and display it
+            html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+            st.markdown(html_table, unsafe_allow_html=True)
 
-        html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
-        st.markdown(html_table, unsafe_allow_html=True)
-        plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+            # Then plot the chart below
+            plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+        else:
+            st.write("Station data not found.")
     else:
-        st.write("Station data not found.")
-else:
-    st.write("Click a station on the map to see its flow chart and data table here.")
+        st.write("Click a station on the map to see its flow chart and data table here.")
 
-st.markdown('</div>', unsafe_allow_html=True)  # end chart container
-st.markdown('</div>', unsafe_allow_html=True)  # end wrapper
+
+
 
 
 
