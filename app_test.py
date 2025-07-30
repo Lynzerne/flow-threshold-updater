@@ -590,12 +590,41 @@ def render_station_table(row, selected_dates, show_diversion=False):
 if is_mobile:
     # --- Mobile Layout ---
     st.header("Interactive Map")
-    # --- DEBUG INFO START (These should now appear above the map if is_mobile is True) ---
-    st.write(f"DEBUG: App thinks it's mobile: {is_mobile} (Screen Width Threshold: < 768px)")
-    st.write(f"DEBUG: Selected Station: {st.session_state.get('selected_station')}")
-    st.write(f"DEBUG: Show Expander State: {st.session_state.get('show_station_details_expander')}")
-    st.write(f"DEBUG: Map height pixels being set to: {st.session_state.map_height_pixels}") # Adding this for clear confirmation
-    # --- DEBUG INFO END ---
+   st.markdown("---") # Separator for visual clarity on mobile
+
+    with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
+        # --- NEW DEBUG INFO INSIDE EXPANDER START ---
+        st.write(f"DEBUG (Expander): Inside expander. Selected station from state: {st.session_state.get('selected_station')}")
+        
+        if st.session_state.get('selected_station'):
+            station_code = st.session_state.selected_station
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+            
+            st.write(f"DEBUG (Expander): Is row empty for {station_code}? {row.empty}") # CRITICAL CHECK
+            
+            if not row.empty:
+                st.write(f"DEBUG (Expander): Station data found for {station_code}. Proceeding to render content.") # NEW DEBUG
+                row = row.iloc[0]
+
+                has_div = station_code in diversion_tables
+                st.write(f"DEBUG (Expander): Has diversion data for {station_code}? {has_div}") # NEW DEBUG
+
+                if has_div:
+                    toggle_key = f"show_diversion_{station_code}_mobile"
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                else:
+                    show_diversion = False
+
+                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+                st.markdown(html_table, unsafe_allow_html=True)
+                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+            else:
+                st.write("Station data not found for selected station. Check data loading/filtering.")
+        else:
+            st.write("Click a station on the map to see its flow chart and data table here.")
+        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
 
     # Set mobile map height here
     # You already had map_height_pixels = 100 in render_map_clickable.
