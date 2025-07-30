@@ -590,7 +590,7 @@ def render_station_table(row, selected_dates, show_diversion=False):
 if is_mobile:
     # --- Mobile Layout ---
     st.header("Interactive Map")
-   st.markdown("---") # Separator for visual clarity on mobile
+    st.markdown("---") # Separator for visual clarity on mobile
 
     with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
         # --- NEW DEBUG INFO INSIDE EXPANDER START ---
