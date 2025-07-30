@@ -25,24 +25,15 @@ selected_station = query_params.get('station', [None])[0]
 # --- Mobile Detection ---
 # Get screen width using JavaScript evaluation for responsive layout
 # Only run once at the start, or on specific events to avoid constant re-evaluation
-if 'is_mobile' not in st.session_state:
-    try:
-        screen_width = streamlit_js_eval(js_expressions="window.innerWidth", key="width_eval")
-        if screen_width is not None:
-            st.session_state.is_mobile = screen_width < 768  # Common breakpoint for mobile
-        else:
-            st.session_state.is_mobile = False # Default to false if JS eval fails
-    except Exception:
-        st.session_state.is_mobile = False # Default to false if an error occurs
+# --- Initializing session state variables early ---
+if 'map_height_pixels' not in st.session_state:
+    st.session_state.map_height_pixels = 1200 # Default to desktop height
 
-is_mobile = st.session_state.is_mobile
-# --- End Mobile Detection ---
+if 'selected_station' not in st.session_state:
+    st.session_state.selected_station = None
 
-if selected_station:
-    st.session_state.selected_station = selected_station.strip().upper()
-else:
-    if 'selected_station' not in st.session_state:
-        st.session_state.selected_station = None
+if 'show_station_details_expander' not in st.session_state:
+    st.session_state.show_station_details_expander = False
 
 def sync_url_to_session():
     query_params = st.query_params  # <-- changed here
@@ -51,7 +42,16 @@ def sync_url_to_session():
         if st.session_state.selected_station != station_from_url.strip().upper():
             st.session_state.selected_station = station_from_url.strip().upper()
             st.experimental_rerun()
+# --- Get screen width using streamlit_js_eval ---
+# Do this early so is_mobile is determined before layout decisions
+# Add a key to streamlit_js_eval for stability
+browser_width = streamlit_js_eval(js_expressions='screen.width', want_output=True, key='browser_width_eval')
 
+# Set is_mobile based on the returned width, or default to False if None (initial load)
+if browser_width is not None:
+    is_mobile = browser_width < 768
+else:
+    is_mobile = False # Default to desktop layout if width is not yet available
 sync_url_to_session()
 
 # --- Paths ---
