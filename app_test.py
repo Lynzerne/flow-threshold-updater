@@ -361,7 +361,6 @@ def render_map_clickable(merged, selected_dates, is_mobile): # <--- Add is_mobil
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=False).add_to(m)
     return m
 
 # --- Plotly chart function for selected station ---
@@ -751,7 +750,16 @@ else:
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
 
+def add_map_layer_control(m, is_mobile):
+    """
+    Adds a Folium LayerControl to the map, collapsed by default on mobile.
 
+    Args:
+        m (folium.Map): The Folium map object.
+        is_mobile (bool): True if the app is on a mobile device, False otherwise.
+    """
+    layer_control_collapsed = True if is_mobile else False
+    folium.LayerControl(collapsed=layer_control_collapsed).add_to(m)
 
 
 
