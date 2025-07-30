@@ -575,17 +575,7 @@ def render_station_table(row, selected_dates, show_diversion=False):
     return html
     st.markdown(html, unsafe_allow_html=True)
 
-# Set map height based on device
-map_height = 600 if st.session_state.get("is_mobile") else 1200
 
-# Create the folium map before passing it to st_folium
-m = render_map_clickable(merged, selected_dates)
-
-clicked_data = st_folium(
-    m,
-    height=map_height,
-    use_container_width=True
-)
 
 # Inject responsive CSS
 st.markdown(
