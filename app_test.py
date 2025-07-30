@@ -305,20 +305,15 @@ def get_most_recent_valid_date(row, dates):
 
 
 
-def render_map_clickable(merged, selected_dates, is_mobile): # <--- Add is_mobile here
+def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    # Adjust map height based on mobile detection
-    map_height_pixels = 100 if is_mobile else 1200
+     # Adjust map height based on mobile detection
+    map_height_pixels = 300 if is_mobile else 1200
     m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
     st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
-    
     Fullscreen().add_to(m)
-
-    # Make LayerControl collapsed by default on mobile to save space
-    layer_control_collapsed = True if is_mobile else False # Now is_mobile is in scope
-    folium.LayerControl(collapsed=layer_control_collapsed).add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
@@ -360,6 +355,7 @@ def render_map_clickable(merged, selected_dates, is_mobile): # <--- Add is_mobil
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=False).add_to(m)
     return m
 
 # --- Plotly chart function for selected station ---
@@ -594,32 +590,23 @@ def render_station_table(row, selected_dates, show_diversion=False):
 if is_mobile:
     # --- Mobile Layout ---
     st.header("Interactive Map")
-
-    # --- THIS IS WHERE YOUR MAP RENDERING CODE GOES ---
-    # Make sure to call render_map_clickable with 'is_mobile' passed as an argument
-    m = render_map_clickable(merged, selected_dates, is_mobile) 
-    clicked_data = st_folium(
-        m,
-        height=st.session_state.map_height_pixels, # This uses the height set in render_map_clickable
-        use_container_width=True,
-        key="mobile_folium_map" # Unique key for mobile map
-    )
-    # --- END OF MAP RENDERING CODE ---
-
     st.markdown("---") # Separator for visual clarity on mobile
 
     with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
-
-
-
+        # --- NEW DEBUG INFO INSIDE EXPANDER START ---
+               
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
-
+            
+                        
             if not row.empty:
+                
                 row = row.iloc[0]
 
                 has_div = station_code in diversion_tables
+                
+
                 if has_div:
                     toggle_key = f"show_diversion_{station_code}_mobile"
                     if toggle_key not in st.session_state:
@@ -635,8 +622,24 @@ if is_mobile:
                 st.write("Station data not found for selected station. Check data loading/filtering.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
+
+    # Set mobile map height here
+    # You already had map_height_pixels = 100 in render_map_clickable.
+    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
+    # and use that value directly in st_folium.
+
+    m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
+
+    clicked_data = st_folium(
+        m,
+        height=st.session_state.map_height_pixels, # This uses the height set in render_map_clickable
+        use_container_width=True,
+        key="mobile_folium_map" # Unique key for mobile map
+    )
 
 
+    # Station details appear below the map, inside an expander
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
@@ -650,7 +653,7 @@ if is_mobile:
 
     st.markdown("---") # Separator for visual clarity on mobile
 
-    with st.expander("Station Details - Select a station then V to see more info", expanded=st.session_state.show_station_details_expander):
+    with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
@@ -716,6 +719,13 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
+
+
+
+
+
+
 
 
 
