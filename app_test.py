@@ -15,6 +15,12 @@ from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
 
+# Detect mobile devices using user agent
+if "is_mobile" not in st.session_state:
+    from streamlit_js_eval import streamlit_js_eval
+    user_agent = streamlit_js_eval(js_expressions="navigator.userAgent", key="user_agent")
+    st.session_state["is_mobile"] = "Mobile" in user_agent if user_agent else False
+
 st.cache_data.clear()
 st.set_page_config(layout="wide")
 
@@ -285,7 +291,16 @@ def get_most_recent_valid_date(row, dates):
             return d
     return None
 
+# Set map height based on device
 
+
+# Then use it in st_folium
+map_height = 600 if st.session_state.get("is_mobile") else 1200
+clicked_data = st_folium(
+    m,
+    height=map_height,
+    use_container_width=True
+)
 
 
 def render_map_clickable(merged, selected_dates):
@@ -569,52 +584,83 @@ def render_station_table(row, selected_dates, show_diversion=False):
 
 col1, col2 = st.columns([5, 2])
 
-with col1:
-    m = render_map_clickable(merged, selected_dates)
-    clicked_data = st_folium(
-        m,
-        height=1200,           # Adjust height here
-        width=1000,            # Add a fixed width if you want — optional if you're using columns
-        use_container_width=True  # Will still try to fill the container width
-    )
+# Inject responsive CSS
+st.markdown(
+    """
+    <style>
+    @media (max-width: 768px) {
+        .responsive-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+        .map-container, .chart-container {
+            width: 100% !important;
+        }
+    }
+    @media (min-width: 769px) {
+        .responsive-wrapper {
+            display: flex;
+            flex-direction: row;
+        }
+        .map-container {
+            flex: 5;
+            padding-right: 1rem;
+        }
+        .chart-container {
+            flex: 2;
+        }
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
+# Start layout container
+st.markdown('<div class="responsive-wrapper">', unsafe_allow_html=True)
 
+# Map column
+st.markdown('<div class="map-container">', unsafe_allow_html=True)
+m = render_map_clickable(merged, selected_dates)
+clicked_data = st_folium(
+    m,
+    height=1200,
+    use_container_width=True
+)
+st.markdown('</div>', unsafe_allow_html=True)
 
-with col2:
-    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-        selected_wsc = clicked_data['last_object_clicked_tooltip']
-        if selected_wsc:
-            st.session_state.selected_station = selected_wsc.strip().upper()
+# Right panel column (chart/table)
+st.markdown('<div class="chart-container">', unsafe_allow_html=True)
 
-    if st.session_state.get('selected_station'):
-        station_code = st.session_state.selected_station
-        row = merged[merged['WSC'].str.strip().str.upper() == station_code]
-        if not row.empty:
-            row = row.iloc[0]
+if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+    selected_wsc = clicked_data['last_object_clicked_tooltip']
+    if selected_wsc:
+        st.session_state.selected_station = selected_wsc.strip().upper()
 
-            # Check if diversion data is available for this station
-            has_div = station_code in diversion_tables
+if st.session_state.get('selected_station'):
+    station_code = st.session_state.selected_station
+    row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+    if not row.empty:
+        row = row.iloc[0]
+        has_div = station_code in diversion_tables
+        toggle_key = f"show_diversion_{station_code}"
+        if toggle_key not in st.session_state:
+            st.session_state[toggle_key] = False
+        show_diversion = st.checkbox(
+            "Show diversion table thresholds",
+            value=st.session_state[toggle_key],
+            key=toggle_key
+        ) if has_div else False
 
-            # Show toggle if diversion data exists
-            if has_div:
-                # Use session_state to preserve toggle across reruns
-                toggle_key = f"show_diversion_{station_code}"
-                if toggle_key not in st.session_state:
-                    st.session_state[toggle_key] = False
-                show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
-            else:
-                show_diversion = False
-
-            # Render the compliance table HTML and display it
-            html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
-            st.markdown(html_table, unsafe_allow_html=True)
-
-            # Then plot the chart below
-            plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
-        else:
-            st.write("Station data not found.")
+        html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+        st.markdown(html_table, unsafe_allow_html=True)
+        plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
     else:
-        st.write("Click a station on the map to see its flow chart and data table here.")
+        st.write("Station data not found.")
+else:
+    st.write("Click a station on the map to see its flow chart and data table here.")
+
+st.markdown('</div>', unsafe_allow_html=True)  # end chart container
+st.markdown('</div>', unsafe_allow_html=True)  # end wrapper
 
 
 
