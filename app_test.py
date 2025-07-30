@@ -597,7 +597,7 @@ if is_mobile:
 
     # --- THIS IS WHERE YOUR MAP RENDERING CODE GOES ---
     # Make sure to call render_map_clickable with 'is_mobile' passed as an argument
-    m = render_map_clickable(merged, selected_dates, is_mobile) # <--- Make sure this line is here
+    m = render_map_clickable(merged, selected_dates, is_mobile) 
     clicked_data = st_folium(
         m,
         height=st.session_state.map_height_pixels, # This uses the height set in render_map_clickable
