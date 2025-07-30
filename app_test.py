@@ -589,8 +589,6 @@ def render_station_table(row, selected_dates, show_diversion=False):
 
 if is_mobile:
     # --- Mobile Layout ---
-    if is_mobile:
-    # --- Mobile Layout ---
     st.header("Interactive Map")
     # --- DEBUG INFO START ---
     st.write(f"DEBUG: App thinks it's mobile: {is_mobile} (Screen Width Threshold: < 768px)")
@@ -603,7 +601,7 @@ if is_mobile:
         height=st.session_state.map_height_pixels, # Use the dynamically set height
         use_container_width=True,
         key="mobile_folium_map" # Unique key for mobile map
-    # Map takes full width
+    )
    
     m = render_map_clickable(merged, selected_dates)
     clicked_data = st_folium(
