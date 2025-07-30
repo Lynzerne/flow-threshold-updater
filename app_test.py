@@ -355,7 +355,7 @@ def render_map_clickable(merged, selected_dates):
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=False).add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
     return m
 
 # --- Plotly chart function for selected station ---
@@ -592,7 +592,7 @@ if is_mobile:
     st.header("Interactive Map")
     st.markdown("---") # Separator for visual clarity on mobile
 
-    with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
+    with st.expander("Station Details - Select a station and click v for more info", expanded=st.session_state.show_station_details_expander):
         # --- NEW DEBUG INFO INSIDE EXPANDER START ---
                
         if st.session_state.get('selected_station'):
