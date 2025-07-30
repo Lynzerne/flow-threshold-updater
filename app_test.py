@@ -294,17 +294,7 @@ def get_most_recent_valid_date(row, dates):
 # Set map height based on device
 
 
-# Set map height based on device
-map_height = 600 if st.session_state.get("is_mobile") else 1200
 
-# Create the folium map before passing it to st_folium
-m = render_map_clickable(merged, selected_dates)
-
-clicked_data = st_folium(
-    m,
-    height=map_height,
-    use_container_width=True
-)
 
 def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
@@ -585,7 +575,17 @@ def render_station_table(row, selected_dates, show_diversion=False):
     return html
     st.markdown(html, unsafe_allow_html=True)
 
-col1, col2 = st.columns([5, 2])
+# Set map height based on device
+map_height = 600 if st.session_state.get("is_mobile") else 1200
+
+# Create the folium map before passing it to st_folium
+m = render_map_clickable(merged, selected_dates)
+
+clicked_data = st_folium(
+    m,
+    height=map_height,
+    use_container_width=True
+)
 
 # Inject responsive CSS
 st.markdown(
