@@ -305,15 +305,20 @@ def get_most_recent_valid_date(row, dates):
 
 
 
-def render_map_clickable(merged, selected_dates):
+def render_map_clickable(merged, selected_dates, is_mobile): # <--- Add is_mobile here
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-     # Adjust map height based on mobile detection
-    map_height_pixels = 300 if is_mobile else 1200
+    # Adjust map height based on mobile detection
+    map_height_pixels = 100 if is_mobile else 1200
     m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
     st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
+    
     Fullscreen().add_to(m)
+
+    # Make LayerControl collapsed by default on mobile to save space
+    layer_control_collapsed = True if is_mobile else False # Now is_mobile is in scope
+    folium.LayerControl(collapsed=layer_control_collapsed).add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
@@ -355,8 +360,6 @@ def render_map_clickable(merged, selected_dates):
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-    layer_control_collapsed = True if is_mobile else False
-    folium.LayerControl(collapsed=layer_control_collapsed).add_to(m)
     return m
 
 # --- Plotly chart function for selected station ---
