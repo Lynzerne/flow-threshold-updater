@@ -225,26 +225,27 @@ selected_dates = [d for d in valid_dates if start_date.strftime('%Y-%m-%d') <= d
 
 with st.sidebar.expander("ℹ️ About this App"):
     st.markdown("""
-    **🔍 What is this?** This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
+    **What is this?** This tool visualizes flow data from Alberta water stations and evaluates compliance with flow thresholds used in water policy decisions.
 
-    **📊 Data Sources:** - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
+    **Data Sources:** - **Hydrometric data** and  **Diversion thresholds** from Alberta River Basins Water Conservation layer (Rivers.alberta.ca)
     - Alberta has over 400 hydrometric stations operated by both the Alberta provincial government and the federal Water Survey of Canada, which provides near real time flow and water level monitoring data. For the purpose of this app, flow in meters cubed per second is used.
-    - **Diversion Tables** from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations.
-    - **Stream size and policy type** from Alberta Environment and Protected Areas and local (Survace Water Allocation Directive) and local jurisdictions (Water Management Plans)
+    - **Diversion Tables** data from current provincial policy and regulations - use layer toggles on the right to swap between diversion tables and other thresholds for available stations, toggle will appear above charts with diversion table data to swap between cutbacks and quartiles.
 
-    **📏 Threshold Definitions:** - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
+    ** Threshold Definitions:** 
+    - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
     - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
     - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
-    - **Q80/Q95:** Statistical low flows based on historical comparisons; Q80 means flow is exceeded 80% of the time - often used as a benchmark for the low end of "typical flow".  
-    - Q90: The flow value exceeded 90% of the time. This means the river flow is above this level 90% of the time—representing a more extreme low flow than Q80.
-    - Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
-    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion or daily limits
+    - **Q80/Q95:** Statistical low flows based on historical comparisons;
+    -     Q80: Flow is exceeded 80% of the time historically - often used as a benchmark for the low end of "typical flow".  
+    -     Q90: The flow value exceeded 90% of the time. This means the river flow historically is above this level 90% of the time—representing a more extreme low flow than Q80.
+    -     Q95: The flow exceeded 95% of the time, meaning the river is flowing above this very low level 95% of the time.  This is often considered a critical threshold for ecological health.
+    - **Cutbacks 1/2/3:** Phased reduction thresholds for diversions - can represent cutbacks in rate of diversion per second, daily limits or complete cutoff of diversion
 
     **🟢 Color Codes in Map:** - 🟢 Flow meets all thresholds  
     - 🔴 Flow below one or more thresholds  
     - 🟡 Intermediate (depends on stream size & Q-values)  
     - ⚪ Missing or insufficient data
-    - 🔵 **Blue border**: Station has a Diversion Table (click layer on right for additional thresholds)
+    - 🔵 **Blue border**: Station has a Diversion Table (click toggle on right above data table for additional thresholds)
 
     _🚧 This app is under development. Thanks for your patience — and coffee! ☕ - Lyndsay Greenwood_
     """)
