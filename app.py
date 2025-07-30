@@ -22,11 +22,18 @@ st.set_page_config(layout="wide")
 query_params = st.query_params
 selected_station = query_params.get('station', [None])[0]
 
-if selected_station:
-    st.session_state.selected_station = selected_station.strip().upper()
-else:
-    if 'selected_station' not in st.session_state:
-        st.session_state.selected_station = None
+# --- Mobile Detection ---
+# Get screen width using JavaScript evaluation for responsive layout
+# Only run once at the start, or on specific events to avoid constant re-evaluation
+# --- Initializing session state variables early ---
+if 'map_height_pixels' not in st.session_state:
+    st.session_state.map_height_pixels = 1200 # Default to desktop height
+
+if 'selected_station' not in st.session_state:
+    st.session_state.selected_station = None
+
+if 'show_station_details_expander' not in st.session_state:
+    st.session_state.show_station_details_expander = False
 
 def sync_url_to_session():
     query_params = st.query_params  # <-- changed here
@@ -35,7 +42,16 @@ def sync_url_to_session():
         if st.session_state.selected_station != station_from_url.strip().upper():
             st.session_state.selected_station = station_from_url.strip().upper()
             st.experimental_rerun()
+# --- Get screen width using streamlit_js_eval ---
+# Do this early so is_mobile is determined before layout decisions
+# Add a key to streamlit_js_eval for stability
+browser_width = streamlit_js_eval(js_expressions='screen.width', want_output=True, key='browser_width_eval')
 
+# Set is_mobile based on the returned width, or default to False if None (initial load)
+if browser_width is not None:
+    is_mobile = browser_width < 768
+else:
+    is_mobile = False # Default to desktop layout if width is not yet available
 sync_url_to_session()
 
 # --- Paths ---
@@ -194,7 +210,7 @@ def get_color_for_date(row, date):
     elif policy == 'WMP':
         return compliance_color_WMP(flow, extract_thresholds(daily))
     return 'gray'
-    
+
 
 # --- Streamlit Sidebar Elements ---
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
@@ -293,7 +309,10 @@ def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height='1200px')
+     # Adjust map height based on mobile detection
+    map_height_pixels = 300 if is_mobile else 1200
+    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
+    st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -336,7 +355,7 @@ def render_map_clickable(merged, selected_dates):
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=False).add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
     return m
 
 # --- Plotly chart function for selected station ---
@@ -568,54 +587,138 @@ def render_station_table(row, selected_dates, show_diversion=False):
     return html
     st.markdown(html, unsafe_allow_html=True)
 
-col1, col2 = st.columns([5, 2])
+if is_mobile:
+    # --- Mobile Layout ---
+    st.header("Interactive Map")
+    st.markdown("---") # Separator for visual clarity on mobile
 
-with col1:
-    m = render_map_clickable(merged, selected_dates)
+    with st.expander("Station Details - Select a station and click v for more info", expanded=st.session_state.show_station_details_expander):
+        # --- NEW DEBUG INFO INSIDE EXPANDER START ---
+               
+        if st.session_state.get('selected_station'):
+            station_code = st.session_state.selected_station
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+            
+                        
+            if not row.empty:
+                
+                row = row.iloc[0]
+
+                has_div = station_code in diversion_tables
+                
+
+                if has_div:
+                    toggle_key = f"show_diversion_{station_code}_mobile"
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                else:
+                    show_diversion = False
+
+                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+                st.markdown(html_table, unsafe_allow_html=True)
+                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+            else:
+                st.write("Station data not found for selected station. Check data loading/filtering.")
+        else:
+            st.write("Click a station on the map to see its flow chart and data table here.")
+        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
+
+    # Set mobile map height here
+    # You already had map_height_pixels = 100 in render_map_clickable.
+    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
+    # and use that value directly in st_folium.
+
+    m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
+
     clicked_data = st_folium(
         m,
-        height=1200,           # Adjust height here
-        width=1000,            # Add a fixed width if you want — optional if you're using columns
-        use_container_width=True  # Will still try to fill the container width
+        height=st.session_state.map_height_pixels, # This uses the height set in render_map_clickable
+        use_container_width=True,
+        key="mobile_folium_map" # Unique key for mobile map
     )
 
 
-
-with col2:
+    # Station details appear below the map, inside an expander
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
         selected_wsc = clicked_data['last_object_clicked_tooltip']
         if selected_wsc:
             st.session_state.selected_station = selected_wsc.strip().upper()
+            # On mobile, we open the expander automatically when a station is clicked
+            st.session_state.show_station_details_expander = True
 
-    if st.session_state.get('selected_station'):
-        station_code = st.session_state.selected_station
-        row = merged[merged['WSC'].str.strip().str.upper() == station_code]
-        if not row.empty:
-            row = row.iloc[0]
+    # Initialize expander state for mobile
+    if 'show_station_details_expander' not in st.session_state:
+        st.session_state.show_station_details_expander = False
 
-            # Check if diversion data is available for this station
-            has_div = station_code in diversion_tables
+    st.markdown("---") # Separator for visual clarity on mobile
 
-            # Show toggle if diversion data exists
-            if has_div:
-                # Use session_state to preserve toggle across reruns
-                toggle_key = f"show_diversion_{station_code}"
-                if toggle_key not in st.session_state:
-                    st.session_state[toggle_key] = False
-                show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+    with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
+        if st.session_state.get('selected_station'):
+            station_code = st.session_state.selected_station
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+            if not row.empty:
+                row = row.iloc[0]
+
+                has_div = station_code in diversion_tables
+                if has_div:
+                    toggle_key = f"show_diversion_{station_code}_mobile"
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                else:
+                    show_diversion = False
+
+                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+                st.markdown(html_table, unsafe_allow_html=True)
+                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
             else:
-                show_diversion = False
-
-            # Render the compliance table HTML and display it
-            html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
-            st.markdown(html_table, unsafe_allow_html=True)
-
-            # Then plot the chart below
-            plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+                st.write("Station data not found.")
         else:
-            st.write("Station data not found.")
-    else:
-        st.write("Click a station on the map to see its flow chart and data table here.")
+            st.write("Click a station on the map to see its flow chart and data table here.")
+
+else:
+    # --- Desktop Layout (Original) ---
+    col1, col2 = st.columns([5, 2])
+
+    with col1:
+        st.header("Interactive Map") # Add header for consistency
+        m = render_map_clickable(merged, selected_dates)
+        clicked_data = st_folium(
+            m,
+            height=1200,
+            use_container_width=True,
+            key="desktop_folium_map" # Unique key for desktop map
+        )
+
+    with col2:
+        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+            selected_wsc = clicked_data['last_object_clicked_tooltip']
+            if selected_wsc:
+                st.session_state.selected_station = selected_wsc.strip().upper()
+
+        if st.session_state.get('selected_station'):
+            station_code = st.session_state.selected_station
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+            if not row.empty:
+                row = row.iloc[0]
+
+                has_div = station_code in diversion_tables
+                if has_div:
+                    toggle_key = f"show_diversion_{station_code}_desktop"
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                else:
+                    show_diversion = False
+
+                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+                st.markdown(html_table, unsafe_allow_html=True)
+                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+            else:
+                st.write("Station data not found.")
+        else:
+            st.write("Click a station on the map to see its flow chart and data table here.")
 
 
 
