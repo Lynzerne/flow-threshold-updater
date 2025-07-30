@@ -310,7 +310,7 @@ def render_map_clickable(merged, selected_dates):
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
      # Adjust map height based on mobile detection
-    map_height_pixels = 100 if is_mobile else 1200
+    map_height_pixels = 300 if is_mobile else 1200
     m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
     st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
     Fullscreen().add_to(m)
@@ -590,26 +590,27 @@ def render_station_table(row, selected_dates, show_diversion=False):
 if is_mobile:
     # --- Mobile Layout ---
     st.header("Interactive Map")
-    # --- DEBUG INFO START ---
+    # --- DEBUG INFO START (These should now appear above the map if is_mobile is True) ---
     st.write(f"DEBUG: App thinks it's mobile: {is_mobile} (Screen Width Threshold: < 768px)")
     st.write(f"DEBUG: Selected Station: {st.session_state.get('selected_station')}")
     st.write(f"DEBUG: Show Expander State: {st.session_state.get('show_station_details_expander')}")
+    st.write(f"DEBUG: Map height pixels being set to: {st.session_state.map_height_pixels}") # Adding this for clear confirmation
     # --- DEBUG INFO END ---
-    m = render_map_clickable(merged, selected_dates)
+
+    # Set mobile map height here
+    # You already had map_height_pixels = 100 in render_map_clickable.
+    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
+    # and use that value directly in st_folium.
+
+    m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
+
     clicked_data = st_folium(
         m,
-        height=st.session_state.map_height_pixels, # Use the dynamically set height
+        height=st.session_state.map_height_pixels, # This uses the height set in render_map_clickable
         use_container_width=True,
         key="mobile_folium_map" # Unique key for mobile map
     )
 
-    m = render_map_clickable(merged, selected_dates)
-    clicked_data = st_folium(
-        m,
-        height=st.session_state.map_height_pixels, # Use the dynamically set height
-        use_container_width=True,
-        key="mobile_folium_map" # Unique key for mobile map
-    )
 
     # Station details appear below the map, inside an expander
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
