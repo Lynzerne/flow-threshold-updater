@@ -367,7 +367,7 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=wsc
+            tooltip=f"{wsc} – {station_name or 'Unknown'}"
         )
         marker.add_to(fg_all)
 
@@ -380,7 +380,7 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=wsc
+                tooltip=f"{wsc} – {station_name or 'Unknown'}"
             )
             marker2.add_to(fg_diversion)
 
@@ -580,7 +580,7 @@ def render_station_table(row, selected_dates, show_diversion=False):
 
     threshold_labels = sorted(threshold_labels)
 
-    html = f"<h4>{row['station_name']}</h4>"
+    html = f"<h4>{row['station_name']} ({row['station_no']})</h4>"
 
     # Add scrollable container for wide tables
     html += """
