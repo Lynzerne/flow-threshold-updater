@@ -186,17 +186,48 @@ def compliance_color_WMP(flow, thresholds):
 def compliance_color_SWA(stream_size, flow, q80, q95):
     if any(x is None or pd.isna(x) for x in [flow, q80]):
         return 'gray'
-    if flow > q80:
-        return 'green'
+
     if stream_size == 'Large':
-        return 'yellow'
+        return 'green' if flow > q80 else 'yellow'
+
     elif stream_size == 'Medium':
         if q95 is None or pd.isna(q95):
             return 'gray'
-        return 'yellow' if flow > q95 else 'red'
+        if flow > q80:
+            return 'green'
+        elif flow > q95:
+            return 'yellow'
+        else:
+            return 'red'
+
     elif stream_size == 'Small':
-        return 'red'
+        return 'green' if flow > q80 else 'red'
+
     return 'gray'
+
+def compliance_color_diversion(flow, thresholds):
+    if flow is None or pd.isna(flow):
+        return 'gray'
+
+    cb1 = thresholds.get('Cutback1')
+    cb2 = thresholds.get('Cutback2')
+    cb3 = thresholds.get('Cutback3') or thresholds.get('Cutoff')
+
+    # Ensure at least one threshold exists
+    if cb1 is None and cb2 is None and cb3 is None:
+        return 'gray'
+
+    try:
+        if cb1 is not None and flow > cb1:
+            return 'green'
+        elif cb2 is not None and flow > cb2:
+            return 'yellow'
+        elif cb3 is not None and flow > cb3:
+            return 'orange'
+        else:
+            return 'red'
+    except:
+        return 'gray'
 
 def get_color_for_date(row, date):
     daily = extract_daily_data(row['time_series'], date)
@@ -531,14 +562,21 @@ def render_station_table(row, selected_dates, show_diversion=False):
         threshold_sets.append(thresholds)
         threshold_labels.update(thresholds.keys())
 
-        daily_colors.append(
-            compliance_color_SWA(stream_size, df, daily.get('Q80'), daily.get('Q95'))
-            if policy == 'SWA' else compliance_color_WMP(df, thresholds)
-        )
-        calc_colors.append(
-            compliance_color_SWA(stream_size, cf, daily.get('Q80'), daily.get('Q95'))
-            if policy == 'SWA' else compliance_color_WMP(cf, thresholds)
-        )
+        if show_diversion and wsc in diversion_tables:
+            daily_color = compliance_color_diversion(df, thresholds)
+            calc_color = compliance_color_diversion(cf, thresholds)
+        else:
+            daily_color = (
+                compliance_color_SWA(stream_size, df, daily.get('Q80'), daily.get('Q95'))
+                if policy == 'SWA' else compliance_color_WMP(df, thresholds)
+            )
+            calc_color = (
+                compliance_color_SWA(stream_size, cf, daily.get('Q80'), daily.get('Q95'))
+                if policy == 'SWA' else compliance_color_WMP(cf, thresholds)
+            )
+        
+        daily_colors.append(daily_color)
+        calc_colors.append(calc_color)
 
     threshold_labels = sorted(threshold_labels)
 
@@ -719,6 +757,7 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
 
 
 
