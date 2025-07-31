@@ -349,6 +349,8 @@ def render_map_clickable(merged, selected_dates):
 
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
+    station_name = row.get('station_name', 'Unknown')
+    popup = folium.Popup(station_name, max_width=300)
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
@@ -370,7 +372,7 @@ def render_map_clickable(merged, selected_dates):
             fill_color=compliance_color,
             fill_opacity=0.7,
             tooltip=wsc,
-            popup=folium.Popup(full_html, max_width=300),
+            popup=popup
         )
         marker.add_to(fg_all)
 
@@ -384,7 +386,7 @@ def render_map_clickable(merged, selected_dates):
                 fill_color=compliance_color,
                 fill_opacity=0.7,
                 tooltip=wsc,
-                popup=folium.Popup(full_html, max_width=300),
+                popup=popup
             )
             marker2.add_to(fg_diversion)
 
