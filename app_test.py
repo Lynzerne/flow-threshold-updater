@@ -368,7 +368,7 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=f"{wsc} – {station_name or 'Unknown'}"
+            tooltip=f"{station_name} ({wsc})"
         )
         marker.add_to(fg_all)
 
@@ -381,7 +381,7 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=f"{wsc} – {station_name or 'Unknown'}"
+                tooltip=f"{station_name} ({wsc})"
             )
             marker2.add_to(fg_diversion)
 
@@ -678,11 +678,17 @@ if is_mobile:
     )
 
 
+   import re
+
+# --- Mobile Layout ---
+if st.session_state.get("is_mobile"):
     # Station details appear below the map, inside an expander
     if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-        selected_wsc = clicked_data['last_object_clicked_tooltip']
-        if selected_wsc:
-            st.session_state.selected_station = selected_wsc.strip().upper()
+        raw_tooltip = clicked_data.get('last_object_clicked_tooltip', '')
+        match = re.search(r"\(([^)]+)\)$", raw_tooltip)  # Extract WSC from "(WSC)"
+        if match:
+            selected_wsc = match.group(1).strip().upper()
+            st.session_state.selected_station = selected_wsc
             # On mobile, we open the expander automatically when a station is clicked
             st.session_state.show_station_details_expander = True
 
@@ -690,7 +696,7 @@ if is_mobile:
     if 'show_station_details_expander' not in st.session_state:
         st.session_state.show_station_details_expander = False
 
-    st.markdown("---") # Separator for visual clarity on mobile
+    st.markdown("---")  # Separator for visual clarity on mobile
 
     with st.expander("Station Details", expanded=st.session_state.show_station_details_expander):
         if st.session_state.get('selected_station'):
@@ -704,7 +710,11 @@ if is_mobile:
                     toggle_key = f"show_diversion_{station_code}_mobile"
                     if toggle_key not in st.session_state:
                         st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                    show_diversion = st.checkbox(
+                        "Show diversion table thresholds",
+                        value=st.session_state[toggle_key],
+                        key=toggle_key
+                    )
                 else:
                     show_diversion = False
 
@@ -716,25 +726,27 @@ if is_mobile:
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
 
+# --- Desktop Layout ---
 else:
-    # --- Desktop Layout (Original) ---
     col1, col2 = st.columns([5, 2])
 
     with col1:
-        st.header("Interactive Map") # Add header for consistency
+        st.header("Interactive Map")
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
             height=1200,
             use_container_width=True,
-            key="desktop_folium_map" # Unique key for desktop map
+            key="desktop_folium_map"
         )
 
     with col2:
         if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-            selected_wsc = clicked_data['last_object_clicked_tooltip']
-            if selected_wsc:
-                st.session_state.selected_station = selected_wsc.strip().upper()
+            raw_tooltip = clicked_data.get('last_object_clicked_tooltip', '')
+            match = re.search(r"\(([^)]+)\)$", raw_tooltip)
+            if match:
+                selected_wsc = match.group(1).strip().upper()
+                st.session_state.selected_station = selected_wsc
 
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
@@ -747,7 +759,11 @@ else:
                     toggle_key = f"show_diversion_{station_code}_desktop"
                     if toggle_key not in st.session_state:
                         st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                    show_diversion = st.checkbox(
+                        "Show diversion table thresholds",
+                        value=st.session_state[toggle_key],
+                        key=toggle_key
+                    )
                 else:
                     show_diversion = False
 
@@ -758,7 +774,6 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
-
 
 
 
