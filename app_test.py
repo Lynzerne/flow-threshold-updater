@@ -369,7 +369,7 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=wsc
+            tooltip=wsc,
             popup=folium.Popup(full_html, max_width=300),
         )
         marker.add_to(fg_all)
@@ -383,7 +383,7 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=wsc
+                tooltip=wsc,
                 popup=folium.Popup(full_html, max_width=300),
             )
             marker2.add_to(fg_diversion)
