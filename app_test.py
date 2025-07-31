@@ -353,44 +353,52 @@ def render_map_clickable(merged, selected_dates):
 
 
     for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper()
-        station_name = row.get('station_name', 'Unknown')
-        popup = folium.Popup(station_name, max_width=300)
-
-        date = get_most_recent_valid_date(row, selected_dates)
-        compliance_color = get_color_for_date(row, date)
-
-        border_color = 'blue' if wsc in diversion_tables else 'black'
-
-        # Marker with tooltip only (station code) — NO popup here
-        marker = folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color=border_color,
-            weight=3,
-            fill=True,
-            fill_color=compliance_color,
-            fill_opacity=0.7,
-            tooltip=wsc,
-            popup=popup
-        )
-        marker.add_to(fg_all)
-
-        if wsc in diversion_tables:
-            marker2 = folium.CircleMarker(
+        try:
+            coords = [row['LAT'], row['LON']]
+            wsc = row['WSC'].strip().upper()
+            station_name = row.get('station_name', 'Unknown')
+    
+            # Compliance color, border color, etc.
+            date = get_most_recent_valid_date(row, selected_dates)
+            compliance_color = get_color_for_date(row, date)
+            border_color = 'blue' if wsc in diversion_tables else 'black'
+    
+            # Tooltip: just the station code (for click detection)
+            tooltip = wsc
+    
+            # Popup: station name
+            popup = folium.Popup(f"<b>{station_name}</b>", max_width=300)
+    
+            # Marker for all stations
+            marker = folium.CircleMarker(
                 location=coords,
                 radius=7,
-                color='blue',
+                color=border_color,
                 weight=3,
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=wsc,
+                tooltip=tooltip,
                 popup=popup
             )
-            marker2.add_to(fg_diversion)
-
+            marker.add_to(fg_all)
+    
+            # Marker for diversion stations (optional second layer)
+            if wsc in diversion_tables:
+                marker2 = folium.CircleMarker(
+                    location=coords,
+                    radius=7,
+                    color='blue',
+                    weight=3,
+                    fill=True,
+                    fill_color=compliance_color,
+                    fill_opacity=0.7,
+                    tooltip=tooltip,
+                    popup=popup
+                )
+                marker2.add_to(fg_diversion)
+        except Exception as e:
+            print(f"Error adding marker for {row.get('WSC', 'unknown')}: {e}")
     fg_all.add_to(m)
     fg_diversion.add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
