@@ -186,16 +186,23 @@ def compliance_color_WMP(flow, thresholds):
 def compliance_color_SWA(stream_size, flow, q80, q95):
     if any(x is None or pd.isna(x) for x in [flow, q80]):
         return 'gray'
-    if flow > q80:
-        return 'green'
+
     if stream_size == 'Large':
-        return 'yellow'
+        return 'green' if flow > q80 else 'yellow'
+
     elif stream_size == 'Medium':
         if q95 is None or pd.isna(q95):
             return 'gray'
-        return 'yellow' if flow > q95 else 'red'
+        if flow > q80:
+            return 'green'
+        elif flow > q95:
+            return 'yellow'
+        else:
+            return 'red'
+
     elif stream_size == 'Small':
-        return 'red'
+        return 'green' if flow > q80 else 'red'
+
     return 'gray'
 
 def get_color_for_date(row, date):
