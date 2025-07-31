@@ -14,6 +14,7 @@ import os
 from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
+import re
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -678,7 +679,6 @@ if is_mobile:
     )
 
 
-   import re
 
 # --- Mobile Layout ---
 if st.session_state.get("is_mobile"):
