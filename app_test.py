@@ -349,13 +349,14 @@ def render_map_clickable(merged, selected_dates):
 
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
-    station_name = row.get('station_name', 'Unknown')
-    popup = folium.Popup(station_name, max_width=300)
+
+
 
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
         wsc = row['WSC'].strip().upper()
         station_name = row.get('station_name', 'Unknown')
+        popup = folium.Popup(station_name, max_width=300)
 
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
