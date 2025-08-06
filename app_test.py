@@ -364,7 +364,8 @@ def render_map_clickable(merged, selected_dates):
             location=coords,
             icon=folium.DivIcon(
                 html=f'<div title="{row["station_name"]}"></div>',
-                icon_size=(1, 1)  # Very tiny but avoids rendering issues
+                icon_size=(1, 1),      # required!
+                icon_anchor=(0, 0)     # prevents layout offset errors
             )
         )
         hover_label.add_to(fg_all)
@@ -386,7 +387,8 @@ def render_map_clickable(merged, selected_dates):
             location=coords,
             icon=folium.DivIcon(
                 html=f'<div title="{row["station_name"]}"></div>',
-                icon_size=(1, 1)  # Very tiny but avoids rendering issues
+                icon_size=(1, 1)  
+                icon_anchor=(0, 0)
             )
         )
         hover_label2.add_to(fg_diversion)
@@ -666,14 +668,9 @@ if is_mobile:
                 st.write("Station data not found for selected station. Check data loading/filtering.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
-        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
 
-    # Set mobile map height here
-    # You already had map_height_pixels = 100 in render_map_clickable.
-    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
-    # and use that value directly in st_folium.
 
-    m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
+    m = render_map_clickable(merged, selected_dates) 
 
     clicked_data = st_folium(
         m,
