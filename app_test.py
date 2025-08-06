@@ -349,7 +349,7 @@ def render_map_clickable(merged, selected_dates):
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
-    for _, row in merged.iterrows():
+for _, row in merged.iterrows():
     coords = [row['LAT'], row['LON']]
     wsc = row['WSC'].strip().upper()
     station_name = row['station_name']
