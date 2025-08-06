@@ -362,7 +362,10 @@ def render_map_clickable(merged, selected_dates):
 
         hover_label = folium.Marker(
             location=coords,
-            icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+            icon=folium.DivIcon(
+                html=f'<div title="{row["station_name"]}"></div>',
+                icon_size=(1, 1)  # Very tiny but avoids rendering issues
+            )
         )
         hover_label.add_to(fg_all)
 
@@ -379,10 +382,13 @@ def render_map_clickable(merged, selected_dates):
             )
             marker2.add_to(fg_diversion)
 
-            hover_label2 = folium.Marker(
-                location=coords,
-                icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+        hover_label2 = folium.Marker(
+            location=coords,
+            icon=folium.DivIcon(
+                html=f'<div title="{row["station_name"]}"></div>',
+                icon_size=(1, 1)  # Very tiny but avoids rendering issues
             )
+        )
             hover_label2.add_to(fg_diversion)
 
     fg_all.add_to(m)
