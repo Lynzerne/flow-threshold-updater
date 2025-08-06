@@ -349,72 +349,59 @@ def render_map_clickable(merged, selected_dates):
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
-for _, row in merged.iterrows():
-    coords = [row['LAT'], row['LON']]
-    wsc = row['WSC'].strip().upper()
-    station_name = row['station_name']
+    for _, row in merged.iterrows():
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC'].strip().upper()
+        station_name = row['station_name']
 
-    date = get_most_recent_valid_date(row, selected_dates)
-    compliance_color = get_color_for_date(row, date)
-    border_color = 'blue' if wsc in diversion_tables else 'black'
+        date = get_most_recent_valid_date(row, selected_dates)
+        compliance_color = get_color_for_date(row, date)
+        border_color = 'blue' if wsc in diversion_tables else 'black'
 
-    popup_html = f"{station_name} ({wsc})"
+        popup_html = f"{station_name} ({wsc})"
 
-    feature = {
-        "type": "Feature",
-        "properties": {
-            "tooltip": station_name,
-            "popup": popup_html,
-            "wsc": wsc
-        },
-        "geometry": {
-            "type": "Point",
-            "coordinates": [coords[1], coords[0]],  # [lon, lat]
+        feature = {
+            "type": "Feature",
+            "properties": {
+                "tooltip": station_name,
+                "popup": popup_html,
+                "wsc": wsc
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [coords[1], coords[0]],  # [lon, lat]
+            }
         }
-    }
 
-    folium.GeoJson(
-        feature,
-        tooltip=folium.Tooltip(station_name),
-        popup=folium.Popup(popup_html),
-        style_function=lambda x, color=compliance_color, border=border_color: {
-            "fillColor": color,
-            "color": border,
-            "weight": 3,
-            "fillOpacity": 0.7,
-            "radius": 7
-        },
-        marker=folium.CircleMarker()
-    ).add_to(fg_all)
+        folium.GeoJson(
+            feature,
+            tooltip=folium.Tooltip(station_name),
+            popup=folium.Popup(popup_html),
+            style_function=lambda x, color=compliance_color, border=border_color: {
+                "fillColor": color,
+                "color": border,
+                "weight": 3,
+                "fillOpacity": 0.7,
+                "radius": 7
+            },
+            marker=folium.CircleMarker()
+        ).add_to(fg_all)
 
-
-if wsc in diversion_tables:
-    diversion_feature = {
-        "type": "Feature",
-        "properties": {
-            "tooltip": station_name,
-            "popup": popup_html,
-            "wsc": wsc
-        },
-        "geometry": {
-            "type": "Point",
-            "coordinates": [coords[1], coords[0]],  # [lon, lat]
-        }
-    }
-
-    folium.GeoJson(
-        diversion_feature,
-        tooltip=folium.Tooltip(station_name),
-        popup=folium.Popup(popup_html),
-        style_function=lambda x, color=compliance_color: {
-            "fillColor": color,
-            "color": 'blue',
-            "weight": 3,
-            "fillOpacity": 0.7,
-            "radius": 7
-        },
-        marker=folium.CircleMarker()
-    ).add_to(fg_diversion)
+        if wsc in diversion_tables:
+            # Add a second marker for the diversion layer using same feature
+            folium.GeoJson(
+                feature,
+                tooltip=folium.Tooltip(station_name),
+                popup=folium.Popup(popup_html),
+                style_function=lambda x, color=compliance_color: {
+                    "fillColor": color,
+                    "color": 'blue',
+                    "weight": 3,
+                    "fillOpacity": 0.7,
+                    "radius": 7
+                },
+                marker=folium.CircleMarker()
+            ).add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
