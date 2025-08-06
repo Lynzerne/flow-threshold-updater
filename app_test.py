@@ -337,77 +337,44 @@ def get_most_recent_valid_date(row, dates):
 
 
 def render_map_clickable(merged, selected_dates):
+    import folium
+    from folium.plugins import MarkerCluster
+    from streamlit_folium import st_folium
+    import geopandas as gpd
+
+    # Set map center
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
-    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
+    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LONG'].mean()
+    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
 
-    map_height_pixels = 300 if is_mobile else 1200
-    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
-    st.session_state.map_height_pixels = map_height_pixels
-    Fullscreen().add_to(m)
-
-    fg_all = folium.FeatureGroup(name='All Stations')
-    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
+    # Add marker cluster
+    marker_cluster = MarkerCluster().add_to(m)
 
     for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper()
-        station_name = row['station_name']
+        wsc = row['WSC']
+        station_name = row.get('station_name', 'No name')
+        lat = row['lat'] if 'lat' in row else row['LAT']
+        lon = row['lon'] if 'lon' in row else row['LONG']
 
-        date = get_most_recent_valid_date(row, selected_dates)
-        compliance_color = get_color_for_date(row, date)
-        border_color = 'blue' if wsc in diversion_tables else 'black'
+        popup_html = f"""
+        <div style='font-size: 14px;'>
+            <b>{station_name}</b><br>
+            Station Code: <b>{wsc}</b>
+        </div>
+        """
 
-        # Tooltip with WSC and station name
-        tooltip = folium.Tooltip(f"<b>{wsc}</b><br>{station_name}", sticky=True)
+        tooltip_text = f"{wsc} | {station_name}"
 
-        # Popup just showing (WSC)
-        popup = folium.Popup(f"({wsc})", parse_html=True)
-
-        # Embed WSC in properties for click tracking
-        feature = {
-            "type": "Feature",
-            "properties": {
-                "tooltip": station_name,
-                "popup": f"({wsc})",  # fallback click text
-                "wsc": wsc
-            },
-            "geometry": {
-                "type": "Point",
-                "coordinates": [coords[1], coords[0]],  # [lon, lat]
-            }
-        }
-
-        folium.GeoJson(
-            feature,
-            tooltip=tooltip,
-            popup=popup,
-            style_function=lambda x, color=compliance_color, border=border_color: {
-                "fillColor": color,
-                "color": border,
-                "weight": 3,
-                "fillOpacity": 0.7,
-                "radius": 7
-            },
-            marker=folium.CircleMarker()
-        ).add_to(fg_all)
-
-        # Add to diversion group if applicable
-        if wsc in diversion_tables:
-            folium.CircleMarker(
-                location=coords,
-                radius=7,
-                color='blue',
-                weight=3,
-                fill=True,
-                fill_color=compliance_color,
-                fill_opacity=0.7,
-                tooltip=tooltip,
-                popup=popup
-            ).add_to(fg_diversion)
-
-    fg_all.add_to(m)
-    fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
+        folium.CircleMarker(
+            location=(lat, lon),
+            radius=6,
+            fill=True,
+            color="blue",
+            fill_opacity=0.7,
+            weight=1,
+            popup=popup_html,
+            tooltip=tooltip_text,
+        ).add_to(marker_cluster)
 
     return m
 
