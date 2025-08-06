@@ -14,6 +14,7 @@ import os
 from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
+import re
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -355,7 +356,7 @@ def render_map_clickable(merged, selected_dates):
 
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
-        popup_html = f"{station_name} ({wsc})"
+        popup_html = f"({wsc})"
 
         # All stations (black border or blue if diversion)
         border_color = 'blue' if wsc in diversion_tables else 'black'
@@ -688,11 +689,9 @@ if is_mobile:
         # Extract code inside brackets
         match = re.search(r"\(([^)]+)\)", popup_text)
         if match:
+
             selected_wsc = match.group(1).strip().upper()
             st.session_state.selected_station = selected_wsc
-        if selected_wsc:
-            st.session_state.selected_station = selected_wsc.strip().upper()
-            # On mobile, we open the expander automatically when a station is clicked
             st.session_state.show_station_details_expander = True
 
     # Initialize expander state for mobile
@@ -739,47 +738,44 @@ else:
             key="desktop_folium_map" # Unique key for desktop map
         )
 
-    with col2:
-        selected_wsc = None
-    
-        # --- Get station code from clicked GeoJson feature ---
-        if clicked_data and clicked_data.get("last_object_clicked"):
-            props = clicked_data["last_object_clicked"].get("properties", {})
-            selected_wsc = props.get("wsc", "").strip().upper()
-    
-            if selected_wsc:
-                st.session_state.selected_station = selected_wsc
-    
-        # --- Show data for selected station ---
-        if st.session_state.get("selected_station"):
-            station_code = st.session_state.selected_station
-            row = merged[merged["WSC"].str.strip().str.upper() == station_code]
-    
-            if not row.empty:
-                row = row.iloc[0]
-                has_div = station_code in diversion_tables
-    
-                if has_div:
-                    toggle_key = f"show_diversion_{station_code}_desktop"
-                    if toggle_key not in st.session_state:
-                        st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox(
-                        "Show diversion table thresholds",
-                        value=st.session_state[toggle_key],
-                        key=toggle_key,
-                    )
-                else:
-                    show_diversion = False
-    
-                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
-                st.markdown(html_table, unsafe_allow_html=True)
-                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
-    
-            else:
-                st.write("Station data not found.")
-        else:
-            st.write("Click a station on the map to see its flow chart and data table here.")
+   with col2:
+    selected_wsc = None
 
+    if clicked_data and clicked_data.get("last_object_clicked"):
+        props = clicked_data["last_object_clicked"].get("properties", {})
+        wsc_raw = props.get("wsc")
+        selected_wsc = wsc_raw.strip().upper() if isinstance(wsc_raw, str) else None
+
+        if selected_wsc:
+            st.session_state.selected_station = selected_wsc
+
+    if st.session_state.get("selected_station"):
+        station_code = st.session_state.selected_station
+        row = merged[merged["WSC"].str.strip().str.upper() == station_code]
+
+        if not row.empty:
+            row = row.iloc[0]
+            has_div = station_code in diversion_tables
+
+            if has_div:
+                toggle_key = f"show_diversion_{station_code}_desktop"
+                if toggle_key not in st.session_state:
+                    st.session_state[toggle_key] = False
+                show_diversion = st.checkbox(
+                    "Show diversion table thresholds",
+                    value=st.session_state[toggle_key],
+                    key=toggle_key,
+                )
+            else:
+                show_diversion = False
+
+            html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+            st.markdown(html_table, unsafe_allow_html=True)
+            plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+        else:
+            st.write("Station data not found.")
+    else:
+        st.write("Click a station on the map to see its flow chart and data table here.")
 
 
 
