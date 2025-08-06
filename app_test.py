@@ -699,7 +699,8 @@ def render_station_table(row, selected_dates, show_diversion=False):
         else:
             st.write("Click a station on the map or enter a number above.")
 
-
+else:
+    # --- Desktop Layout (Original) ---
     col1, col2 = st.columns([5, 2])
 
     with col1:
