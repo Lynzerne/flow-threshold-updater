@@ -360,15 +360,15 @@ def render_map_clickable(merged, selected_dates):
         )
         marker.add_to(fg_all)
 
-        hover_label = folium.Marker(
-            location=coords,
-            icon=folium.DivIcon(
-                html=f'<div title="{row["station_name"]}"></div>',
-                icon_size=(1, 1),     
-                icon_anchor=(0, 0)     
-            )
-        )
-        hover_label.add_to(fg_all)
+        #hover_label = folium.Marker(
+         #   location=coords,
+          #  icon=folium.DivIcon(
+           #     html=f'<div title="{row["station_name"]}"></div>',
+            #    icon_size=(1, 1),     
+             #   icon_anchor=(0, 0)     
+            #)
+        #)
+        #hover_label.add_to(fg_all)
 
         if wsc in diversion_tables:
             marker2 = folium.CircleMarker(
@@ -383,15 +383,15 @@ def render_map_clickable(merged, selected_dates):
             )
             marker2.add_to(fg_diversion)
 
-        hover_label2 = folium.Marker(
-            location=coords,
-            icon=folium.DivIcon(
-                html=f'<div title="{row["station_name"]}"></div>',
-                icon_size=(1, 1),  
-                icon_anchor=(0, 0)
-            )
-        )
-        hover_label2.add_to(fg_diversion)
+        #hover_label2 = folium.Marker(
+         #   location=coords,
+          #  icon=folium.DivIcon(
+           #     html=f'<div title="{row["station_name"]}"></div>',
+            #    icon_size=(1, 1),  
+             #   icon_anchor=(0, 0)
+            #)
+        #)
+        #hover_label2.add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
