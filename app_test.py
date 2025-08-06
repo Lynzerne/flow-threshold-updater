@@ -357,6 +357,7 @@ def render_map_clickable(merged, selected_dates):
         compliance_color = get_color_for_date(row, date)
 
         border_color = 'blue' if wsc in diversion_tables else 'black'
+        popup_html = f"({station_name})"
 
         # Marker with tooltip only (station code) — NO popup here
         marker = folium.CircleMarker(
@@ -367,7 +368,8 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=wsc
+            tooltip=wsc,
+            popup=popup_html
         )
         marker.add_to(fg_all)
 
@@ -380,7 +382,8 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=wsc
+                tooltip=wsc,
+                popup=popup_html
             )
             marker2.add_to(fg_diversion)
 
