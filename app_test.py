@@ -337,47 +337,57 @@ def get_most_recent_valid_date(row, dates):
 
 
 def render_map_clickable(merged, selected_dates):
-    import folium
-    from folium.plugins import MarkerCluster
-    from streamlit_folium import st_folium
-    import geopandas as gpd
-
-    # Set map center
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
-    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LONG'].mean()
-    m = folium.Map(location=[mean_lat, mean_lon], zoom_start=6)
+    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    # Add marker cluster
-    marker_cluster = MarkerCluster().add_to(m)
+     # Adjust map height based on mobile detection
+    map_height_pixels = 300 if is_mobile else 1200
+    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
+    st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
+    Fullscreen().add_to(m)
+
+    fg_all = folium.FeatureGroup(name='All Stations')
+    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-        wsc = row['WSC']
-        station_name = row.get('station_name', 'No name')
-        lat = row['lat'] if 'lat' in row else row['LAT']
-        lon = row['lon'] if 'lon' in row else row['LONG']
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC'].strip().upper()
 
-        popup_html = f"""
-        <div style='font-size: 14px;'>
-            <b>{station_name}</b><br>
-            Station Code: <b>{wsc}</b>
-        </div>
-        """
+        date = get_most_recent_valid_date(row, selected_dates)
+        compliance_color = get_color_for_date(row, date)
 
-        tooltip_text = f"{wsc} | {station_name}"
+        border_color = 'blue' if wsc in diversion_tables else 'black'
 
-        folium.CircleMarker(
-            location=(lat, lon),
-            radius=6,
+        # Marker with tooltip only (station code) — NO popup here
+        marker = folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color=border_color,
+            weight=3,
             fill=True,
-            color="blue",
+            fill_color=compliance_color,
             fill_opacity=0.7,
-            weight=1,
-            popup=popup_html,
-            tooltip=tooltip_text,
-        ).add_to(marker_cluster)
+            tooltip=wsc, station_name
+        )
+        marker.add_to(fg_all)
 
+        if wsc in diversion_tables:
+            marker2 = folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=compliance_color,
+                fill_opacity=0.7,
+                tooltip=wsc
+            )
+            marker2.add_to(fg_diversion)
+
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
     return m
-
 
 # --- Plotly chart function for selected station ---
 
@@ -720,45 +730,38 @@ else:
         )
 
     with col2:
-        selected_wsc = None
-    
-        # Try to get WSC from clicked GeoJson feature
-        if clicked_data and clicked_data.get("last_object_clicked"):
-            props = clicked_data["last_object_clicked"].get("properties", {})
-            selected_wsc = props.get("wsc", "").strip().upper()
+        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+            selected_wsc = clicked_data['last_object_clicked_tooltip']
             if selected_wsc:
-                st.session_state.selected_station = selected_wsc
-    
-        # --- Show station data if selected ---
-        if st.session_state.get("selected_station"):
+                st.session_state.selected_station = selected_wsc.strip().upper()
+
+        if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
-            row = merged[merged["WSC"].str.strip().str.upper() == station_code]
-    
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
             if not row.empty:
                 row = row.iloc[0]
+
                 has_div = station_code in diversion_tables
-    
                 if has_div:
                     toggle_key = f"show_diversion_{station_code}_desktop"
                     if toggle_key not in st.session_state:
                         st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox(
-                        "Show diversion table thresholds",
-                        value=st.session_state[toggle_key],
-                        key=toggle_key,
-                    )
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
                 else:
                     show_diversion = False
-    
-                # Render HTML table and chart
+
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
-    
             else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
+
+
+
+
 
 
 
