@@ -359,44 +359,50 @@ def render_map_clickable(merged, selected_dates):
         border_color = 'blue' if wsc in diversion_tables else 'black'
 
         # Marker with tooltip only (station code) — NO popup here
-        marker = folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color=border_color,
-            weight=3,
-            fill=True,
-            fill_color=compliance_color,
-            fill_opacity=0.7,
-            tooltip=wsc
-        )
-        marker.add_to(fg_all)
-        hover_label = folium.Marker(
-            location=coords,
-            icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
-        )
-        hover_label.add_to(fg_all)
+marker = folium.CircleMarker(
+    location=coords,
+    radius=7,
+    color=border_color,
+    weight=3,
+    fill=True,
+    fill_color=compliance_color,
+    fill_opacity=0.7,
+    tooltip=wsc
+)
+marker.add_to(fg_all)
 
-        if wsc in diversion_tables:
-            marker2 = folium.CircleMarker(
-                location=coords,
-                radius=7,
-                color='blue',
-                weight=3,
-                fill=True,
-                fill_color=compliance_color,
-                fill_opacity=0.7,
-                tooltip=wsc,
-        )
-        marker2.add_to(fg_diversion)
-        hover_label2 = folium.Marker(
-            location=coords,
-            icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
-        )
-        hover_label2.add_to(fg_diversion)
-        fg_all.add_to(m)
-        fg_diversion.add_to(m)
-        folium.LayerControl(collapsed=True).add_to(m)
-        return m
+# Hover tooltip for base marker
+hover_label = folium.Marker(
+    location=coords,
+    icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+)
+hover_label.add_to(fg_all)
+
+# Diversion marker + hover label (only if applicable)
+if wsc in diversion_tables:
+    marker2 = folium.CircleMarker(
+        location=coords,
+        radius=7,
+        color='blue',
+        weight=3,
+        fill=True,
+        fill_color=compliance_color,
+        fill_opacity=0.7,
+        tooltip=wsc
+    )
+    marker2.add_to(fg_diversion)
+
+    hover_label2 = folium.Marker(
+        location=coords,
+        icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+    )
+    hover_label2.add_to(fg_diversion)
+
+# Add layers and return the map
+fg_all.add_to(m)
+fg_diversion.add_to(m)
+folium.LayerControl(collapsed=True).add_to(m)
+return m
 
 # --- Plotly chart function for selected station ---
 
