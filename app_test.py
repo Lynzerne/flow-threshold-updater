@@ -364,8 +364,8 @@ def render_map_clickable(merged, selected_dates):
             location=coords,
             icon=folium.DivIcon(
                 html=f'<div title="{row["station_name"]}"></div>',
-                icon_size=(1, 1),      # required!
-                icon_anchor=(0, 0)     # prevents layout offset errors
+                icon_size=(1, 1),     
+                icon_anchor=(0, 0)     
             )
         )
         hover_label.add_to(fg_all)
@@ -387,7 +387,7 @@ def render_map_clickable(merged, selected_dates):
             location=coords,
             icon=folium.DivIcon(
                 html=f'<div title="{row["station_name"]}"></div>',
-                icon_size=(1, 1)  
+                icon_size=(1, 1),  
                 icon_anchor=(0, 0)
             )
         )
