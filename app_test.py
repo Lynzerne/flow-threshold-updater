@@ -419,7 +419,7 @@ if wsc in diversion_tables:
     fg_all.add_to(m)
     fg_diversion.add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
-        return m
+    return m
 
 
 # --- Plotly chart function for selected station ---
