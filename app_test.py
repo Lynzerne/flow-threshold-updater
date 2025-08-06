@@ -337,17 +337,28 @@ def get_most_recent_valid_date(row, dates):
 
 
 def render_map_clickable(merged, selected_dates):
-    m = folium.Map(location=[55, -115], zoom_start=6)
+    mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
+    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    fg_all = folium.FeatureGroup(name="All stations", show=True)
-    fg_diversion = folium.FeatureGroup(name="Diversion stations", show=False)
+     # Adjust map height based on mobile detection
+    map_height_pixels = 300 if is_mobile else 1200
+    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
+    st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
+    Fullscreen().add_to(m)
+
+    fg_all = folium.FeatureGroup(name='All Stations')
+    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-        wsc = row["WSC"]
-        coords = [row["lat"], row["lon"]]
-        compliance_color = row.get("compliance_color", "gray")
-        border_color = row.get("border_color", "black")
+        coords = [row['LAT'], row['LON']]
+        wsc = row['WSC'].strip().upper()
 
+        date = get_most_recent_valid_date(row, selected_dates)
+        compliance_color = get_color_for_date(row, date)
+
+        border_color = 'blue' if wsc in diversion_tables else 'black'
+
+        # Marker with tooltip only (station code) — NO popup here
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
@@ -359,16 +370,6 @@ def render_map_clickable(merged, selected_dates):
             tooltip=wsc
         )
         marker.add_to(fg_all)
-
-        #hover_label = folium.Marker(
-         #   location=coords,
-          #  icon=folium.DivIcon(
-           #     html=f'<div title="{row["station_name"]}"></div>',
-            #    icon_size=(1, 1),     
-             #   icon_anchor=(0, 0)     
-            #)
-        #)
-        #hover_label.add_to(fg_all)
 
         if wsc in diversion_tables:
             marker2 = folium.CircleMarker(
@@ -383,19 +384,10 @@ def render_map_clickable(merged, selected_dates):
             )
             marker2.add_to(fg_diversion)
 
-        #hover_label2 = folium.Marker(
-         #   location=coords,
-          #  icon=folium.DivIcon(
-           #     html=f'<div title="{row["station_name"]}"></div>',
-            #    icon_size=(1, 1),  
-             #   icon_anchor=(0, 0)
-            #)
-        #)
-        #hover_label2.add_to(fg_diversion)
-
     fg_all.add_to(m)
     fg_diversion.add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
+    return m
 
 # --- Plotly chart function for selected station ---
 
@@ -668,9 +660,14 @@ if is_mobile:
                 st.write("Station data not found for selected station. Check data loading/filtering.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
 
+    # Set mobile map height here
+    # You already had map_height_pixels = 100 in render_map_clickable.
+    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
+    # and use that value directly in st_folium.
 
-    m = render_map_clickable(merged, selected_dates) 
+    m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
 
     clicked_data = st_folium(
         m,
@@ -760,6 +757,8 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
+
 
 
 
