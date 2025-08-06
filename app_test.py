@@ -340,10 +340,9 @@ def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
-    # Adjust map height based on mobile detection
     map_height_pixels = 300 if is_mobile else 1200
     m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
-    st.session_state.map_height_pixels = map_height_pixels  # Store in session state for st_folium
+    st.session_state.map_height_pixels = map_height_pixels
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -356,54 +355,42 @@ def render_map_clickable(merged, selected_dates):
 
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
-        border_color = 'blue' if wsc in diversion_tables else 'black'
-
         popup_html = f"{station_name} ({wsc})"
 
-        feature = {
-            "type": "Feature",
-            "properties": {
-                "tooltip": station_name,
-                "popup": popup_html,
-                "wsc": wsc
-            },
-            "geometry": {
-                "type": "Point",
-                "coordinates": [coords[1], coords[0]],  # [lon, lat]
-            }
-        }
+        # All stations (black border or blue if diversion)
+        border_color = 'blue' if wsc in diversion_tables else 'black'
+        marker = folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color=border_color,
+            weight=3,
+            fill=True,
+            fill_color=compliance_color,
+            fill_opacity=0.7,
+            tooltip=station_name,
+            popup=popup_html
+        )
+        marker.add_to(fg_all)
 
-        folium.GeoJson(
-            feature,
-            tooltip=folium.Tooltip(station_name),
-            style_function=lambda x, color=compliance_color, border=border_color: {
-                "fillColor": color,
-                "color": border,
-                "weight": 3,
-                "fillOpacity": 0.7,
-                "radius": 7
-            },
-            marker=folium.CircleMarker()
-        ).add_to(fg_all)
-
+        # Diversion-only overlay layer
         if wsc in diversion_tables:
-            # Add a second marker for the diversion layer using same feature
-            folium.GeoJson(
-                feature,
-                tooltip=folium.Tooltip(station_name),
-                style_function=lambda x, color=compliance_color: {
-                    "fillColor": color,
-                    "color": 'blue',
-                    "weight": 3,
-                    "fillOpacity": 0.7,
-                    "radius": 7
-                },
-                marker=folium.CircleMarker()
-            ).add_to(fg_diversion)
+            diversion_marker = folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=compliance_color,
+                fill_opacity=0.7,
+                tooltip=station_name,
+                popup=popup_html
+            )
+            diversion_marker.add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
+
     return m
 
 
