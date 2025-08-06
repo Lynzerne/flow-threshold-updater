@@ -399,10 +399,10 @@ if wsc in diversion_tables:
     hover_label2.add_to(fg_diversion)
 
 # Add layers and return the map
-fg_all.add_to(m)
-fg_diversion.add_to(m)
-folium.LayerControl(collapsed=True).add_to(m)
-return m
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
+    return m
 
 # --- Plotly chart function for selected station ---
 
