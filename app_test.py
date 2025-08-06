@@ -14,7 +14,6 @@ import os
 from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
-import re
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -341,9 +340,10 @@ def render_map_clickable(merged, selected_dates):
     mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
     mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
 
+     # Adjust map height based on mobile detection
     map_height_pixels = 300 if is_mobile else 1200
     m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
-    st.session_state.map_height_pixels = map_height_pixels
+    st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
     Fullscreen().add_to(m)
 
     fg_all = folium.FeatureGroup(name='All Stations')
@@ -352,14 +352,13 @@ def render_map_clickable(merged, selected_dates):
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
         wsc = row['WSC'].strip().upper()
-        station_name = row['station_name']
 
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
-        popup_html = f"({wsc})"
 
-        # All stations (black border or blue if diversion)
         border_color = 'blue' if wsc in diversion_tables else 'black'
+
+        # Marker with tooltip only (station code) — NO popup here
         marker = folium.CircleMarker(
             location=coords,
             radius=7,
@@ -368,14 +367,12 @@ def render_map_clickable(merged, selected_dates):
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=station_name,
-            popup=popup_html
+            tooltip=wsc
         )
         marker.add_to(fg_all)
 
-        # Diversion-only overlay layer
         if wsc in diversion_tables:
-            diversion_marker = folium.CircleMarker(
+            marker2 = folium.CircleMarker(
                 location=coords,
                 radius=7,
                 color='blue',
@@ -383,17 +380,14 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=station_name,
-                popup=popup_html
+                tooltip=wsc
             )
-            diversion_marker.add_to(fg_diversion)
+            marker2.add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
-
     return m
-
 
 # --- Plotly chart function for selected station ---
 
@@ -684,14 +678,11 @@ if is_mobile:
 
 
     # Station details appear below the map, inside an expander
-    if clicked_data and clicked_data.get('last_object_clicked_popup'):
-        popup_text = clicked_data['last_object_clicked_popup']
-        # Extract code inside brackets
-        match = re.search(r"\(([^)]+)\)", popup_text)
-        if match:
-
-            selected_wsc = match.group(1).strip().upper()
-            st.session_state.selected_station = selected_wsc
+    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        selected_wsc = clicked_data['last_object_clicked_tooltip']
+        if selected_wsc:
+            st.session_state.selected_station = selected_wsc.strip().upper()
+            # On mobile, we open the expander automatically when a station is clicked
             st.session_state.show_station_details_expander = True
 
     # Initialize expander state for mobile
@@ -739,36 +730,26 @@ else:
         )
 
     with col2:
-        selected_wsc = None
-    
-        if clicked_data and clicked_data.get("last_object_clicked"):
-            props = clicked_data["last_object_clicked"].get("properties", {})
-            wsc_raw = props.get("wsc")
-            selected_wsc = wsc_raw.strip().upper() if isinstance(wsc_raw, str) else None
-    
+        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+            selected_wsc = clicked_data['last_object_clicked_tooltip']
             if selected_wsc:
-                st.session_state.selected_station = selected_wsc
-    
-        if st.session_state.get("selected_station"):
+                st.session_state.selected_station = selected_wsc.strip().upper()
+
+        if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
-            row = merged[merged["WSC"].str.strip().str.upper() == station_code]
-    
+            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
             if not row.empty:
                 row = row.iloc[0]
+
                 has_div = station_code in diversion_tables
-    
                 if has_div:
                     toggle_key = f"show_diversion_{station_code}_desktop"
                     if toggle_key not in st.session_state:
                         st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox(
-                        "Show diversion table thresholds",
-                        value=st.session_state[toggle_key],
-                        key=toggle_key,
-                    )
+                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
                 else:
                     show_diversion = False
-    
+
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
@@ -776,6 +757,7 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
 
 
 
