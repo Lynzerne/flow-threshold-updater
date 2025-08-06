@@ -370,6 +370,11 @@ def render_map_clickable(merged, selected_dates):
             tooltip=wsc
         )
         marker.add_to(fg_all)
+        hover_label = folium.Marker(
+            location=coords,
+            icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+        )
+        hover_label.add_to(fg_all)
 
         if wsc in diversion_tables:
             marker2 = folium.CircleMarker(
@@ -380,14 +385,18 @@ def render_map_clickable(merged, selected_dates):
                 fill=True,
                 fill_color=compliance_color,
                 fill_opacity=0.7,
-                tooltip=wsc
-            )
-            marker2.add_to(fg_diversion)
-
-    fg_all.add_to(m)
-    fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
-    return m
+                tooltip=wsc,
+        )
+        marker2.add_to(fg_diversion)
+        hover_label2 = folium.Marker(
+            location=coords,
+            icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+        )
+        hover_label2.add_to(fg_diversion)
+        fg_all.add_to(m)
+        fg_diversion.add_to(m)
+        folium.LayerControl(collapsed=True).add_to(m)
+        return m
 
 # --- Plotly chart function for selected station ---
 
