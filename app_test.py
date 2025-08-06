@@ -720,7 +720,8 @@ else:
         st.header("Interactive Map- Click a station or enter a station number here:")
         manual_wsc = st.text_input("", key="manual_wsc_input_top")
         if manual_wsc:
-        st.session_state.selected_station = manual_wsc.strip().upper()
+            st.session_state.selected_station = manual_wsc.strip().upper()
+            
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
