@@ -376,7 +376,6 @@ def render_map_clickable(merged, selected_dates):
         folium.GeoJson(
             feature,
             tooltip=folium.Tooltip(station_name),
-            popup=folium.Popup(popup_html),
             style_function=lambda x, color=compliance_color, border=border_color: {
                 "fillColor": color,
                 "color": border,
@@ -392,7 +391,6 @@ def render_map_clickable(merged, selected_dates):
             folium.GeoJson(
                 feature,
                 tooltip=folium.Tooltip(station_name),
-                popup=folium.Popup(popup_html),
                 style_function=lambda x, color=compliance_color: {
                     "fillColor": color,
                     "color": 'blue',
