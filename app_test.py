@@ -349,7 +349,7 @@ def render_map_clickable(merged, selected_dates):
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
-   for _, row in merged.iterrows():
+    for _, row in merged.iterrows():
     wsc = row["WSC"]
     coords = [row["lat"], row["lon"]]
     station_name = row.get("station_name", "")
@@ -407,11 +407,11 @@ def render_map_clickable(merged, selected_dates):
         )
         hover_label2.add_to(fg_diversion)
 
-# Only once after the loop ends:
-fg_all.add_to(m)
-fg_diversion.add_to(m)
-folium.LayerControl(collapsed=True).add_to(m)
-return m
+    # Only once after the loop ends:
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
+    return m
 
 
 # --- Plotly chart function for selected station ---
