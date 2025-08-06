@@ -14,7 +14,6 @@ import os
 from streamlit_js_eval import streamlit_js_eval
 import plotly.graph_objects as go
 from streamlit_folium import st_folium
-import re
 
 st.cache_data.clear()
 st.set_page_config(layout="wide")
@@ -563,18 +562,25 @@ def render_station_table(row, selected_dates, show_diversion=False):
         threshold_sets.append(thresholds)
         threshold_labels.update(thresholds.keys())
 
-        daily_colors.append(
-            compliance_color_SWA(stream_size, df, daily.get('Q80'), daily.get('Q95'))
-            if policy == 'SWA' else compliance_color_WMP(df, thresholds)
-        )
-        calc_colors.append(
-            compliance_color_SWA(stream_size, cf, daily.get('Q80'), daily.get('Q95'))
-            if policy == 'SWA' else compliance_color_WMP(cf, thresholds)
-        )
+        if show_diversion and wsc in diversion_tables:
+            daily_color = compliance_color_diversion(df, thresholds)
+            calc_color = compliance_color_diversion(cf, thresholds)
+        else:
+            daily_color = (
+                compliance_color_SWA(stream_size, df, daily.get('Q80'), daily.get('Q95'))
+                if policy == 'SWA' else compliance_color_WMP(df, thresholds)
+            )
+            calc_color = (
+                compliance_color_SWA(stream_size, cf, daily.get('Q80'), daily.get('Q95'))
+                if policy == 'SWA' else compliance_color_WMP(cf, thresholds)
+            )
+        
+        daily_colors.append(daily_color)
+        calc_colors.append(calc_color)
 
     threshold_labels = sorted(threshold_labels)
 
-    html = f"<h4>{row['station_name']} ({row['station_no']})</h4>"
+    html = f"<h4>{row['station_name']}</h4>"
 
     # Add scrollable container for wide tables
     html += """
@@ -751,3 +757,6 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
+
+
