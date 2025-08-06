@@ -352,7 +352,7 @@ def render_map_clickable(merged, selected_dates):
     for _, row in merged.iterrows():
         coords = [row['LAT'], row['LON']]
         wsc = row['WSC'].strip().upper()
-
+        station_name = row.get("station_name", "Unknown Station")  # Add a default fallback
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
         tooltip_text = f"{station_name} ({wsc})"
