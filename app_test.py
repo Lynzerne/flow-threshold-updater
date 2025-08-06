@@ -416,9 +416,9 @@ if wsc in diversion_tables:
         marker=folium.CircleMarker()
     ).add_to(fg_diversion)
 
-        fg_all.add_to(m)
-        fg_diversion.add_to(m)
-        folium.LayerControl(collapsed=True).add_to(m)
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
         return m
 
 
