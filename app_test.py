@@ -349,43 +349,72 @@ def render_map_clickable(merged, selected_dates):
     fg_all = folium.FeatureGroup(name='All Stations')
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
-    for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper()
-        station_name = row['station_name']
+for _, row in merged.iterrows():
+    coords = [row['LAT'], row['LON']]
+    wsc = row['WSC'].strip().upper()
+    station_name = row['station_name']
 
-        date = get_most_recent_valid_date(row, selected_dates)
-        compliance_color = get_color_for_date(row, date)
-        border_color = 'blue' if wsc in diversion_tables else 'black'
+    date = get_most_recent_valid_date(row, selected_dates)
+    compliance_color = get_color_for_date(row, date)
+    border_color = 'blue' if wsc in diversion_tables else 'black'
 
-        popup_text = f"{station_name} ({wsc})"
+    popup_html = f"{station_name} ({wsc})"
 
-        marker = folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color=border_color,
-            weight=3,
-            fill=True,
-            fill_color=compliance_color,
-            fill_opacity=0.7,
-            tooltip=station_name,        # hover shows name only
-            popup=popup_text             # click shows "Name (Code)"
-        )
-        marker.add_to(fg_all)
+    feature = {
+        "type": "Feature",
+        "properties": {
+            "tooltip": station_name,
+            "popup": popup_html,
+            "wsc": wsc
+        },
+        "geometry": {
+            "type": "Point",
+            "coordinates": [coords[1], coords[0]],  # [lon, lat]
+        }
+    }
 
-        if wsc in diversion_tables:
-            marker2 = folium.CircleMarker(
-                location=coords,
-                radius=7,
-                color='blue',
-                weight=3,
-                fill=True,
-                fill_color=compliance_color,
-                fill_opacity=0.7,
-                tooltip=station_name,
-                popup=popup_text
-            )
-            marker2.add_to(fg_diversion)
+    folium.GeoJson(
+        feature,
+        tooltip=folium.Tooltip(station_name),
+        popup=folium.Popup(popup_html),
+        style_function=lambda x, color=compliance_color, border=border_color: {
+            "fillColor": color,
+            "color": border,
+            "weight": 3,
+            "fillOpacity": 0.7,
+            "radius": 7
+        },
+        marker=folium.CircleMarker()
+    ).add_to(fg_all)
+
+
+if wsc in diversion_tables:
+    diversion_feature = {
+        "type": "Feature",
+        "properties": {
+            "tooltip": station_name,
+            "popup": popup_html,
+            "wsc": wsc
+        },
+        "geometry": {
+            "type": "Point",
+            "coordinates": [coords[1], coords[0]],  # [lon, lat]
+        }
+    }
+
+    folium.GeoJson(
+        diversion_feature,
+        tooltip=folium.Tooltip(station_name),
+        popup=folium.Popup(popup_html),
+        style_function=lambda x, color=compliance_color: {
+            "fillColor": color,
+            "color": 'blue',
+            "weight": 3,
+            "fillOpacity": 0.7,
+            "radius": 7
+        },
+        marker=folium.CircleMarker()
+    ).add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
@@ -739,34 +768,41 @@ else:
         )
 
     with col2:
-        if clicked_data and clicked_data.get('last_object_clicked_popup'):
-            popup_text = clicked_data['last_object_clicked_popup']
-            # Extract code inside brackets
-            match = re.search(r"\(([^)]+)\)", popup_text)
-            if match:
-                selected_wsc = match.group(1).strip().upper()
-                st.session_state.selected_station = selected_wsc
+        selected_wsc = None
+    
+        # --- Get station code from clicked GeoJson feature ---
+        if clicked_data and clicked_data.get("last_object_clicked"):
+            props = clicked_data["last_object_clicked"].get("properties", {})
+            selected_wsc = props.get("wsc", "").strip().upper()
+    
             if selected_wsc:
-                st.session_state.selected_station = selected_wsc.strip().upper()
-
-        if st.session_state.get('selected_station'):
+                st.session_state.selected_station = selected_wsc
+    
+        # --- Show data for selected station ---
+        if st.session_state.get("selected_station"):
             station_code = st.session_state.selected_station
-            row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+            row = merged[merged["WSC"].str.strip().str.upper() == station_code]
+    
             if not row.empty:
                 row = row.iloc[0]
-
                 has_div = station_code in diversion_tables
+    
                 if has_div:
                     toggle_key = f"show_diversion_{station_code}_desktop"
                     if toggle_key not in st.session_state:
                         st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox("Show diversion table thresholds", value=st.session_state[toggle_key], key=toggle_key)
+                    show_diversion = st.checkbox(
+                        "Show diversion table thresholds",
+                        value=st.session_state[toggle_key],
+                        key=toggle_key,
+                    )
                 else:
                     show_diversion = False
-
+    
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+    
             else:
                 st.write("Station data not found.")
         else:
