@@ -660,12 +660,13 @@ if is_mobile:
                 st.write("Station data not found for selected station. Check data loading/filtering.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
-        # --- NEW DEBUG INFO INSIDE EXPANDER END ---
+            
+            manual_wsc = st.text_input("Or enter a station number (WSC):", key="manual_wsc_input")
 
-    # Set mobile map height here
-    # You already had map_height_pixels = 100 in render_map_clickable.
-    # We will let render_map_clickable handle setting st.session_state.map_height_pixels
-    # and use that value directly in st_folium.
+            if manual_wsc:
+                st.session_state.selected_station = manual_wsc.strip().upper()
+      
+
 
     m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
 
