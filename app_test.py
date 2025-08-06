@@ -661,11 +661,7 @@ if is_mobile:
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
             
-            manual_wsc = st.text_input("Or enter a station number (WSC):", key="manual_wsc_input")
-
-            if manual_wsc:
-                st.session_state.selected_station = manual_wsc.strip().upper()
-      
+    
 
 
     m = render_map_clickable(merged, selected_dates) # This creates the Folium map object with the desired height
@@ -721,7 +717,10 @@ else:
     col1, col2 = st.columns([5, 2])
 
     with col1:
-        st.header("Interactive Map") # Add header for consistency
+        st.header("Interactive Map- Click a station or enter a station number here:")
+        manual_wsc = st.text_input("", key="manual_wsc_input_top")
+        if manual_wsc:
+        st.session_state.selected_station = manual_wsc.strip().upper()
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
