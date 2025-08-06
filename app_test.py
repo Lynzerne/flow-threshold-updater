@@ -355,7 +355,7 @@ def render_map_clickable(merged, selected_dates):
         station_name = row.get("station_name", "Unknown Station")  # Add a default fallback
         date = get_most_recent_valid_date(row, selected_dates)
         compliance_color = get_color_for_date(row, date)
-        tooltip_text = f"{station_name} ({wsc})"
+        tooltip_text = f"{wsc} {station_name}"
 
         border_color = 'blue' if wsc in diversion_tables else 'black'
         # Marker with tooltip only (station code) — NO popup here
