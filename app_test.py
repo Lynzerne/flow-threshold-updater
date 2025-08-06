@@ -350,44 +350,47 @@ def render_map_clickable(merged, selected_dates):
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper()
+    coords = [row['LAT'], row['LON']]
+    wsc = row['WSC'].strip().upper()
+    station_name = row['station_name']
 
-        date = get_most_recent_valid_date(row, selected_dates)
-        compliance_color = get_color_for_date(row, date)
+    date = get_most_recent_valid_date(row, selected_dates)
+    compliance_color = get_color_for_date(row, date)
+    border_color = 'blue' if wsc in diversion_tables else 'black'
 
-        border_color = 'blue' if wsc in diversion_tables else 'black'
+    popup_text = f"{station_name} ({wsc})"
 
-        # Marker with tooltip only (station code) — NO popup here
-        marker = folium.CircleMarker(
+    marker = folium.CircleMarker(
+        location=coords,
+        radius=7,
+        color=border_color,
+        weight=3,
+        fill=True,
+        fill_color=compliance_color,
+        fill_opacity=0.7,
+        tooltip=station_name,        # hover shows name only
+        popup=popup_text             # click shows "Name (Code)"
+    )
+    marker.add_to(fg_all)
+
+    if wsc in diversion_tables:
+        marker2 = folium.CircleMarker(
             location=coords,
             radius=7,
-            color=border_color,
+            color='blue',
             weight=3,
             fill=True,
             fill_color=compliance_color,
             fill_opacity=0.7,
-            tooltip=wsc
+            tooltip=station_name,
+            popup=popup_text
         )
-        marker.add_to(fg_all)
+        marker2.add_to(fg_diversion)
 
-        if wsc in diversion_tables:
-            marker2 = folium.CircleMarker(
-                location=coords,
-                radius=7,
-                color='blue',
-                weight=3,
-                fill=True,
-                fill_color=compliance_color,
-                fill_opacity=0.7,
-                tooltip=wsc
-            )
-            marker2.add_to(fg_diversion)
-
-    fg_all.add_to(m)
-    fg_diversion.add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
-    return m
+        fg_all.add_to(m)
+        fg_diversion.add_to(m)
+        folium.LayerControl(collapsed=True).add_to(m)
+        return m
 
 # --- Plotly chart function for selected station ---
 
@@ -678,8 +681,13 @@ if is_mobile:
 
 
     # Station details appear below the map, inside an expander
-    if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-        selected_wsc = clicked_data['last_object_clicked_tooltip']
+    if clicked_data and clicked_data.get('last_object_clicked_popup'):
+        popup_text = clicked_data['last_object_clicked_popup']
+        # Extract code inside brackets
+        match = re.search(r"\(([^)]+)\)", popup_text)
+        if match:
+            selected_wsc = match.group(1).strip().upper()
+            st.session_state.selected_station = selected_wsc
         if selected_wsc:
             st.session_state.selected_station = selected_wsc.strip().upper()
             # On mobile, we open the expander automatically when a station is clicked
@@ -730,8 +738,13 @@ else:
         )
 
     with col2:
-        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-            selected_wsc = clicked_data['last_object_clicked_tooltip']
+        if clicked_data and clicked_data.get('last_object_clicked_popup'):
+            popup_text = clicked_data['last_object_clicked_popup']
+            # Extract code inside brackets
+            match = re.search(r"\(([^)]+)\)", popup_text)
+            if match:
+                selected_wsc = match.group(1).strip().upper()
+                st.session_state.selected_station = selected_wsc
             if selected_wsc:
                 st.session_state.selected_station = selected_wsc.strip().upper()
 
