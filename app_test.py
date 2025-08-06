@@ -350,9 +350,9 @@ def render_map_clickable(merged, selected_dates):
     fg_diversion = folium.FeatureGroup(name='Diversion Stations')
 
     for _, row in merged.iterrows():
-    wsc = row["WSC"]
-    coords = [row["lat"], row["lon"]]
-    station_name = row.get("station_name", "")
+        wsc = row["WSC"]
+        coords = [row["lat"], row["lon"]]
+        station_name = row.get("station_name", "")
     if pd.isna(station_name):
         station_name = ""
 
