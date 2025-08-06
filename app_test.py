@@ -625,8 +625,13 @@ def render_station_table(row, selected_dates, show_diversion=False):
     return html
     st.markdown(html, unsafe_allow_html=True)
 
-if is_mobile:
-    st.header("Interactive Map - Select a station or enter a station number below")
+    if is_mobile:
+        st.markdown("#### Interactive Map")
+        st.markdown(
+            "<small>⬅️ Select desired date range / view map info<br>⬇️ Click a station or enter a station number to view details</small>",
+            unsafe_allow_html=True
+        )
+
     
     # Manual WSC input for mobile
     manual_wsc = st.text_input("Enter station number:", key="manual_wsc_input_mobile")
