@@ -371,31 +371,23 @@ def render_map_clickable(merged, selected_dates):
         )
         marker.add_to(fg_all)
 
-               
+        if wsc in diversion_tables:
+            marker2 = folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=compliance_color,
+                fill_opacity=0.7,
+                tooltip=wsc
+            )
+            marker2.add_to(fg_diversion)
 
-    if wsc in diversion_tables:
-        marker2 = folium.CircleMarker(
-            location=coords,
-            radius=7,
-            color='blue',
-            weight=3,
-            fill=True,
-            fill_color=compliance_color,
-            fill_opacity=0.7,
-            tooltip=wsc
-        )
-        marker2.add_to(fg_diversion)
-    
-        # Add browser-native hover tooltip with station name
-        hover_label2 = folium.Marker(
-        location=coords,
-        icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
-        )
-        hover_label2.add_to(fg_diversion)
-        fg_all.add_to(m)
-        fg_diversion.add_to(m)
-        folium.LayerControl(collapsed=True).add_to(m)
-        return m
+    fg_all.add_to(m)
+    fg_diversion.add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
+    return m
 
 # --- Plotly chart function for selected station ---
 
@@ -765,6 +757,10 @@ else:
                 st.write("Station data not found.")
         else:
             st.write("Click a station on the map to see its flow chart and data table here.")
+
+
+
+
 
 
 
