@@ -738,44 +738,44 @@ else:
             key="desktop_folium_map" # Unique key for desktop map
         )
 
-   with col2:
-    selected_wsc = None
-
-    if clicked_data and clicked_data.get("last_object_clicked"):
-        props = clicked_data["last_object_clicked"].get("properties", {})
-        wsc_raw = props.get("wsc")
-        selected_wsc = wsc_raw.strip().upper() if isinstance(wsc_raw, str) else None
-
-        if selected_wsc:
-            st.session_state.selected_station = selected_wsc
-
-    if st.session_state.get("selected_station"):
-        station_code = st.session_state.selected_station
-        row = merged[merged["WSC"].str.strip().str.upper() == station_code]
-
-        if not row.empty:
-            row = row.iloc[0]
-            has_div = station_code in diversion_tables
-
-            if has_div:
-                toggle_key = f"show_diversion_{station_code}_desktop"
-                if toggle_key not in st.session_state:
-                    st.session_state[toggle_key] = False
-                show_diversion = st.checkbox(
-                    "Show diversion table thresholds",
-                    value=st.session_state[toggle_key],
-                    key=toggle_key,
-                )
+    with col2:
+        selected_wsc = None
+    
+        if clicked_data and clicked_data.get("last_object_clicked"):
+            props = clicked_data["last_object_clicked"].get("properties", {})
+            wsc_raw = props.get("wsc")
+            selected_wsc = wsc_raw.strip().upper() if isinstance(wsc_raw, str) else None
+    
+            if selected_wsc:
+                st.session_state.selected_station = selected_wsc
+    
+        if st.session_state.get("selected_station"):
+            station_code = st.session_state.selected_station
+            row = merged[merged["WSC"].str.strip().str.upper() == station_code]
+    
+            if not row.empty:
+                row = row.iloc[0]
+                has_div = station_code in diversion_tables
+    
+                if has_div:
+                    toggle_key = f"show_diversion_{station_code}_desktop"
+                    if toggle_key not in st.session_state:
+                        st.session_state[toggle_key] = False
+                    show_diversion = st.checkbox(
+                        "Show diversion table thresholds",
+                        value=st.session_state[toggle_key],
+                        key=toggle_key,
+                    )
+                else:
+                    show_diversion = False
+    
+                html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
+                st.markdown(html_table, unsafe_allow_html=True)
+                plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
             else:
-                show_diversion = False
-
-            html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
-            st.markdown(html_table, unsafe_allow_html=True)
-            plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+                st.write("Station data not found.")
         else:
-            st.write("Station data not found.")
-    else:
-        st.write("Click a station on the map to see its flow chart and data table here.")
+            st.write("Click a station on the map to see its flow chart and data table here.")
 
 
 
