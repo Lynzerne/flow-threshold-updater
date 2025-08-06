@@ -717,7 +717,7 @@ else:
     col1, col2 = st.columns([5, 2])
 
     with col1:
-        st.header("Interactive Map- Click a station or enter a station number here:")
+        st.markdown("### Interactive Map - Click a station or enter a station number below:")
         manual_wsc = st.text_input("", key="manual_wsc_input_top")
         if manual_wsc:
             st.session_state.selected_station = manual_wsc.strip().upper()
