@@ -337,72 +337,57 @@ def get_most_recent_valid_date(row, dates):
 
 
 def render_map_clickable(merged, selected_dates):
-    mean_lat = merged['lat'].mean() if 'lat' in merged.columns else merged['LAT'].mean()
-    mean_lon = merged['lon'].mean() if 'lon' in merged.columns else merged['LON'].mean()
+    m = folium.Map(location=[55, -115], zoom_start=6)
 
-     # Adjust map height based on mobile detection
-    map_height_pixels = 300 if is_mobile else 1200
-    m = folium.Map(location=[50.5, -114], zoom_start=6, width='100%', height=f'{map_height_pixels}px')
-    st.session_state.map_height_pixels = map_height_pixels # Store in session state for st_folium
-    Fullscreen().add_to(m)
-
-    fg_all = folium.FeatureGroup(name='All Stations')
-    fg_diversion = folium.FeatureGroup(name='Diversion Stations')
+    fg_all = folium.FeatureGroup(name="All stations", show=True)
+    fg_diversion = folium.FeatureGroup(name="Diversion stations", show=False)
 
     for _, row in merged.iterrows():
-        coords = [row['LAT'], row['LON']]
-        wsc = row['WSC'].strip().upper()
+        wsc = row["WSC"]
+        coords = [row["lat"], row["lon"]]
+        compliance_color = row.get("compliance_color", "gray")
+        border_color = row.get("border_color", "black")
 
-        date = get_most_recent_valid_date(row, selected_dates)
-        compliance_color = get_color_for_date(row, date)
+        marker = folium.CircleMarker(
+            location=coords,
+            radius=7,
+            color=border_color,
+            weight=3,
+            fill=True,
+            fill_color=compliance_color,
+            fill_opacity=0.7,
+            tooltip=wsc
+        )
+        marker.add_to(fg_all)
 
-        border_color = 'blue' if wsc in diversion_tables else 'black'
+        hover_label = folium.Marker(
+            location=coords,
+            icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+        )
+        hover_label.add_to(fg_all)
 
-        # Marker with tooltip only (station code) — NO popup here
-marker = folium.CircleMarker(
-    location=coords,
-    radius=7,
-    color=border_color,
-    weight=3,
-    fill=True,
-    fill_color=compliance_color,
-    fill_opacity=0.7,
-    tooltip=wsc
-)
-marker.add_to(fg_all)
+        if wsc in diversion_tables:
+            marker2 = folium.CircleMarker(
+                location=coords,
+                radius=7,
+                color='blue',
+                weight=3,
+                fill=True,
+                fill_color=compliance_color,
+                fill_opacity=0.7,
+                tooltip=wsc
+            )
+            marker2.add_to(fg_diversion)
 
-# Hover tooltip for base marker
-hover_label = folium.Marker(
-    location=coords,
-    icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
-)
-hover_label.add_to(fg_all)
+            hover_label2 = folium.Marker(
+                location=coords,
+                icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
+            )
+            hover_label2.add_to(fg_diversion)
 
-# Diversion marker + hover label (only if applicable)
-if wsc in diversion_tables:
-    marker2 = folium.CircleMarker(
-        location=coords,
-        radius=7,
-        color='blue',
-        weight=3,
-        fill=True,
-        fill_color=compliance_color,
-        fill_opacity=0.7,
-        tooltip=wsc
-    )
-    marker2.add_to(fg_diversion)
-
-    hover_label2 = folium.Marker(
-        location=coords,
-        icon=folium.DivIcon(html=f'<div title="{row["station_name"]}"></div>')
-    )
-    hover_label2.add_to(fg_diversion)
-
-# Add layers and return the map
     fg_all.add_to(m)
     fg_diversion.add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
-    return m
 
 # --- Plotly chart function for selected station ---
 
