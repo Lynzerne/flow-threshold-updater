@@ -626,7 +626,14 @@ def render_station_table(row, selected_dates, show_diversion=False):
     st.markdown(html, unsafe_allow_html=True)
 
 if is_mobile:
-    st.header("Interactive Map")
+    st.header("Interactive Map - Select a station or enter a station number below")
+    
+    # Manual WSC input for mobile
+    manual_wsc = st.text_input("Enter station number:", key="manual_wsc_input_mobile")
+    if manual_wsc:
+        st.session_state.selected_station = manual_wsc.strip().upper()
+        st.session_state.show_station_details_expander = True  # Expand details automatically
+
     st.markdown("---")
 
     # Initialize expander state
@@ -685,7 +692,7 @@ if is_mobile:
             else:
                 st.write("Station data not found.")
         else:
-            st.write("Click a station on the map to see its flow chart and data table here.")
+            st.write("Click a station on the map or enter a number above.")
 
 else:
     # --- Desktop Layout (Original) ---
