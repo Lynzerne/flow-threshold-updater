@@ -389,7 +389,7 @@ def render_map_clickable(merged, selected_dates):
                 icon_size=(1, 1)  # Very tiny but avoids rendering issues
             )
         )
-            hover_label2.add_to(fg_diversion)
+        hover_label2.add_to(fg_diversion)
 
     fg_all.add_to(m)
     fg_diversion.add_to(m)
