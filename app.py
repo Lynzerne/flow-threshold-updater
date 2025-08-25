@@ -154,7 +154,7 @@ def load_diversion_tables():
             df['Date'] = df['Date'].apply(safe_replace_year)
 
             diversion_tables[wsc] = df
-        # ✅ Normalize keys
+        # Normalize keys
     diversion_tables = {k.strip().upper(): v for k, v in diversion_tables.items()}
     diversion_labels = {k.strip().upper(): v for k, v in diversion_labels.items()}
 
@@ -247,11 +247,11 @@ def get_color_for_date(row, date):
 with st.sidebar.expander("🚨 Note from Developer", expanded=False):
     st.markdown("""
     <div style='color: red'>
-        Under construction!
+        This app is a prototye and currently under construction!
         This app dynamically loads in station data and renders color for the markers as you scroll around. You may experience some loading and re-loading as you are viewing it. 
     </div>
     <div style='margin-top: 8px;'>
-        We're working on making this less disruptive and more responsive. Thanks for your patience!
+        We're working on making this less disruptive and more responsive. Thanks for your patience! - Lyndsay Greenwood
     </div>
     """, unsafe_allow_html=True)
 
@@ -280,8 +280,8 @@ with st.sidebar.expander("ℹ️ About this App"):
 
     ** Threshold Definitions:** 
     - **WCO (Water Conservation Objective):** Target flow for ecosystem protection - sometimes represented as a percentage of "Natural Flow" (ie 45%), which is a theoretical value depicting what the flow of a system would be if there were no diversions
-    - **IO (Instream Objective):** Minimum flow below which withdrawals are restricted  
-    - **IFN (Instream Flow Need):** Ecological flow requirement for sensitive systems  
+    - **IO (In-stream Objective):** Minimum flow below which withdrawals are restricted  
+    - **IFN (In-stream Flow Need):** Ecological flow requirement for sensitive systems  
     - **Q80/Q95:** Statistical low flows based on historical comparisons;
     - Q80: Flow is exceeded 80% of the time historically - often used as a benchmark for the low end of "typical flow".  
     - Q90: The flow value exceeded 90% of the time. This means the river flow historically is above this level 90% of the time—representing a more extreme low flow than Q80.
@@ -290,7 +290,7 @@ with st.sidebar.expander("ℹ️ About this App"):
 
     **🟢 Color Codes in Map:** - 🟢 Flow meets all thresholds  
     - 🔴 Flow below one or more thresholds  
-    - 🟡 Intermediate (depends on stream size & Q-values)  
+    - 🟡 Intermediate - Flow may be below one threshold but above others (depends on stream size & Q-values)  
     - ⚪ Missing or insufficient data
     - 🔵 **Blue border**: Station has a Diversion Table (click toggle on right above data table for additional thresholds)
 
@@ -298,8 +298,8 @@ with st.sidebar.expander("ℹ️ About this App"):
     """)
 with st.sidebar.expander("ℹ️ Who Cares?"):
     st.markdown("""
-    **❓ Why does this matter?** Water is a shared resource, and limits must exist to ensure fair and equitable access. It is essential to environmental health, human life, and economic prosperity.  
-    However, water supply is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
+    **❓ Why does this matter?** Water is a shared resource, and limits on it's extraction and use must exist to ensure fair and equitable access. Water is essential to environmental health, human life, and economic prosperity.  
+    Wwater supply, however, is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
     
     In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
     
@@ -402,10 +402,6 @@ if 'clicked_station' in st.session_state:
     st.subheader(row.get('station_name', wsc))
 
     # Show toggle ONLY if diversion data exists for this station
-    #if has_diversion(wsc):
-    #    show_div = st.toggle("Show diversion thresholds", value=False)
-   # else:
-      #  show_div = False
 
     if has_diversion(wsc):
         st.write(f"Diversion data available for {wsc}")
@@ -689,7 +685,7 @@ if is_mobile:
             st.write("Click a station on the map or enter a number above.")
 
         
-    # --- Desktop Layout (Original) ---
+ 
 else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
