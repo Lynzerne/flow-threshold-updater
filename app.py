@@ -298,7 +298,8 @@ with st.sidebar.expander("ℹ️ About this App"):
     """)
 with st.sidebar.expander("ℹ️ Who Cares?"):
     st.markdown("""
-    **❓ Why does this matter?** Water is a shared resource, and limits on it's extraction and use must exist to ensure fair and equitable access. Water is essential to environmental health, human life, and economic prosperity.  
+    **❓ Why does this matter❓** 
+    Water is a shared resource, and limits on it's extraction and use must exist to ensure fair and equitable access. Water is essential to environmental health, human life, and economic prosperity.  
     Wwater supply, however, is variable—and increasingly under pressure from many angles: natural seasonal fluctuations, shifting climate and weather patterns, and changing socio-economic factors such as population growth and energy demand.
     
     In Alberta, many industries—from agriculture and manufacturing to energy production and resource extraction—depend heavily on water. Setting clear limits and thresholds on water diversions helps protect our waterways from overuse by establishing enforceable cutoffs. These limits are often written directly into water diversion licenses issued by the provincial government.
