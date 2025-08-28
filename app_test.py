@@ -699,7 +699,6 @@ else:
         def handle_manual_input():
             st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
             st.session_state.show_station_details_expander = True
-            st.session_state.search_overrides_map = True
             st.session_state.manual_wsc_input_top = ""  # clear input safely
 
         st.text_input(
@@ -717,13 +716,12 @@ else:
             key="desktop_folium_map"
         )
 
-        # --- Map click updates selected_station only if no manual override ---
-        if not st.session_state.get("search_overrides_map", False):
-            if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-                tooltip_text = clicked_data['last_object_clicked_tooltip']
-                if tooltip_text:
-                    st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
-                    st.session_state.show_station_details_expander = True
+        # --- Map click always updates selected_station ---
+        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+            tooltip_text = clicked_data['last_object_clicked_tooltip']
+            if tooltip_text:
+                st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
+                st.session_state.show_station_details_expander = True
 
     with col2:
         # --- Render station table & chart ---
