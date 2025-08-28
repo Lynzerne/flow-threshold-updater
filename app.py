@@ -694,10 +694,19 @@ else:
 
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
-        manual_wsc = st.text_input("", key="manual_wsc_input_top")
-        if manual_wsc:
-            st.session_state.selected_station = manual_wsc.strip().upper()
 
+        # --- Text input ---
+        manual_input = st.text_input(
+            "Enter station number:",
+            key="manual_wsc_input_top"
+        )
+
+        # --- Update selected_station from manual input ---
+        if manual_input:
+            st.session_state.selected_station = manual_input.strip().upper()
+            st.session_state.show_station_details_expander = True
+
+        # --- Render map ---
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
@@ -706,38 +715,49 @@ else:
             key="desktop_folium_map"
         )
 
-    with col2:
-        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        # --- Update selected_station from map click if no manual input ---
+        if not manual_input and clicked_data and clicked_data.get('last_object_clicked_tooltip'):
             tooltip_text = clicked_data['last_object_clicked_tooltip']
             if tooltip_text:
-                selected_wsc = tooltip_text.split(" ")[0].strip().upper()
-                st.session_state.selected_station = selected_wsc
+                st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
+                st.session_state.show_station_details_expander = True
 
-        if st.session_state.get('selected_station'):
-            station_code = st.session_state.selected_station
+    with col2:
+        # --- Render station table and chart ---
+        if station_code := st.session_state.get('selected_station'):
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+
             if not row.empty:
                 row = row.iloc[0]
-                has_div = station_code in diversion_tables
-                if has_div:
-                    toggle_key = f"show_diversion_{station_code}_desktop"
-                    if toggle_key not in st.session_state:
-                        st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox(
-                        "Show diversion table thresholds",
-                        value=st.session_state[toggle_key],
-                        key=toggle_key
-                    )
-                else:
-                    show_diversion = False
 
+                # Diversion toggle
+                has_div = station_code in diversion_tables
+                toggle_key = f"show_diversion_{station_code}_desktop"
+                if has_div and toggle_key not in st.session_state:
+                    st.session_state[toggle_key] = False
+                show_diversion = st.checkbox(
+                    "Show diversion table thresholds",
+                    value=st.session_state.get(toggle_key, False),
+                    key=toggle_key
+                ) if has_div else False
+
+                # Render table and chart
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+
             else:
                 st.write("Station data not found.")
+
         else:
-            st.write("Click a station on the map to see its flow chart and data table here.")
+            st.write("Click a station on the map or enter a station number above.")
+
+    # --- Clear manual input after render so map clicks still work ---
+    if manual_input:
+        st.session_state.manual_wsc_input_top = ""
+
+
+
 
 
 
