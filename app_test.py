@@ -689,24 +689,25 @@ if is_mobile:
         
  
 else:
+    # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
 
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
 
+        # --- Callback for manual station input ---
         def handle_manual_input():
             st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
             st.session_state.show_station_details_expander = True
-            st.session_state.manual_wsc_input_top_backup = ""  # backup to clear safely
+            st.session_state.manual_wsc_input_top = ""  # safe clearing after processing
 
-        # Use on_change instead of immediate overwrite
         st.text_input(
             "Enter station number:",
             key="manual_wsc_input_top",
             on_change=handle_manual_input
         )
 
-        # Render map
+        # --- Render map ---
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
@@ -715,7 +716,7 @@ else:
             key="desktop_folium_map"
         )
 
-        # Update selected_station from map clicks
+        # --- Update selected_station from map click ---
         if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
             tooltip_text = clicked_data['last_object_clicked_tooltip']
             if tooltip_text:
@@ -723,7 +724,7 @@ else:
                 st.session_state.show_station_details_expander = True
 
     with col2:
-        # Render station table & chart
+        # --- Render station table & chart ---
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
