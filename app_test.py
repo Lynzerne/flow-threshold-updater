@@ -692,11 +692,9 @@ else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
 
-    clicked_data = None  # initialize
-
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
-        
+
         manual_wsc = st.text_input("Enter station number:", key="manual_wsc_input_top")
         if manual_wsc:
             st.session_state.selected_station = manual_wsc.strip().upper()
@@ -704,27 +702,26 @@ else:
             st.session_state.search_overrides_map = True
         else:
             st.session_state.search_overrides_map = False
-            m = render_map_clickable(merged, selected_dates)
-            clicked_data = st_folium(
-                m,
-                height=1200,
-                use_container_width=True,
-                key="desktop_folium_map"
-            )
+
+        # Always render the map
+        m = render_map_clickable(merged, selected_dates)
+        clicked_data = st_folium(
+            m,
+            height=1200,
+            use_container_width=True,
+            key="desktop_folium_map"
+        )
 
     with col2:
-        # Update selected_station if a map marker was clicked (but no manual override)
-        if (
-            not st.session_state.get("search_overrides_map", False)
-            and clicked_data
-            and clicked_data.get('last_object_clicked_tooltip')
-        ):
-            tooltip_text = clicked_data['last_object_clicked_tooltip']
-            if tooltip_text:
-                selected_wsc = tooltip_text.split(" ")[0].strip().upper()
-                st.session_state.selected_station = selected_wsc
+        # Only update selected_station from map clicks if no manual override
+        if not st.session_state.get("search_overrides_map", False):
+            if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+                tooltip_text = clicked_data['last_object_clicked_tooltip']
+                if tooltip_text:
+                    selected_wsc = tooltip_text.split(" ")[0].strip().upper()
+                    st.session_state.selected_station = selected_wsc
 
-        # Render station table & chart
+        # Render the station table & chart
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
