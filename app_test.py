@@ -694,10 +694,12 @@ else:
 
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
-        manual_wsc = st.text_input("", key="manual_wsc_input_top")
+        manual_wsc = st.text_input("Enter station number:", key="manual_wsc_input_top")
         if manual_wsc:
             st.session_state.selected_station = manual_wsc.strip().upper()
-
+            st.session_state.show_station_details_expander = True
+            st.experimental_rerun()
+    
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
