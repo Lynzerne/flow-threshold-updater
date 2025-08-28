@@ -691,34 +691,35 @@ if is_mobile:
 else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
-    
-    with col1:
-        st.markdown("### Interactive Map - Click a station or enter a station number below:")
-    
-        manual_input = st.text_input(
-            "Enter station number:",
-            key="manual_wsc_input_top"
-        )
-    
-        # Render map
-        m = render_map_clickable(merged, selected_dates)
-        clicked_data = st_folium(
-            m,
-            height=1200,
-            use_container_width=True,
-            key="desktop_folium_map"
-        )
-    
-        # Update selected_station from map click
-        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-            tooltip_text = clicked_data['last_object_clicked_tooltip']
-            if tooltip_text:
-                st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
-                st.session_state.show_station_details_expander = True
-    
-        # Update selected_station from manual input
-        if manual_input:
-            st.session_state.selected_station = manual_input.strip().upper()
+
+with col1:
+    st.markdown("### Interactive Map - Click a station or enter a station number below:")
+
+    manual_input = st.text_input(
+        "Enter station number:",
+        key="manual_wsc_input_top"
+    )
+
+    # Render map
+    m = render_map_clickable(merged, selected_dates)
+    clicked_data = st_folium(
+        m,
+        height=1200,
+        use_container_width=True,
+        key="desktop_folium_map"
+    )
+
+    # --- Update selected_station ---
+    if manual_input:
+        # Manual input has priority
+        st.session_state.selected_station = manual_input.strip().upper()
+        st.session_state.show_station_details_expander = True
+        st.session_state.manual_wsc_input_top = ""  # clear input so clicks are re-enabled
+
+    elif clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        tooltip_text = clicked_data['last_object_clicked_tooltip']
+        if tooltip_text:
+            st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
             st.session_state.show_station_details_expander = True
     
     with col2:
