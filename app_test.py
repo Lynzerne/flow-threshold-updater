@@ -692,21 +692,12 @@ else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
     
-    def select_station_from_input():
-        station = st.session_state.manual_wsc_input_top.strip().upper()
-        if station:
-            st.session_state.selected_station = station
-            st.session_state.show_station_details_expander = True
-            st.session_state.manual_wsc_input_top = ""  # clear input safely
-    
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
     
-        # Text input with on_change callback
-        st.text_input(
+        manual_input = st.text_input(
             "Enter station number:",
-            key="manual_wsc_input_top",
-            on_change=select_station_from_input
+            key="manual_wsc_input_top"
         )
     
         # Render map
@@ -724,6 +715,11 @@ else:
             if tooltip_text:
                 st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
                 st.session_state.show_station_details_expander = True
+    
+        # Update selected_station from manual input
+        if manual_input:
+            st.session_state.selected_station = manual_input.strip().upper()
+            st.session_state.show_station_details_expander = True
     
     with col2:
         # Render the station table & chart
@@ -745,9 +741,14 @@ else:
                     key=toggle_key
                 ) if has_div else False
     
+                # Render table and chart
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
+    
+                # NOW clear input safely
+                st.session_state.manual_wsc_input_top = ""
+    
             else:
                 st.write("Station data not found.")
         else:
