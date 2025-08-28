@@ -695,16 +695,17 @@ else:
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
 
-        # --- Callback for manual station input ---
-        def handle_manual_input():
-            st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
-            st.session_state.show_station_details_expander = True
-            st.session_state.manual_wsc_input_top = ""  # safe clearing after processing
+        # --- Text input for manual station entry ---
+        if 'manual_submit_flag' not in st.session_state:
+            st.session_state.manual_submit_flag = False
+
+        def flag_manual_submit():
+            st.session_state.manual_submit_flag = True
 
         st.text_input(
             "Enter station number:",
             key="manual_wsc_input_top",
-            on_change=handle_manual_input
+            on_change=flag_manual_submit
         )
 
         # --- Render map ---
@@ -716,8 +717,15 @@ else:
             key="desktop_folium_map"
         )
 
-        # --- Update selected_station from map click ---
-        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        # --- Handle manual submission ---
+        if st.session_state.manual_submit_flag and st.session_state.manual_wsc_input_top:
+            st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
+            st.session_state.show_station_details_expander = True
+            st.session_state.manual_submit_flag = False  # reset flag
+            st.session_state.manual_wsc_input_top = ""   # now clear safely
+
+        # --- Handle map clicks ---
+        elif clicked_data and clicked_data.get('last_object_clicked_tooltip'):
             tooltip_text = clicked_data['last_object_clicked_tooltip']
             if tooltip_text:
                 st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
