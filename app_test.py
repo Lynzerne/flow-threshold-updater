@@ -698,7 +698,10 @@ else:
         if manual_wsc:
             st.session_state.selected_station = manual_wsc.strip().upper()
             st.session_state.show_station_details_expander = True
-            st.experimental_rerun()
+            try:
+                st.rerun()
+            except AttributeError:
+                st.experimental_rerun()
     
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
