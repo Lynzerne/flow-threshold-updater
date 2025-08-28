@@ -697,7 +697,7 @@ else:
 
         # --- Text input ---
         manual_input = st.text_input(
-            "Enter station number:",
+            "Enter station number (clear/delete to click new):",
             key="manual_wsc_input_top"
         )
 
