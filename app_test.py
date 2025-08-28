@@ -695,11 +695,18 @@ else:
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
 
+        # Input box for manual station entry
         manual_wsc = st.text_input("Enter station number:", key="manual_wsc_input_top")
         if manual_wsc:
+            # Update selected station and show details
             st.session_state.selected_station = manual_wsc.strip().upper()
             st.session_state.show_station_details_expander = True
+
+            # Set manual override to prevent map click from overwriting
             st.session_state.search_overrides_map = True
+
+            # Clear the input box immediately
+            st.session_state['manual_wsc_input_top'] = ""
         else:
             st.session_state.search_overrides_map = False
 
@@ -721,12 +728,15 @@ else:
                     selected_wsc = tooltip_text.split(" ")[0].strip().upper()
                     st.session_state.selected_station = selected_wsc
 
-        # Render the station table & chart
+        # Render the station table & chart if a station is selected
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
+
             if not row.empty:
                 row = row.iloc[0]
+
+                # Check if diversion data exists
                 has_div = station_code in diversion_tables
                 if has_div:
                     toggle_key = f"show_diversion_{station_code}_desktop"
@@ -740,6 +750,7 @@ else:
                 else:
                     show_diversion = False
 
+                # Render table and chart
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
