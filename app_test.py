@@ -692,45 +692,48 @@ else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
 
-with col1:
-    st.markdown("### Interactive Map - Click a station or enter a station number below:")
+    with col1:
+        st.markdown("### Interactive Map - Click a station or enter a station number below:")
 
-    manual_input = st.text_input(
-        "Enter station number:",
-        key="manual_wsc_input_top"
-    )
-
-    # Render map
-    m = render_map_clickable(merged, selected_dates)
-    clicked_data = st_folium(
-        m,
-        height=1200,
-        use_container_width=True,
-        key="desktop_folium_map"
-    )
-
-    # --- Update selected_station ---
-    if manual_input:
-        # Manual input has priority
-        st.session_state.selected_station = manual_input.strip().upper()
-        st.session_state.show_station_details_expander = True
-        st.session_state.manual_wsc_input_top = ""  # clear input so clicks are re-enabled
-
-    elif clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-        tooltip_text = clicked_data['last_object_clicked_tooltip']
-        if tooltip_text:
-            st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
+        # --- Manual input with callback ---
+        def handle_manual_input():
+            st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
             st.session_state.show_station_details_expander = True
-    
+            st.session_state.search_overrides_map = True
+            st.session_state.manual_wsc_input_top = ""  # clear input safely
+
+        st.text_input(
+            "Enter station number:",
+            key="manual_wsc_input_top",
+            on_change=handle_manual_input
+        )
+
+        # --- Render the map ---
+        m = render_map_clickable(merged, selected_dates)
+        clicked_data = st_folium(
+            m,
+            height=1200,
+            use_container_width=True,
+            key="desktop_folium_map"
+        )
+
+        # --- Map click updates selected_station only if no manual override ---
+        if not st.session_state.get("search_overrides_map", False):
+            if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+                tooltip_text = clicked_data['last_object_clicked_tooltip']
+                if tooltip_text:
+                    st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
+                    st.session_state.show_station_details_expander = True
+
     with col2:
-        # Render the station table & chart
+        # --- Render station table & chart ---
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
-    
+
             if not row.empty:
                 row = row.iloc[0]
-    
+
                 # Diversion toggle
                 has_div = station_code in diversion_tables
                 toggle_key = f"show_diversion_{station_code}_desktop"
@@ -741,15 +744,12 @@ with col1:
                     value=st.session_state.get(toggle_key, False),
                     key=toggle_key
                 ) if has_div else False
-    
+
                 # Render table and chart
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
-    
-                # NOW clear input safely
-                st.session_state.manual_wsc_input_top = ""
-    
+
             else:
                 st.write("Station data not found.")
         else:
