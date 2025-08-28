@@ -691,25 +691,25 @@ if is_mobile:
 else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
-
-    def clear_manual_input():
-        """Callback to handle Enter pressed in text input."""
-        st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
-        st.session_state.show_station_details_expander = True
-        st.session_state.search_overrides_map = True
-        st.session_state.manual_wsc_input_top = ""  # safely clear via callback
-
+    
+    def select_station_from_input():
+        station = st.session_state.manual_wsc_input_top.strip().upper()
+        if station:
+            st.session_state.selected_station = station
+            st.session_state.show_station_details_expander = True
+            st.session_state.manual_wsc_input_top = ""  # clear input safely
+    
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
-
-        # Input box for manual station entry with on_change callback
+    
+        # Text input with on_change callback
         st.text_input(
             "Enter station number:",
             key="manual_wsc_input_top",
-            on_change=clear_manual_input
+            on_change=select_station_from_input
         )
-
-        # Always render the map
+    
+        # Render map
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
             m,
@@ -717,46 +717,41 @@ else:
             use_container_width=True,
             key="desktop_folium_map"
         )
-
+    
+        # Update selected_station from map click
+        if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+            tooltip_text = clicked_data['last_object_clicked_tooltip']
+            if tooltip_text:
+                st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
+                st.session_state.show_station_details_expander = True
+    
     with col2:
-        # Only update selected_station from map clicks if no manual override
-        if not st.session_state.get("search_overrides_map", False):
-            if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
-                tooltip_text = clicked_data['last_object_clicked_tooltip']
-                if tooltip_text:
-                    selected_wsc = tooltip_text.split(" ")[0].strip().upper()
-                    st.session_state.selected_station = selected_wsc
-
-        # Render the station table & chart if a station is selected
+        # Render the station table & chart
         if st.session_state.get('selected_station'):
             station_code = st.session_state.selected_station
             row = merged[merged['WSC'].str.strip().str.upper() == station_code]
-
+    
             if not row.empty:
                 row = row.iloc[0]
-
-                # Check if diversion data exists
+    
+                # Diversion toggle
                 has_div = station_code in diversion_tables
-                if has_div:
-                    toggle_key = f"show_diversion_{station_code}_desktop"
-                    if toggle_key not in st.session_state:
-                        st.session_state[toggle_key] = False
-                    show_diversion = st.checkbox(
-                        "Show diversion table thresholds",
-                        value=st.session_state[toggle_key],
-                        key=toggle_key
-                    )
-                else:
-                    show_diversion = False
-
-                # Render table and chart
+                toggle_key = f"show_diversion_{station_code}_desktop"
+                if has_div and toggle_key not in st.session_state:
+                    st.session_state[toggle_key] = False
+                show_diversion = st.checkbox(
+                    "Show diversion table thresholds",
+                    value=st.session_state.get(toggle_key, False),
+                    key=toggle_key
+                ) if has_div else False
+    
                 html_table = render_station_table(row, selected_dates, show_diversion=show_diversion)
                 st.markdown(html_table, unsafe_allow_html=True)
                 plot_station_chart(station_code, merged, selected_dates, show_diversion=show_diversion)
             else:
                 st.write("Station data not found.")
         else:
-            st.write("Click a station on the map to see its flow chart and data table here.")
+            st.write("Click a station on the map or enter a station number above.")
 
 
 
