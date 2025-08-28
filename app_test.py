@@ -701,10 +701,6 @@ else:
             key="manual_wsc_input_top"
         )
 
-        # --- Update selected_station from manual input ---
-        if manual_input:
-            st.session_state.selected_station = manual_input.strip().upper()
-
         # --- Render map ---
         m = render_map_clickable(merged, selected_dates)
         clicked_data = st_folium(
@@ -714,8 +710,12 @@ else:
             key="desktop_folium_map"
         )
 
-        # --- Update selected_station from map click if no manual input ---
-        if not manual_input and clicked_data and clicked_data.get('last_object_clicked_tooltip'):
+        # --- Update selected_station ---
+        if manual_input:
+            # If user typed in a station, use it and then clear input after
+            st.session_state.selected_station = manual_input.strip().upper()
+            st.session_state.manual_wsc_input_top = ""
+        elif clicked_data and clicked_data.get('last_object_clicked_tooltip'):
             tooltip_text = clicked_data['last_object_clicked_tooltip']
             if tooltip_text:
                 st.session_state.selected_station = tooltip_text.split(" ")[0].strip().upper()
