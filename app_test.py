@@ -695,17 +695,17 @@ else:
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
 
-        # --- Manual input with callback ---
-        def handle_manual_input():
-            st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
-            st.session_state.show_station_details_expander = True
-            st.session_state.manual_wsc_input_top = ""  # clear input safely
-
-        st.text_input(
+        # --- Manual input ---
+        manual_input = st.text_input(
             "Enter station number:",
-            key="manual_wsc_input_top",
-            on_change=handle_manual_input
+            key="manual_wsc_input_top"
         )
+
+        # If user typed a station, update immediately
+        if manual_input:
+            st.session_state.selected_station = manual_input.strip().upper()
+            st.session_state.show_station_details_expander = True
+            st.session_state.manual_wsc_input_top = ""  # clear input immediately
 
         # --- Render the map ---
         m = render_map_clickable(merged, selected_dates)
@@ -716,7 +716,7 @@ else:
             key="desktop_folium_map"
         )
 
-        # --- Map click always updates selected_station ---
+        # Map clicks always update station
         if clicked_data and clicked_data.get('last_object_clicked_tooltip'):
             tooltip_text = clicked_data['last_object_clicked_tooltip']
             if tooltip_text:
