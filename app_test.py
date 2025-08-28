@@ -692,23 +692,22 @@ else:
     # --- Desktop layout ---
     col1, col2 = st.columns([5, 2])
 
+    def clear_manual_input():
+        """Callback to handle Enter pressed in text input."""
+        st.session_state.selected_station = st.session_state.manual_wsc_input_top.strip().upper()
+        st.session_state.show_station_details_expander = True
+        st.session_state.search_overrides_map = True
+        st.session_state.manual_wsc_input_top = ""  # safely clear via callback
+
     with col1:
         st.markdown("### Interactive Map - Click a station or enter a station number below:")
 
-        # Input box for manual station entry
-        manual_wsc = st.text_input("Enter station number:", key="manual_wsc_input_top")
-        if manual_wsc:
-            # Update selected station and show details
-            st.session_state.selected_station = manual_wsc.strip().upper()
-            st.session_state.show_station_details_expander = True
-
-            # Set manual override to prevent map click from overwriting
-            st.session_state.search_overrides_map = True
-
-            # Clear the input box immediately
-            st.session_state['manual_wsc_input_top'] = ""
-        else:
-            st.session_state.search_overrides_map = False
+        # Input box for manual station entry with on_change callback
+        st.text_input(
+            "Enter station number:",
+            key="manual_wsc_input_top",
+            on_change=clear_manual_input
+        )
 
         # Always render the map
         m = render_map_clickable(merged, selected_dates)
