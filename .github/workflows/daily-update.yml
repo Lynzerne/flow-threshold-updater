@@ -15,11 +15,19 @@ jobs:
     steps:
       - name: 🧾 Check out repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0   # IMPORTANT for rebase/reset to work properly
+
+      - name: 🔄 Sync with main before running
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
 
       - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
+
 
       - name: 📦 Install dependencies
 
