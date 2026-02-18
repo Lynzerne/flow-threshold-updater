@@ -37,10 +37,25 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data || true   # Add entire /data folder including new snapshots
-          git status             # Show staged files
-          git commit -m "Automated daily data update: $(date +'%Y-%m-%d')" || echo "No changes to commit"
-          git push
+
+          # Make sure we're up to date with remote before committing/pushing
+          git fetch origin main
+          git rebase origin/main
+
+          # Stage only the files you intend to keep updating
+          git add data/AB_WS_R_stations.geojson data/WS_R_master_daily.parquet || true
+          git status
+
+          # Commit if there are changes
+          git commit -m "Automated daily data update: $(date -u +'%Y-%m-%d')" || echo "No changes to commit"
+
+          # Rebase again in case remote changed while we were committing (rare but happens)
+          git fetch origin main
+          git rebase origin/main
+
+          # Push safely
+          git push origin HEAD:main
+
 
       - name: 📏 Check data folder size
         run: du -sh data
