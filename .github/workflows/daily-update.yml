@@ -46,23 +46,16 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          # Make sure we're up to date with remote before committing/pushing
-          git fetch origin main
-          git rebase origin/main
-
-          # Stage only the files you intend to keep updating
           git add data/AB_WS_R_stations.geojson data/WS_R_master_daily.parquet || true
           git status
 
-          # Commit if there are changes
-          git commit -m "Automated daily data update: $(date -u +'%Y-%m-%d')" || echo "No changes to commit"
+          if git diff --cached --quiet; then
+            echo "No changes staged; skipping commit + push."
+            exit 0
+          fi
 
-          # Rebase again in case remote changed while we were committing (rare but happens)
-          git fetch origin main
-          git rebase origin/main
-
-          # Push safely
-          git push origin HEAD:main
+          git commit -m "Automated daily data update: $(date -u +'%Y-%m-%d')"
+          git push --force-with-lease origin HEAD:main
 
 
       - name: 📏 Check data folder size
