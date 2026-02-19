@@ -37,7 +37,11 @@ jobs:
 
       - name: ▶️ Run data updater script
         run: python data_updater.py
+        
+      - name: 📤 Export PowerBI CSV
+        run: python export_pbi_csv.py
 
+        
       - name: 📂 Show changed files (debugging)
         run: git status
 
@@ -46,7 +50,9 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add data/AB_WS_R_stations.geojson data/WS_R_master_daily.parquet || true
+          git add data/AB_WS_R_stations.geojson \
+                  data/WS_R_master_daily.parquet \
+                  data/pbi_flow_thresholds_05CC_plus_05CB007.csv || true
           git status
 
           if git diff --cached --quiet; then
@@ -56,6 +62,8 @@ jobs:
 
           git commit -m "Automated daily data update: $(date -u +'%Y-%m-%d')"
           git push --force-with-lease origin HEAD:main
+
+
 
 
       - name: 📏 Check data folder size
