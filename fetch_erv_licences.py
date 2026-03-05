@@ -141,7 +141,8 @@ def fetch_waterlicence_authorization_raw(
     # Overwrite / update the stable "raw" file your dashboard uses
     out_csv_path.write_bytes(extracted_csv.read_bytes())
     if not out_csv_path.exists():
-    raise FileNotFoundError(f"Expected output missing: {out_csv_path}")
+        raise FileNotFoundError(f"Expected output missing: {out_csv_path}")
+    print(f"✅ Saved raw licence CSV to: {out_csv_path}")
 
     # Clean up temporary files
     try:
@@ -150,7 +151,6 @@ def fetch_waterlicence_authorization_raw(
         pass
     tmp_zip_path.unlink(missing_ok=True)
 
-    print(f"✅ Saved raw licence CSV to: {out_csv_path}")
     return str(out_csv_path)
 
 
