@@ -37,6 +37,15 @@ jobs:
 
       - name: ▶️ Run data updater script
         run: python data_updater.py
+
+      - name: 🔎 Verify ERV file exists (debug)
+        run: |
+          pwd
+          echo "---- data folder contents ----"
+          ls -lah data || true
+          echo "---- find authorization csv ----"
+          find . -maxdepth 3 -type f -name "*Authorization*.csv" -o -name "*WaterLicence*.csv" || true
+          test -f data/WaterLicence_Authorization.csv && echo "✅ Found data/WaterLicence_Authorization.csv" || (echo "❌ Missing data/WaterLicence_Authorization.csv" && exit 1)
         
       - name: 📤 Export PowerBI CSV
         run: python export_pbi_csv.py
