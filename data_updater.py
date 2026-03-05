@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 from collections import Counter
 from datetime import datetime, timedelta, date
+from fetch_erv_licences import fetch_waterlicence_authorization_raw
 
 try:
     import pyarrow
@@ -376,3 +377,23 @@ print(f"🔁 Rolling master GeoJSON updated: {master_geojson_path}")
 #     print(f"✅ Stations GeoDataFrame saved to {output_app_parquet_path}")
 # except Exception as e:
 #     print(f"❌ Error saving GeoDataFrame to Parquet: {e}")
+
+#############################
+# Fetch AER Water Licence Data
+#############################
+
+print("Starting ERV licence download...")
+
+parent_query = (
+    "AUTHORIZATION_STATUS='AUTAC' AND "
+    "AUTHORIZATION_REGULATOR='AER' AND "
+    "ALLOCATION_RIVER_SUB_BASIN_CO LIKE '%05CC%'"
+)
+
+fetch_waterlicence_authorization_raw(
+    parent_query,
+    out_dir="data",
+    out_csv_name="WaterLicence_Authorization.csv"
+)
+
+print("ERV licence download complete.")
