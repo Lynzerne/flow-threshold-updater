@@ -35,8 +35,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: 🧠 Confirm updater contains ERV call
+        run: |
+          echo "Commit:"
+          git rev-parse --short HEAD
+          echo "Searching for ERV call in data_updater.py..."
+          grep -n "fetch_waterlicence_authorization_raw" -n data_updater.py || true
+          echo "Bottom of data_updater.py:"
+          tail -n 40 data_updater.py
+
       - name: ▶️ Run data updater script
         run: python data_updater.py
+        
+      - name: 🧭 Locate any licence CSV anywhere
+        run: |
+          echo "Find any licence/authorization CSV anywhere in repo:"
+          find . -type f \( -iname "*WaterLicence*csv" -o -iname "*Authorization*csv" -o -iname "*WaterAct*csv" \) -print
 
       - name: 🔎 Verify ERV file exists (debug)
         run: |
