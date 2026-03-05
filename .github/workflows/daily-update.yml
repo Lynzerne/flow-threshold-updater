@@ -50,6 +50,11 @@ jobs:
       - name: 📤 Export PowerBI CSV
         run: python export_pbi_csv.py
 
+      - name: 🔎 Verify ERV file still exists after export (debug)
+        run: |
+          ls -lah data || true
+          test -f data/WaterLicence_Authorization.csv && echo "✅ Still present" || (echo "❌ Disappeared after export_pbi_csv.py" && exit 1)
+
         
       - name: 📂 Show changed files (debugging)
         run: git status
@@ -62,7 +67,7 @@ jobs:
                 git add data/AB_WS_R_stations.geojson \
                         data/WS_R_master_daily.parquet \
                         data/pbi_flow_thresholds_05CC_plus_05CB007.csv \
-                        data/WaterLicence_Authorization.csv || true
+                        data/WaterLicence_Authorization.csv
                 git status
       
                 if git diff --cached --quiet; then
