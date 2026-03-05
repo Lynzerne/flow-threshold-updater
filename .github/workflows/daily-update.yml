@@ -47,21 +47,22 @@ jobs:
 
       - name: ✅ Commit and push data changes
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-
-          git add data/AB_WS_R_stations.geojson \
-                  data/WS_R_master_daily.parquet \
-                  data/pbi_flow_thresholds_05CC_plus_05CB007.csv || true
-          git status
-
-          if git diff --cached --quiet; then
-            echo "No changes staged; skipping commit + push."
-            exit 0
-          fi
-
-          git commit -m "Automated daily data update: $(date -u +'%Y-%m-%d')"
-          git push --force-with-lease origin HEAD:main
+                git config user.name "github-actions"
+                git config user.email "github-actions@github.com"
+      
+                git add data/AB_WS_R_stations.geojson \
+                        data/WS_R_master_daily.parquet \
+                        data/pbi_flow_thresholds_05CC_plus_05CB007.csv \
+                        data/WaterLicence_Authorization.csv || true
+                git status
+      
+                if git diff --cached --quiet; then
+                  echo "No changes staged; skipping commit + push."
+                  exit 0
+                fi
+      
+                git commit -m "Automated daily data update: $(date -u +'%Y-%m-%d')"
+                git push --force-with-lease origin HEAD:main
 
 
 
