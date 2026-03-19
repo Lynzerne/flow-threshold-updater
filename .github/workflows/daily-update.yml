@@ -77,10 +77,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add data/AB_WS_R_stations.geojson \
-                  data/WS_R_master_daily.parquet \
-                  data/pbi_flow_thresholds_05CC_plus_05CB007.csv \
-                  data/WaterLicence_Authorization.csv
+          git add data/
 
           git status
 
