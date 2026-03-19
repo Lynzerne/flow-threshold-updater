@@ -1,34 +1,274 @@
 import os
 import json
+import re
+import time
 import requests
 import pandas as pd
 from collections import Counter
 from datetime import datetime, timedelta, date
+from urllib.parse import urljoin
+
 from fetch_erv_licences import fetch_waterlicence_authorization_raw
 
 try:
     import pyarrow
 except ImportError:
     raise ImportError("pyarrow is required to read/write Parquet files. Please install it via pip.")
+
 pd.options.io.parquet.engine = "pyarrow"
 
-# --- Config ---
+# ============================================================
+# CONFIG
+# ============================================================
 station_list_csv = "data/AB_WS_R_StationList.csv"
 output_parquet = "data/WS_R_master_daily.parquet"
 base_url_template = "https://rivers.alberta.ca/apps/Basins/data/figures/river/abrivers/stationdata/WS_R_{}_table.json"
 
-# --- Date Window (last 7 days; source JSON provides last 7 days of data) ---
-today = datetime.today().date()  # Current date of script execution
-lookback_days = 7  # (kept for readability; filtering is done by <= today)
+# Water licence files
+licence_csv_path = "data/WaterLicence_Authorization.csv"
+doc_links_csv_path = "data/WaterLicence_DocumentLinks.csv"
 
-# --- Load Stations ---
+# Date Window
+today = datetime.today().date()
+lookback_days = 7  # kept for readability
+
+# ============================================================
+# HELPERS - DOCUMENT LINK RESOLUTION
+# ============================================================
+ERV_BASE = "https://geospatial.alberta.ca"
+ERV_WATER_ACT_URL = "https://geospatial.alberta.ca/erv-water-act/?page=Water-Act&authorizationNumber={auth}"
+
+# Looks for direct DRAS document links in page HTML
+DRAS_DOC_PATTERN = re.compile(
+    r'(/services/DRASDocuments/Document/Get\?documentType=WL&authorizationNumber=(\d+)&id=(\d+))',
+    re.IGNORECASE
+)
+
+def build_erv_link(auth_number):
+    auth_str = str(auth_number).strip()
+    return ERV_WATER_ACT_URL.format(auth=auth_str)
+
+def extract_direct_pdf_from_html(html, expected_auth=None):
+    """
+    Tries to find a direct WL document link in HTML.
+    Returns dict with pdf_url, authorizationNumber, document_id if found.
+    """
+    matches = DRAS_DOC_PATTERN.findall(html)
+    if not matches:
+        return None
+
+    # Prefer matching authorization number if available
+    for full_path, auth_num, doc_id in matches:
+        if expected_auth is None or str(auth_num) == str(expected_auth):
+            return {
+                "PdfHyperlink": urljoin(ERV_BASE, full_path),
+                "AuthorizationNumber": str(auth_num),
+                "DocumentID": str(doc_id),
+                "PdfFound": True,
+                "PdfSource": "Direct DRAS document"
+            }
+
+    # Fallback to first match
+    full_path, auth_num, doc_id = matches[0]
+    return {
+        "PdfHyperlink": urljoin(ERV_BASE, full_path),
+        "AuthorizationNumber": str(auth_num),
+        "DocumentID": str(doc_id),
+        "PdfFound": True,
+        "PdfSource": "Direct DRAS document (first match fallback)"
+    }
+
+def resolve_pdf_link_for_auth(auth_number, session, timeout=30):
+    """
+    Attempts to resolve a direct PDF link for a water licence authorization.
+    Falls back to ERV landing page if direct PDF is not found.
+    """
+    auth_str = str(auth_number).strip()
+    erv_link = build_erv_link(auth_str)
+
+    try:
+        resp = session.get(erv_link, timeout=timeout)
+        resp.raise_for_status()
+        html = resp.text
+    except Exception as e:
+        return {
+            "AuthorizationNumber": auth_str,
+            "PdfHyperlink": erv_link,
+            "DocumentID": None,
+            "PdfFound": False,
+            "PdfSource": f"ERV fallback (request failed: {str(e)[:150]})",
+            "LastChecked": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+    doc_info = extract_direct_pdf_from_html(html, expected_auth=auth_str)
+
+    if doc_info:
+        doc_info["LastChecked"] = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        return doc_info
+
+    return {
+        "AuthorizationNumber": auth_str,
+        "PdfHyperlink": erv_link,
+        "DocumentID": None,
+        "PdfFound": False,
+        "PdfSource": "ERV fallback (direct PDF not found in HTML)",
+        "LastChecked": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+def get_authorization_column(df):
+    """
+    Tries common authorization-number column names.
+    """
+    auth_col_candidates = [
+        "AuthorizationNumber",
+        "AUTHORIZATION_NUMBER",
+        "Authorization Number",
+        "authorizationNumber"
+    ]
+    for c in auth_col_candidates:
+        if c in df.columns:
+            return c
+    raise ValueError(
+        f"Could not find authorization number column. Checked: {auth_col_candidates}"
+    )
+
+def update_document_link_lookup(
+    licence_csv_path,
+    doc_links_csv_path,
+    sleep_seconds=0.5
+):
+    """
+    Reads fetched licence CSV, resolves direct document links where possible,
+    and updates a separate lookup CSV.
+    """
+    if not os.path.exists(licence_csv_path):
+        print(f"Licence CSV not found: {licence_csv_path}")
+        return
+
+    licences_df = pd.read_csv(licence_csv_path, dtype=str)
+    auth_col = get_authorization_column(licences_df)
+
+    licences_df[auth_col] = licences_df[auth_col].astype(str).str.strip()
+    licences_df = licences_df[
+        licences_df[auth_col].notna() &
+        (licences_df[auth_col] != "") &
+        (licences_df[auth_col].str.lower() != "nan")
+    ].copy()
+
+    if licences_df.empty:
+        print("No valid authorization numbers found in licence CSV.")
+        return
+
+    unique_auths = sorted(licences_df[auth_col].dropna().unique().tolist())
+    print(f"Found {len(unique_auths)} unique authorization numbers in licence CSV.")
+
+    # Load existing lookup if present
+    if os.path.exists(doc_links_csv_path):
+        links_df = pd.read_csv(doc_links_csv_path, dtype=str)
+        print(f"Loaded existing document link lookup: {doc_links_csv_path}")
+    else:
+        links_df = pd.DataFrame(columns=[
+            "AuthorizationNumber",
+            "PdfHyperlink",
+            "DocumentID",
+            "PdfFound",
+            "PdfSource",
+            "LastChecked"
+        ])
+        print("No existing document link lookup found; starting fresh.")
+
+    if not links_df.empty:
+        links_df["AuthorizationNumber"] = links_df["AuthorizationNumber"].astype(str).str.strip()
+        already_done = set(
+            links_df.loc[
+                links_df["AuthorizationNumber"].notna() &
+                (links_df["AuthorizationNumber"] != "") &
+                (links_df["AuthorizationNumber"].str.lower() != "nan"),
+                "AuthorizationNumber"
+            ].tolist()
+        )
+    else:
+        already_done = set()
+
+    to_resolve = [a for a in unique_auths if a not in already_done]
+
+    print(f"Already resolved: {len(already_done)}")
+    print(f"Need to resolve: {len(to_resolve)}")
+
+    if not to_resolve:
+        print("No new authorizations to resolve.")
+        return
+
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (compatible; WaterLicenceLinkResolver/1.0)"
+    })
+
+    new_results = []
+    for i, auth in enumerate(to_resolve, start=1):
+        print(f"[{i}/{len(to_resolve)}] Resolving authorization {auth}...")
+        result = resolve_pdf_link_for_auth(auth, session=session)
+        new_results.append(result)
+        time.sleep(sleep_seconds)
+
+    new_results_df = pd.DataFrame(new_results)
+
+    if links_df.empty:
+        updated_links_df = new_results_df
+    else:
+        updated_links_df = pd.concat([links_df, new_results_df], ignore_index=True)
+        updated_links_df.drop_duplicates(subset=["AuthorizationNumber"], keep="last", inplace=True)
+
+    updated_links_df.to_csv(doc_links_csv_path, index=False)
+    print(f"Updated document link lookup saved: {doc_links_csv_path}")
+
+def enrich_licence_csv_with_doc_links(
+    licence_csv_path,
+    doc_links_csv_path,
+    output_csv_path=None
+):
+    """
+    Merges document-link lookup back onto the licence CSV.
+    If output_csv_path is None, overwrites the licence CSV.
+    """
+    if output_csv_path is None:
+        output_csv_path = licence_csv_path
+
+    if not os.path.exists(licence_csv_path):
+        print(f"Licence CSV not found: {licence_csv_path}")
+        return
+
+    if not os.path.exists(doc_links_csv_path):
+        print(f"Document link lookup not found: {doc_links_csv_path}")
+        return
+
+    licences_df = pd.read_csv(licence_csv_path, dtype=str)
+    links_df = pd.read_csv(doc_links_csv_path, dtype=str)
+
+    auth_col = get_authorization_column(licences_df)
+
+    licences_df[auth_col] = licences_df[auth_col].astype(str).str.strip()
+    links_df["AuthorizationNumber"] = links_df["AuthorizationNumber"].astype(str).str.strip()
+
+    merged_df = licences_df.merge(
+        links_df,
+        how="left",
+        left_on=auth_col,
+        right_on="AuthorizationNumber"
+    )
+
+    merged_df.to_csv(output_csv_path, index=False)
+    print(f"Licence CSV enriched with document links: {output_csv_path}")
+
+# ============================================================
+# PART 1 - FETCH / UPDATE RIVER STATION DATA
+# ============================================================
 stns = pd.read_csv(station_list_csv)
 required_cols = ['WSC', 'LAT', 'LON']
 for c in required_cols:
     if c not in stns.columns:
         raise ValueError(f"Missing column '{c}' in station list CSV")
 
-# --- Load Existing Master Data ---
 if os.path.exists(output_parquet):
     master_df = pd.read_parquet(output_parquet, engine="pyarrow")
     master_df['Date'] = pd.to_datetime(master_df['Date'], errors='coerce').dt.date
@@ -42,6 +282,7 @@ all_data = []
 for _, row in stns.iterrows():
     station_id = row['WSC']
     url = base_url_template.format(station_id)
+
     try:
         resp = requests.get(url)
         resp.raise_for_status()
@@ -80,12 +321,8 @@ for _, row in stns.iterrows():
         print(f"No 'Date' column in data for {station_id}, skipping.")
         continue
 
-    # Ensure 'Date' column is converted to date objects early
     df['Date'] = pd.to_datetime(df['Date'], errors='coerce').dt.date
-
-    # Filter out any future dates from the scraped data here
     df = df[df['Date'] <= today]
-    # Filter out rows where 'Date' became NaT due to coercion errors
     df = df.dropna(subset=['Date'])
 
     if df.empty:
@@ -139,7 +376,10 @@ if all_data:
 
             existing_master_row_data = master_dict.get((stn, dt))
 
-            new_row_df = new_data_df[(new_data_df['station_no'] == stn) & (new_data_df['Date'] == dt)]
+            new_row_df = new_data_df[
+                (new_data_df['station_no'] == stn) &
+                (new_data_df['Date'] == dt)
+            ]
             new_scrape_row_data = new_row_df.iloc[0].to_dict() if not new_row_df.empty else None
 
             current_row_data = {col: None for col in all_possible_columns}
@@ -156,7 +396,7 @@ if all_data:
 
             is_row_revised = False
 
-            # --- Update Time-Series Columns ---
+            # Update time-series columns if old was null and new is populated
             for col in ts_cols:
                 old_val = current_row_data.get(col)
                 new_val = new_scrape_row_data.get(col) if new_scrape_row_data is not None else None
@@ -174,7 +414,6 @@ if all_data:
             updated_rows_list.append(current_row_data)
 
         updated_df = pd.DataFrame(updated_rows_list)
-
         updated_df['Date'] = pd.to_datetime(updated_df['Date'], errors='coerce').dt.date
 
         for col in ts_cols:
@@ -188,7 +427,9 @@ if all_data:
                 updated_df[col] = pd.NA
 
         updated_keys_df = updated_df[merge_keys].drop_duplicates()
-        master_df = master_df[~master_df.set_index(merge_keys).index.isin(updated_keys_df.set_index(merge_keys).index)]
+        master_df = master_df[
+            ~master_df.set_index(merge_keys).index.isin(updated_keys_df.set_index(merge_keys).index)
+        ]
         master_df = pd.concat([master_df, updated_df], ignore_index=True)
 
     else:
@@ -197,53 +438,23 @@ if all_data:
         master_df['Date'] = pd.to_datetime(master_df['Date'], errors='coerce').dt.date
 
     master_df.sort_values(merge_keys, inplace=True)
-
     master_df.to_parquet(output_parquet, index=False, engine="pyarrow")
     print(f"Master dataset saved to {output_parquet}")
-
-    # --- Save Daily Snapshot ---
-    # ##DISABLED FOR STORAGE SPACE##
-    # This creates a new parquet every day and will balloon repo/storage over time.
-    #
-    # if not master_df.empty and 'Date' in master_df.columns and not master_df['Date'].isnull().all():
-    #     iday = master_df['Date'].max()
-    #     daily_snapshot_df = master_df[master_df['Date'] == iday]
-    #     daily_parquet_path = f"data/AB_WS_R_Flows_{iday}.parquet"
-    #     daily_snapshot_df.to_parquet(daily_parquet_path, index=False, engine="pyarrow")
-    #     print(f"Daily snapshot Parquet saved to {daily_parquet_path}")
-    # else:
-    #     print("Master dataset is empty or 'Date' column is problematic, no daily snapshot saved.")
 
 else:
     print("No new data collected from any stations.")
 
-#############################Stitch#############################
-from datetime import date
-import pandas as pd
-import json
-import os
-
-# If you want geopandas later, you can keep it installed,
-# but we are disabling the parquet export from GeoDataFrame for storage.
-# import geopandas as gpd  # ##DISABLED FOR STORAGE SPACE##
-
-# --- Paths & Date ---
+# ============================================================
+# PART 2 - STITCH / ROLLING GEOJSON
+# ============================================================
 iday = date.today().strftime('%Y-%m-%d')
 station_list_csv = "data/AB_WS_R_StationList.csv"
-master_parquet_path = "data/WS_R_master_daily.parquet"     # rolling appended master daily (keep)
-master_geojson_path = "data/AB_WS_R_stations.geojson"      # rolling GeoJSON (app uses THIS)
+master_parquet_path = "data/WS_R_master_daily.parquet"
+master_geojson_path = "data/AB_WS_R_stations.geojson"
 
-# Daily geojson snapshot (disabled)
-geojson_updated_path = f"data/AB_WS_R_stations_{iday}.geojson"  # ##DISABLED FOR STORAGE SPACE##
-
-# Parquet for app (disabled; app reads geojson)
-output_app_parquet_path = "data/AB_WS_R_stations.parquet"       # ##DISABLED FOR STORAGE SPACE##
-
-# --- Load Station List ---
 stns = pd.read_csv(station_list_csv)
 stns['WSC'] = stns['WSC'].astype(str).str.strip()
 
-# --- Load Master GeoJSON or Create Skeleton ---
 if os.path.exists(master_geojson_path):
     print(f"📄 Loading existing GeoJSON: {master_geojson_path}")
     with open(master_geojson_path, 'r') as f:
@@ -264,53 +475,38 @@ else:
         geojson['features'].append(feature)
     print("✅ GeoJSON skeleton created.")
 
-# --- Load Full Master Daily Data (source of timeseries) ---
 master_df = pd.read_parquet(master_parquet_path, engine="pyarrow")
 master_df['station_no'] = master_df['station_no'].astype(str).str.strip()
 
-# --- App-only whitelist: keep ONLY what the Streamlit app reads/uses ---
 TS_KEEP = [
-    # Flows
     "Daily flow",
     "Calculated flow",
-
-    # SWA thresholds (you plot Q80/Q90/Q95; compliance uses Q80 & Q95)
     "Q80",
     "Q90",
     "Q95",
-
-    # WMP thresholds (your extract_thresholds() keyset)
     "WCO",
     "IO",
     "Minimum flow",
     "Industrial IO",
     "Non-industrial IO",
     "IFN",
-
-    # Optional small flag
     "is_revised",
 ]
 
-# Metadata stored on feature properties (not per-timeseries entry)
 metadata_cols = {"station_no", "station_name", "Date", "lon", "lat"}
-
-# Only keep columns that exist in master_df
 ts_cols = [c for c in TS_KEEP if c in master_df.columns]
 
-# --- Build a dict for fast feature lookup ---
 feature_map = {feat['properties']['station_no']: feat for feat in geojson['features']}
 
-# --- Update features with reduced timeseries payload ---
 for stn_id, group_df in master_df.groupby('station_no'):
     if stn_id not in feature_map:
         continue
+
     feat = feature_map[stn_id]
 
-    # Clean out all keys except static metadata & time_series to avoid garbage data
     static_keys = {'station_no', 'station_name', 'lat', 'lon', 'time_series'}
     feat['properties'] = {k: v for k, v in feat['properties'].items() if k in static_keys}
 
-    # Ensure group is sorted by Date (so "latest_record" is truly latest)
     if 'Date' in group_df.columns:
         group_df = group_df.copy()
         group_df['Date'] = pd.to_datetime(group_df['Date'], errors='coerce')
@@ -326,18 +522,15 @@ for stn_id, group_df in master_df.groupby('station_no'):
     feat['properties']['lat'] = float(latest_record.get('lat', feat['properties'].get('lat', 0)))
     feat['properties']['lon'] = float(latest_record.get('lon', feat['properties'].get('lon', 0)))
 
-    # Build reduced timeseries list (ONLY what app needs)
     timeseries = []
     for _, row in group_df.iterrows():
-        # Date formatting
         d = row.get('Date', None)
         if pd.isna(d):
             continue
-        d_str = pd.to_datetime(d).strftime('%Y-%m-%d')
 
+        d_str = pd.to_datetime(d).strftime('%Y-%m-%d')
         ts_entry = {'date': d_str}
 
-        # Add only whitelisted columns if present + non-null
         for col in ts_cols:
             val = row.get(col)
             if pd.notnull(val) and str(val).strip() != '':
@@ -347,41 +540,20 @@ for stn_id, group_df in master_df.groupby('station_no'):
                     try:
                         ts_entry[col] = float(val)
                     except (ValueError, TypeError):
-                        # If something weird slips through, just skip
                         pass
 
         timeseries.append(ts_entry)
 
     feat['properties']['time_series'] = timeseries
 
-# --- Save Rolling Master GeoJSON (app reads THIS) ---
 with open(master_geojson_path, 'w') as f:
     json.dump(geojson, f, indent=2)
+
 print(f"🔁 Rolling master GeoJSON updated: {master_geojson_path}")
 
-# --- Save Daily GeoJSON Snapshot (disabled) ---
-# ##DISABLED FOR STORAGE SPACE##
-# This creates a new geojson every day and will balloon repo/storage over time.
-#
-# with open(geojson_updated_path, 'w') as f:
-#     json.dump(geojson, f, indent=2)
-# print(f"📍 Daily GeoJSON snapshot saved: {geojson_updated_path}")
-
-# --- Convert GeoJSON to GeoDataFrame and save Parquet (disabled) ---
-# ##DISABLED FOR STORAGE SPACE##
-# App reads the rolling geojson directly; exporting parquet adds another big artifact.
-#
-# try:
-#     stations_gdf = gpd.GeoDataFrame.from_features(geojson['features'])
-#     stations_gdf.to_parquet(output_app_parquet_path, index=False, engine="pyarrow")
-#     print(f"✅ Stations GeoDataFrame saved to {output_app_parquet_path}")
-# except Exception as e:
-#     print(f"❌ Error saving GeoDataFrame to Parquet: {e}")
-
-#############################
-# Fetch AER Water Licence Data
-#############################
-
+# ============================================================
+# PART 3 - FETCH AER WATER LICENCE DATA
+# ============================================================
 print("Starting ERV licence download...")
 
 parent_query = (
@@ -397,3 +569,23 @@ fetch_waterlicence_authorization_raw(
 )
 
 print("ERV licence download complete.")
+
+# ============================================================
+# PART 4 - RESOLVE / UPDATE DOCUMENT LINKS
+# ============================================================
+print("Starting document-link enrichment...")
+
+update_document_link_lookup(
+    licence_csv_path=licence_csv_path,
+    doc_links_csv_path=doc_links_csv_path,
+    sleep_seconds=0.5
+)
+
+# Overwrite WaterLicence_Authorization.csv with the merged/enriched version
+enrich_licence_csv_with_doc_links(
+    licence_csv_path=licence_csv_path,
+    doc_links_csv_path=doc_links_csv_path,
+    output_csv_path=licence_csv_path
+)
+
+print("Document-link enrichment complete.")
