@@ -4354,7 +4354,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 2.9986506801091917,
+            "Daily flow": 2.89158130403171,
+            "Q80": 0.027,
+            "Q95": 0.001,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.8701725538861362,
+            "Q80": 0.027,
+            "Q95": 0.001,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 0.027,
             "Q95": 0.001,
             "is_revised": false
@@ -11386,7 +11399,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 478.83414813906717,
+            "Daily flow": 477.31364639250666,
+            "Q80": 259.0,
+            "Q95": 210.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 482.29838083720057,
+            "Q80": 259.0,
+            "Q95": 210.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 484.3691586017958,
             "Q80": 259.0,
             "Q95": 210.0,
             "is_revised": false
@@ -17398,6 +17425,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.6169186046510788,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 1.42,
             "is_revised": false
           }
@@ -24427,7 +24494,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 5.962605753875663,
+            "Daily flow": 5.931816508665777,
+            "Q80": 5.13,
+            "Q95": 3.87,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 5.889233249081519,
+            "Q80": 5.13,
+            "Q95": 3.87,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 5.13,
             "Q95": 3.87,
             "is_revised": false
@@ -28359,7 +28439,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 12.901079207920755,
+            "Daily flow": 12.880824037247677,
+            "Q80": 10.4,
+            "Q95": 8.22,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 13.165492594849313,
+            "Q80": 10.4,
+            "Q95": 8.22,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 10.4,
             "Q95": 8.22,
             "is_revised": false
@@ -32030,7 +32123,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.8671308567710645,
+            "Daily flow": 1.8047873216009451,
+            "WCO": 1.837,
+            "IO": 1.67,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.8577973776225936,
+            "WCO": 1.837,
+            "IO": 1.67,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 1.889519354119102,
             "WCO": 1.837,
             "IO": 1.67,
             "is_revised": false
@@ -35031,7 +35138,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 203.65660812718056,
+            "Daily flow": 203.46219717224548,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 195.08482528644151,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 191.24770216841716,
             "is_revised": false
           }
         ]
@@ -38022,6 +38139,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.6950883720932722,
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.283,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.283,
             "is_revised": false
           }
@@ -59136,6 +59293,46 @@
             "WCO": 0.37400000000000005,
             "IO": 0.34,
             "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.34,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.34,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.34,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.34,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "IO": 0.31,
+            "is_revised": false
           }
         ]
       }
@@ -62138,6 +62335,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.3371976744185903,
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.142,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.142,
             "is_revised": false
           }
@@ -75858,6 +76095,13 @@
             "Q80": 68.0,
             "Q95": 48.1,
             "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 124.13746525504617,
+            "Q80": 68.0,
+            "Q95": 48.1,
+            "is_revised": false
           }
         ]
       }
@@ -81410,6 +81654,26 @@
             "Daily flow": 0.22716511627926403,
             "IO": 0.04,
             "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.04,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.04,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.04,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.04,
+            "is_revised": false
           }
         ]
       }
@@ -85377,6 +85641,13 @@
           {
             "date": "2026-11-06",
             "Daily flow": 100.84663239846321,
+            "Q80": 43.800000000000004,
+            "Q95": 33.4,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 90.08790031437708,
             "Q80": 43.800000000000004,
             "Q95": 33.4,
             "is_revised": false
@@ -96000,7 +96271,18 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 0.4454274544531075,
+            "Daily flow": 0.44586389815320226,
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 0.4458092896831271,
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.156,
             "is_revised": false
           }
@@ -99915,7 +100197,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 2.5812846285565874,
+            "Daily flow": 2.7264367845491684,
+            "Q80": 1.95,
+            "Q95": 1.09,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 2.531973903899944,
+            "Q80": 1.95,
+            "Q95": 1.09,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 1.95,
             "Q95": 1.09,
             "is_revised": false
@@ -102908,6 +103203,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.146,
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.094,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.094,
             "is_revised": false
           }
@@ -109413,7 +109748,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 144.59723115972787,
+            "Daily flow": 142.35371189609782,
+            "Q80": 67.0,
+            "Q95": 50.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 133.75108987756215,
+            "Q80": 67.0,
+            "Q95": 50.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 67.0,
             "Q95": 50.0,
             "is_revised": false
@@ -112396,6 +112744,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 1.1011860465110557,
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Minimum flow": 0.566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Minimum flow": 0.566336931863872,
             "is_revised": false
           }
@@ -115536,7 +115924,19 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 0.5116539774876446,
+            "Daily flow": 0.4896781338014281,
+            "IO": 0.187,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 0.4861442048866408,
+            "IO": 0.187,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 0.5020055979548488,
             "IO": 0.187,
             "is_revised": false
           }
@@ -122028,8 +122428,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 2.012781752467997,
+            "Daily flow": 2.0033819563978064,
             "WCO": 2.09,
+            "IO": 1.9,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.9948428628753583,
+            "WCO": 2.09,
+            "IO": 1.9,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 1.9,
             "is_revised": false
           }
@@ -131032,6 +131444,30 @@
           {
             "date": "2026-10-31",
             "Daily flow": 1.4202000000001351,
+            "Q80": 1.24,
+            "Q95": 0.84,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "Q80": 1.24,
+            "Q95": 0.84,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "Q80": 1.24,
+            "Q95": 0.84,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "Q80": 1.24,
+            "Q95": 0.84,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
             "Q80": 1.24,
             "Q95": 0.84,
             "is_revised": false
@@ -144314,7 +144750,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 5.050134421344614,
+            "Daily flow": 5.052931849276702,
+            "WCO": 3.8500000000000005,
+            "IO": 3.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 5.128208158214235,
+            "WCO": 3.8500000000000005,
+            "IO": 3.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 5.202782616860532,
             "WCO": 3.8500000000000005,
             "IO": 3.5,
             "is_revised": false
@@ -147687,8 +148137,19 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.063555045871221,
+            "Daily flow": 1.0691772203054914,
             "WCO": 0.8800000000000001,
+            "IO": 0.8,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.0705172671005698,
+            "IO": 0.8,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.8,
             "is_revised": false
           }
@@ -150513,6 +150974,16 @@
           },
           {
             "date": "2026-11-06",
+            "Minimum flow": 0.0566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Minimum flow": 0.0566336931863872,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Minimum flow": 0.0566336931863872,
             "is_revised": false
           }
@@ -159678,7 +160149,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.6348850403868185,
+            "Daily flow": 1.6378683382965,
+            "Q80": 0.72,
+            "Q95": 0.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.6983661405600023,
+            "Q80": 0.72,
+            "Q95": 0.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 0.72,
             "Q95": 0.5,
             "is_revised": false
@@ -162744,7 +163228,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 59.921625341539595,
+            "Daily flow": 59.361334329148434,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 57.13535589592704,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 55.50003970778333,
             "is_revised": false
           }
         ]
@@ -165731,6 +166225,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.4235186046511451,
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.468,
             "is_revised": false
           }
@@ -169124,6 +169658,46 @@
             "Daily flow": 0.2910906976749398,
             "WCO": 0.77,
             "IO": 0.7,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.7,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.7,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.7,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.7,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.66,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.66,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.66,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "IO": 0.66,
             "is_revised": false
           }
         ]
@@ -176090,7 +176664,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 78.37841210167163,
+            "Daily flow": 78.40168462513432,
+            "Q80": 54.0,
+            "Q95": 44.400000000000006,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 79.45591000783052,
+            "Q80": 54.0,
+            "Q95": 44.400000000000006,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 54.0,
             "Q95": 44.400000000000006,
             "is_revised": false
@@ -179054,6 +179641,46 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.08785813953493476,
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.156,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.156,
             "is_revised": false
           }
@@ -182955,7 +183582,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 8.17332823613109,
+            "Daily flow": 8.145393044450431,
+            "Q80": 1.31,
+            "Q95": 0.9500000000000001,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 8.366987734688552,
+            "Q80": 1.31,
+            "Q95": 0.9500000000000001,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 1.31,
             "Q95": 0.9500000000000001,
             "is_revised": false
@@ -186036,7 +186676,18 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 5.602010957042925,
+            "Daily flow": 5.476765772255012,
+            "IO": 2.26534772745549,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 4.475544061953222,
+            "IO": 2.26534772745549,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 2.26534772745549,
             "is_revised": false
           }
@@ -189938,7 +190589,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 17.172555804494024,
+            "Daily flow": 17.199846896187655,
+            "Q80": 2.13,
+            "Q95": 1.05,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 18.626949260260837,
+            "Q80": 2.13,
+            "Q95": 1.05,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 2.13,
             "Q95": 1.05,
             "is_revised": false
@@ -192858,6 +193522,16 @@
           },
           {
             "date": "2026-11-06",
+            "IO": 0.046,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.046,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.046,
             "is_revised": false
           }
@@ -201815,7 +202489,12 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 53.014164784053925,
+            "Daily flow": 53.0741467212586,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 51.08355742479688,
             "is_revised": false
           }
         ]
@@ -205203,6 +205882,46 @@
             "Daily flow": 0.2678930232557808,
             "WCO": 0.341,
             "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.31,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.28,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.28,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.28,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "IO": 0.28,
             "is_revised": false
           }
         ]
@@ -212170,7 +212889,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.5648893564389943,
+            "Daily flow": 1.505853066534867,
+            "Q80": 1.16,
+            "Q95": 0.88,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.1867018430665706,
+            "Q80": 1.16,
+            "Q95": 0.88,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 1.16,
             "Q95": 0.88,
             "is_revised": false
@@ -214825,7 +215557,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 79.14509454841705,
+            "Daily flow": 79.37516692413394,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 75.81295569215558,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 71.97710553155775,
             "is_revised": false
           }
         ]
@@ -218532,7 +219274,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 3.0747360271393576,
+            "Daily flow": 3.0837051817664225,
+            "WCO": 5.698,
+            "IO": 5.18,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 3.156023066439255,
+            "WCO": 5.698,
+            "IO": 5.18,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 3.2227004463280764,
             "WCO": 5.698,
             "IO": 5.18,
             "is_revised": false
@@ -221719,7 +222475,13 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 19.239187499825217,
+            "Daily flow": 6.677749999941731,
+            "IO": 5.484,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 6.91359090911597,
             "IO": 5.484,
             "is_revised": false
           }
@@ -225762,7 +226524,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 25.84660758616518,
+            "Daily flow": 25.894183441429778,
+            "Q80": 2.87,
+            "Q95": 1.97,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 25.490406806231018,
+            "Q80": 2.87,
+            "Q95": 1.97,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 25.21506523976859,
             "Q80": 2.87,
             "Q95": 1.97,
             "is_revised": false
@@ -233078,7 +233854,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 0.1960395280228021,
+            "Daily flow": 0.19624385774836056,
+            "Q80": 0.201,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 0.19920213213032428,
+            "Q80": 0.201,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 0.201,
             "IO": 1.42,
             "is_revised": false
@@ -236396,18 +237185,41 @@
           },
           {
             "date": "2026-11-01",
-            "Daily flow": 5.979968188904258,
             "IO": 0.934455937575389,
             "is_revised": false
           },
           {
             "date": "2026-11-02",
-            "Daily flow": 5.881867096008522,
             "IO": 0.934455937575389,
             "is_revised": false
           },
           {
             "date": "2026-11-03",
+            "IO": 0.934455937575389,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.934455937575389,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.934455937575389,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.934455937575389,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.934455937575389,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.934455937575389,
             "is_revised": false
           }
@@ -241880,7 +242692,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 71.75182372452777,
+            "Daily flow": 66.17377565595459,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 64.22459776978157,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 57.499001369898906,
             "is_revised": false
           }
         ]
@@ -257354,7 +258176,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 46.73543013551012,
+            "Daily flow": 47.04540617516243,
+            "Q80": 11.8,
+            "Q95": 9.4,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 38.49770753231433,
+            "Q80": 11.8,
+            "Q95": 9.4,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 11.8,
             "Q95": 9.4,
             "is_revised": false
@@ -265851,18 +266686,41 @@
           },
           {
             "date": "2026-11-01",
-            "Daily flow": 1.1846961721096325,
             "Minimum flow": 0.396,
             "is_revised": false
           },
           {
             "date": "2026-11-02",
-            "Daily flow": 1.152603211170569,
             "Minimum flow": 0.396,
             "is_revised": false
           },
           {
             "date": "2026-11-03",
+            "Minimum flow": 0.396,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "Minimum flow": 0.396,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "Minimum flow": 0.396,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "Minimum flow": 0.396,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Minimum flow": 0.396,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Minimum flow": 0.396,
             "is_revised": false
           }
@@ -271474,7 +272332,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 7.593583947164635,
+            "Daily flow": 7.586904713955647,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 8.612962262803673,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 8.378491385734492,
             "is_revised": false
           }
         ]
@@ -275383,6 +276251,54 @@
             "Daily flow": 3.037999999998642,
             "Q80": 0.194,
             "Q95": 0.01,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "Q80": 0.194,
+            "Q95": 0.01,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "Q80": 0.194,
+            "Q95": 0.01,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "Q80": 0.194,
+            "Q95": 0.01,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "Q80": 0.194,
+            "Q95": 0.01,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "Q80": 0.231,
+            "Q95": 0.02,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "Q80": 0.231,
+            "Q95": 0.02,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Q80": 0.231,
+            "Q95": 0.02,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Q80": 0.231,
+            "Q95": 0.02,
             "is_revised": false
           }
         ]
@@ -287191,7 +288107,19 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 2.2881068627227017,
+            "Daily flow": 2.3337860130779915,
+            "IO": 2.36,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 2.431546872180574,
+            "IO": 2.36,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 2.5018065771432703,
             "IO": 2.36,
             "is_revised": false
           }
@@ -296467,7 +297395,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 4.915736200139244,
+            "Daily flow": 4.752216851609039,
+            "Q80": 0.628,
+            "Q95": 0.27,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 5.305283448062855,
+            "Q80": 0.628,
+            "Q95": 0.27,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 5.522162634696542,
             "Q80": 0.628,
             "Q95": 0.27,
             "is_revised": false
@@ -298317,7 +299259,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 3.3429970738748507,
+            "Daily flow": 3.2935891519621827,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 3.1022362344211962,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 2.9728487790122515,
             "is_revised": false
           }
         ]
@@ -304435,7 +305387,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 31.635564577775348,
+            "Daily flow": 31.98289097989888,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 31.74867835936607,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 32.22892321702784,
             "is_revised": false
           }
         ]
@@ -314744,21 +315706,48 @@
           },
           {
             "date": "2026-11-01",
-            "Daily flow": 19.02109375004456,
             "Industrial IO": 4.25,
             "Non-industrial IO": 8.5,
             "is_revised": false
           },
           {
             "date": "2026-11-02",
-            "Daily flow": 18.94804687504787,
             "Industrial IO": 4.25,
             "Non-industrial IO": 8.5,
             "is_revised": false
           },
           {
             "date": "2026-11-03",
-            "Daily flow": 18.664673913090702,
+            "Industrial IO": 4.25,
+            "Non-industrial IO": 8.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "Industrial IO": 4.25,
+            "Non-industrial IO": 8.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "Industrial IO": 4.25,
+            "Non-industrial IO": 8.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "Industrial IO": 4.25,
+            "Non-industrial IO": 8.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Industrial IO": 4.25,
+            "Non-industrial IO": 8.5,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Industrial IO": 4.25,
             "Non-industrial IO": 8.5,
             "is_revised": false
@@ -321491,7 +322480,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 2.4087712346954704,
+            "Daily flow": 2.4058123410540873,
+            "Q80": 0.748,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 2.3266144725765208,
+            "Q80": 0.748,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 0.748,
             "IO": 1.42,
             "is_revised": false
@@ -327983,7 +328985,18 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.42872033355487,
+            "Daily flow": 1.5441178499058612,
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.2859228868625772,
+            "IO": 0.468,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "IO": 0.468,
             "is_revised": false
           }
@@ -334039,7 +335052,12 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 24.280702418499654,
+            "Daily flow": 24.251788199003748,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 25.686249506768966,
             "is_revised": false
           }
         ]
@@ -350889,6 +351907,46 @@
             "Daily flow": 0.24833720930227682,
             "Minimum flow": 0.17,
             "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Minimum flow": 0.17,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Minimum flow": 0.17,
+            "is_revised": false
           }
         ]
       }
@@ -354076,6 +355134,30 @@
           {
             "date": "2026-10-31",
             "Daily flow": 0.6427116279069038,
+            "Q80": 0.168,
+            "Q95": 0.092,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "Q80": 0.168,
+            "Q95": 0.092,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "Q80": 0.168,
+            "Q95": 0.092,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "Q80": 0.168,
+            "Q95": 0.092,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
             "Q80": 0.168,
             "Q95": 0.092,
             "is_revised": false
@@ -358141,7 +359223,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.8911763578326268,
+            "Daily flow": 1.850092014889003,
+            "Q80": 1.34,
+            "Q95": 1.02,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.848038346720604,
+            "Q80": 1.34,
+            "Q95": 1.02,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 1.9702665530235208,
             "Q80": 1.34,
             "Q95": 1.02,
             "is_revised": false
@@ -361050,7 +362146,12 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 5.3249507799272235,
+            "Daily flow": 5.301305821056509,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 4.806172170890784,
             "is_revised": false
           }
         ]
@@ -368896,7 +369997,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 3.373704695851958,
+            "Daily flow": 3.35720173484232,
+            "Q80": 0.529,
+            "Q95": 0.28200000000000003,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 3.3103988058870595,
+            "Q80": 0.529,
+            "Q95": 0.28200000000000003,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 0.529,
             "Q95": 0.28200000000000003,
             "is_revised": false
@@ -372892,7 +374006,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 10.709630754966838,
+            "Daily flow": 10.680717273252732,
+            "Q80": 7.58,
+            "Q95": 5.87,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 10.814563607546269,
+            "Q80": 7.58,
+            "Q95": 5.87,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 7.58,
             "Q95": 5.87,
             "is_revised": false
@@ -376382,7 +377509,20 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 0.1421707767722399,
+            "Daily flow": 0.14206484853388376,
+            "Q80": 0.041,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 0.13225587723622362,
+            "Q80": 0.041,
+            "IO": 1.42,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
             "Q80": 0.041,
             "IO": 1.42,
             "is_revised": false
@@ -381674,7 +382814,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 233.39712990744084,
+            "Daily flow": 229.37327529417718,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 238.6625987587943,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 233.27497408358613,
             "is_revised": false
           }
         ]
@@ -385697,7 +386847,21 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 1.7008631810427977,
+            "Daily flow": 1.687437372082648,
+            "Q80": 1.24,
+            "Q95": 0.804,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 1.7770218441301364,
+            "Q80": 1.24,
+            "Q95": 0.804,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 1.8214803091630076,
             "Q80": 1.24,
             "Q95": 0.804,
             "is_revised": false
@@ -398255,7 +399419,17 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 7.835924279587697,
+            "Daily flow": 7.7652704047284935,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 7.235776472885566,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 7.148650037884181,
             "is_revised": false
           }
         ]
@@ -405171,6 +406345,46 @@
             "Daily flow": 0.062162790697717976,
             "IO": 999.0,
             "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 999.0,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "IO": 999.0,
+            "is_revised": false
           }
         ]
       }
@@ -411112,6 +412326,46 @@
             "Daily flow": 0.0144906976744146,
             "IO": 0.311,
             "is_revised": false
+          },
+          {
+            "date": "2026-11-01",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-02",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-03",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-04",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-05",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-06",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "IO": 0.311,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "IO": 0.311,
+            "is_revised": false
           }
         ]
       }
@@ -415701,7 +416955,23 @@
           },
           {
             "date": "2026-11-06",
-            "Daily flow": 9.031701778731323,
+            "Daily flow": 9.015301615384875,
+            "Q80": 8.5,
+            "Q95": 6.8,
+            "IO": 6.76,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-07",
+            "Daily flow": 9.94586541963152,
+            "Q80": 8.5,
+            "Q95": 6.8,
+            "IO": 6.76,
+            "is_revised": false
+          },
+          {
+            "date": "2026-11-08",
+            "Daily flow": 11.033565226411156,
             "Q80": 8.5,
             "Q95": 6.8,
             "IO": 6.76,
